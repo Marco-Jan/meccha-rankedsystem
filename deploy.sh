@@ -104,9 +104,22 @@ alsBesitzer() {
 # -----------------------------------------------------------------------------
 hole() {
   local name="$1" pfad="$WURZEL/$1"
-  [[ -d "$pfad/.git" ]] || ende "$pfad ist kein Repo."
 
   sage "$name"
+
+  [[ -d "$pfad" ]] || ende "$pfad gibt es nicht."
+
+  # Nicht jedes Verzeichnis haengt an git. turnier liegt auf dem Server
+  # als reine Dateikopie - das GitHub-Repo umfasst nur mc-ranked. Das ist
+  # kein Fehler, aber es muss auffallen: Aenderungen an turnier kommen
+  # dort nur per scp an, nicht durch dieses Skript.
+  if [[ ! -d "$pfad/.git" ]]; then
+    warn "haengt nicht an git - wird uebersprungen"
+    leise "Aenderungen hier kommen per scp:"
+    leise "  scp turnier/server.js meccha@meccha-ranked.com:$pfad/"
+    return 0
+  fi
+
   cd "$pfad"
 
   # Aenderungen von Hand am Server wuerde ein Pull sonst wegwerfen oder
