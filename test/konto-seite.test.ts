@@ -168,7 +168,16 @@ describe('Kontoseite - Inhalt', () => {
   test('bietet das Programm zum Herunterladen an', () => {
     // Eine Bezugsquelle statt fuenf Anhaengen im Discord.
     assert.match(skript(), /href = '\/client'/);
-    assert.match(html, /Meccha-Ranked\.exe/);
+    assert.match(html, /Meccha-Ranked\.zip/);
+  });
+
+  test('liefert als ZIP aus, nicht als nackte .exe', () => {
+    /* Chrome blockt eine unsignierte .exe von einer jungen Domain hart
+       weg - "Verdaechtiger Download blockiert", ohne Knopf zum
+       Trotzdem-Laden. Als Archiv kommt sie durch. Faellt das zurueck,
+       laedt kein Zuschauer den Client mehr herunter. */
+    assert.doesNotMatch(html, /⬇\s*Meccha-Ranked\.exe/);
+    assert.match(html, /entpacken/i);
   });
 
   test('erklaert die Windows-Warnung', () => {

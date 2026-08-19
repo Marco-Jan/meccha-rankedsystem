@@ -33,5 +33,6 @@ EINSTELLUNGEN.bat
 
 # Gebauter Zuschauer-Client. Wird mit client-csBAUEN.bat neu erzeugt.
 client-cs/Meccha-Ranked.exe
+client-cs/Meccha-Ranked.zip
 client-cs/client.json
 client-cs/mc-ranked-daten/

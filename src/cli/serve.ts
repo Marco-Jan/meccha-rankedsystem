@@ -16,6 +16,7 @@
    ========================================================================= */
 
 import path from 'node:path';
+import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 import { baueServer } from '../server.js';
@@ -108,13 +109,23 @@ async function main(): Promise<void> {
 
   const nachtrag = ladeNachtrag(path.join(DATEN_DIR, 'nachtrag.json'), trageEin);
 
+  /* Bevorzugt die ZIP, faellt auf die .exe zurueck.
+
+     Chrome blockt eine unsignierte .exe von einer jungen Domain hart weg;
+     ein Archiv laesst es durch. Liegt keine ZIP bereit - etwa weil noch
+     nicht neu gebaut wurde -, wird die .exe ausgeliefert wie bisher.
+     Lieber ein Download mit Warnung als gar keiner. */
+  const CLIENT_ZIP = path.join(PROJEKT, 'client-cs', 'Meccha-Ranked.zip');
+  const CLIENT_EXE = path.join(PROJEKT, 'client-cs', 'Meccha-Ranked.exe');
+  const clientDatei = existsSync(CLIENT_ZIP) ? CLIENT_ZIP : CLIENT_EXE;
+
   const server = baueServer({
     freigabe,
     tokens,
     bilderDir: BILDER_DIR,
     adminKey,
     oeffentlichDir: path.join(PROJEKT, 'public'),
-    clientDatei: path.join(PROJEKT, 'client-cs', 'Meccha-Ranked.exe'),
+    clientDatei,
     konten,
     oeffentlicheUrl: OEFFENTLICHE_URL,
     holeZustand: () => spiegel.holen(),

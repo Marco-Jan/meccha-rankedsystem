@@ -58,10 +58,29 @@ if errorlevel 1 (
   exit /b 1
 )
 
+REM ===================================================================
+REM  Als ZIP verpacken.
+REM
+REM  Chrome blockt eine unsignierte .exe von einer noch unbekannten
+REM  Domain hart weg - "Verdaechtiger Download blockiert", ohne Knopf
+REM  zum Trotzdem-Laden. Ein Archiv laesst es durch. Der Server liefert
+REM  darum die ZIP aus, wenn eine bereitliegt.
+REM
+REM  tar gehoert seit Windows 10 zum System, es muss nichts nachinstal-
+REM  liert werden. -a waehlt das Format anhand der Endung.
+REM ===================================================================
 echo.
-echo   Fertig: %~dp0Meccha-Ranked.exe
+echo   Verpacke ...
+if exist "%~dp0Meccha-Ranked.zip" del "%~dp0Meccha-Ranked.zip"
+tar -a -c -f "%~dp0Meccha-Ranked.zip" -C "%~dp0" Meccha-Ranked.exe
+if errorlevel 1 (
+  echo   WARNUNG: ZIP konnte nicht erzeugt werden - der Server liefert dann die .exe aus.
+)
+
 echo.
-echo   Weitergeben: NUR diese eine Datei. Beim ersten Start legt sie
+echo   Fertig: %~dp0Meccha-Ranked.zip
+echo.
+echo   Weitergeben: die ZIP. Beim ersten Start legt die entpackte .exe
 echo   client.json daneben an; die Serveradresse ist schon eingetragen,
 echo   der Zuschauer muss nur seinen Token einfuegen.
 echo.

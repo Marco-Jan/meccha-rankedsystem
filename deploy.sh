@@ -222,13 +222,19 @@ fi
 # -----------------------------------------------------------------------------
 printf '\n%sFertig.%s ' "$gruen" "$klar"
 
-if [[ -f "$WURZEL/mc-ranked/client-cs/Meccha-Ranked.exe" ]]; then
-  exe_stand="$(date -r "$WURZEL/mc-ranked/client-cs/Meccha-Ranked.exe" '+%d.%m. %H:%M')"
+# Die ZIP hat Vorrang - genau so waehlt der Server auch aus.
+paket=""
+for k in Meccha-Ranked.zip Meccha-Ranked.exe; do
+  [[ -f "$WURZEL/mc-ranked/client-cs/$k" ]] && { paket="$k"; break; }
+done
+
+if [[ -n "$paket" ]]; then
+  exe_stand="$(date -r "$WURZEL/mc-ranked/client-cs/$paket" '+%d.%m. %H:%M')"
   soll="$(node -p "require('$WURZEL/mc-ranked/config/verteilung.json').clientVersion" 2>/dev/null || echo '?')"
   printf 'Client %s liegt bereit (%s).\n\n' "$soll" "$exe_stand"
 else
   printf '\n'
-  warn "Es liegt keine Meccha-Ranked.exe bereit - /client gibt eine 404 zurueck."
+  warn "Es liegt kein Client bereit (weder .zip noch .exe) - /client gibt eine 404 zurueck."
   warn "Hochladen mit:  ./deploy.sh --hilfe"
   printf '\n'
 fi

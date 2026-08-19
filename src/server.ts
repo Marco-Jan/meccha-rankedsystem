@@ -392,17 +392,29 @@ async function bearbeite(
     }
   }
 
-  /* Die Client-Datei zum Herunterladen - verlinkt von der Kontoseite. */
-  if (pfad === '/client' || pfad === '/client.exe') {
+  /* Die Client-Datei zum Herunterladen - verlinkt von der Kontoseite.
+
+     Ausgeliefert wird als ZIP, nicht als nackte .exe: Chrome blockt eine
+     unsignierte .exe von einer noch unbekannten Domain hart ("Verdaechtiger
+     Download blockiert"), ein Archiv laesst es durch. Der Zuschauer entpackt
+     einmal und startet die .exe daraus.
+
+     Typ und Dateiname kommen aus der Endung von clientDatei - so liefert
+     dieselbe Stelle auch eine .exe aus, falls doch mal eine bereitliegt. */
+  if (pfad === '/client' || pfad === '/client.exe' || pfad === '/client.zip') {
     if (!o.clientDatei || !existsSync(o.clientDatei)) {
       res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
       res.end('Das Programm liegt hier nicht bereit. Frag im Discord einen Admin oder Mod.');
       return;
     }
+    const istZip = o.clientDatei.toLowerCase().endsWith('.zip');
     const inhalt = readFileSync(o.clientDatei);
     res.writeHead(200, {
-      'Content-Type': 'application/vnd.microsoft.portable-executable',
-      'Content-Disposition': 'attachment; filename="Meccha-Ranked.exe"',
+      'Content-Type': istZip
+        ? 'application/zip'
+        : 'application/vnd.microsoft.portable-executable',
+      'Content-Disposition': 'attachment; filename="'
+        + (istZip ? 'Meccha-Ranked.zip' : 'Meccha-Ranked.exe') + '"',
       'Content-Length': inhalt.length,
       'Cache-Control': 'no-store'
     });

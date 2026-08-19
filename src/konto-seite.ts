@@ -517,8 +517,10 @@ export function kontoSeite(): string {
         'Enter your name exactly as it appears on the in-game leaderboard, paste the token into the app – done. From then on, F9 is enough.',
 
       'Los geht es': 'Get started',
-      'Meccha-Ranked.exe · 32 KB · keine Installation':
-        'Meccha-Ranked.exe · 32 KB · no installation',
+      'ZIP · 21 KB · entpacken, starten, fertig':
+        'ZIP · 21 KB · unzip, run, done',
+      'Als ZIP, damit der Browser den Download nicht blockiert. Entpacken und die .exe darin starten.':
+        'Packaged as a ZIP so your browser does not block the download. Unzip it and run the .exe inside.',
       'Windows meldet „Der Computer wurde geschützt"? Auf „Weitere Informationen" klicken, dann „Trotzdem ausführen". Das ist bei unsignierten Programmen normal.':
         'Windows says "Windows protected your PC"? Click "More info", then "Run anyway". That is normal for unsigned programs.',
       'und dann': 'and then',
@@ -646,8 +648,10 @@ export function kontoSeite(): string {
         '按游戏排行榜上显示的名称填写，把令牌粘贴到程序里即可。之后按 F9 就够了。',
 
       'Los geht es': '开始使用',
-      'Meccha-Ranked.exe · 32 KB · keine Installation':
-        'Meccha-Ranked.exe · 32 KB · 无需安装',
+      'ZIP · 21 KB · entpacken, starten, fertig':
+        'ZIP · 21 KB · 解压后直接运行',
+      'Als ZIP, damit der Browser den Download nicht blockiert. Entpacken und die .exe darin starten.':
+        '以 ZIP 形式提供，避免浏览器拦截下载。解压后运行其中的 .exe 即可。',
       'Windows meldet „Der Computer wurde geschützt"? Auf „Weitere Informationen" klicken, dann „Trotzdem ausführen". Das ist bei unsignierten Programmen normal.':
         'Windows 提示"已保护你的电脑"？点击"更多信息"，然后选择"仍要运行"。未签名程序出现此提示属于正常现象。',
       'und dann': '然后',
@@ -945,8 +949,13 @@ export function kontoSeite(): string {
     dl.className = 'laden';
     dl.href = '/client';
     dl.appendChild(el('span', 'gross', '⬇  ' + t('Programm herunterladen')));
-    dl.appendChild(el('span', 'klein', t('Meccha-Ranked.exe · 32 KB · keine Installation')));
+    dl.appendChild(el('span', 'klein', t('ZIP · 21 KB · entpacken, starten, fertig')));
     kd.appendChild(dl);
+    /* Chrome blockt eine unsignierte .exe von einer jungen Domain hart
+       weg. Als ZIP kommt sie durch - dafuer muss man einmal entpacken,
+       und das sagt man besser vorher als hinterher. */
+    kd.appendChild(el('p', 'leise', t(
+      'Als ZIP, damit der Browser den Download nicht blockiert. Entpacken und die .exe darin starten.')));
 
     kd.appendChild(el('div', 'hinweis', t(
       'Windows meldet „Der Computer wurde geschützt"? Auf „Weitere Informationen" ' +
@@ -1189,8 +1198,10 @@ export function kontoSeite(): string {
     var dl = document.createElement('a');
     dl.className = 'laden';
     dl.href = '/client';
-    dl.appendChild(el('span', 'gross', '⬇  Meccha-Ranked.exe'));
+    dl.appendChild(el('span', 'gross', '⬇  Meccha-Ranked.zip'));
     kd.appendChild(dl);
+    kd.appendChild(el('p', 'leise', t(
+      'Als ZIP, damit der Browser den Download nicht blockiert. Entpacken und die .exe darin starten.')));
     ziel.appendChild(kd);
   }
 
