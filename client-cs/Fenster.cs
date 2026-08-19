@@ -772,6 +772,7 @@ namespace MecchaRanked
                 {
                     Fertig(a.Ok, a.Ok ? a.Hinweis
                         : (a.Nochmal ? a.Hinweis + " – " + Sprache.T("liegt in der Warteschlange")
+                          : a.ZuWenige ? a.Hinweis   // eigener Satz, kein "Abgelehnt:"
                                      : Sprache.T("Abgelehnt: {0}", a.Hinweis)), a);
                 });
             });
@@ -784,11 +785,15 @@ namespace MecchaRanked
             // Die frische Einreichung soll sofort in der Liste stehen.
             if (ok) HoleRueckmeldungen();
 
+            /* Drei Zustaende, drei Farben: gruen angenommen, gelb "zaehlt
+               nicht" (Lobby zu klein - kein Fehler des Zuschauers), rot
+               abgelehnt. Das Zeichen in der zweiten Spalte zieht mit. */
+            bool zuWenige = a != null && a.ZuWenige;
             ListViewItem eintrag = new ListViewItem(DateTime.Now.ToString("HH:mm"));
-            eintrag.SubItems.Add(ok ? "OK" : "!");
+            eintrag.SubItems.Add(ok ? "OK" : (zuWenige ? "–" : "!"));
             eintrag.SubItems.Add(text);
             eintrag.SubItems.Add("");
-            eintrag.ForeColor = ok ? Farben.Gruen : Farben.Rot;
+            eintrag.ForeColor = ok ? Farben.Gruen : (zuWenige ? Farben.Gelb : Farben.Rot);
             /* Eine erfolgreiche Einreichung gehoert zum STAND: beim
                naechsten Aktualisieren ersetzt sie die Zeile vom Server
                ("wartet auf Pruefung" bzw. "zaehlt"). Sonst stuende die

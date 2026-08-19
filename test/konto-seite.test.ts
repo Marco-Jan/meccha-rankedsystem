@@ -180,6 +180,18 @@ describe('Kontoseite - Inhalt', () => {
     assert.match(html, /entpacken/i);
   });
 
+  test('nennt die Mindestzahl-Regel gross, nicht im Kleingedruckten', () => {
+    /* Wer die Regel nicht kennt, haelt eine nicht zaehlende Runde fuer
+       einen Fehler. Der Streifen steht ueber beiden Reitern, die Zahl
+       kommt aus /api/status - eine Quelle. */
+    assert.match(html, /class="regel"/);
+    assert.match(html, /data-tp="[^"]*Verstecker im Scoreboard[^"]*"/);
+    assert.match(skript(), /\/api\/status/);
+    assert.match(skript(), /minSpieler = s\.minSpieler/);
+    // data-tp muss auch uebersetzt werden, sonst bleibt {0} stehen.
+    assert.match(skript(), /querySelectorAll\('\[data-tp\]'\)/);
+  });
+
   test('ist auffindbar und hat ein Zeichen in der Reiterleiste', () => {
     /* Die Seite hat einen Zweck: jemand sucht die Rangliste oder bekommt
        den Link aus dem Stream. Ohne Beschreibung steht in der Suche und

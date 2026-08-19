@@ -174,6 +174,21 @@ export function kontoSeite(): string {
   .ablauf .pfeil { color:var(--kante); font-size:19px; }
   @media (max-width:900px) { .kopf { grid-template-columns:1fr; gap:26px; } }
   @media (max-width:560px) { .ablauf { display:none; } }
+
+  /* Der Regelstreifen. Bernstein wie die Punktezahlen - er gehoert zum
+     Wichtigsten auf der Seite, ohne wie eine Fehlermeldung (rot) oder ein
+     Hinweis zum Wegklicken (grau) auszusehen. */
+  .regel {
+    display:flex; align-items:center; gap:12px; flex-wrap:wrap;
+    margin:6px 0 22px; padding:13px 16px; border-radius:11px;
+    background:rgba(240,180,65,.08); border:1px solid rgba(240,180,65,.28);
+    font-size:14.5px; line-height:1.5; color:var(--text);
+  }
+  .regel-schild {
+    flex:none; padding:3px 9px; border-radius:6px;
+    background:var(--akzent); color:#231a05;
+    font:700 11px/1 var(--mono); letter-spacing:.12em;
+  }
   .augen {
     font:600 11px/1 var(--mono); letter-spacing:.16em; text-transform:uppercase;
     color:var(--akzent); margin-bottom:14px;
@@ -528,6 +543,15 @@ export function kontoSeite(): string {
     <button data-tafel="t-rang" class="aktiv" data-t="Rangliste">Rangliste</button>
     <button data-tafel="t-konto" data-t="Dein Zugang">Dein Zugang</button>
   </div>
+  <!-- Die Kernregel, gross und ueber beiden Reitern. Steht bewusst nicht
+       im Kleingedruckten: wer es nicht weiss, wundert sich, warum seine
+       Runde nicht zaehlt, und haelt es fuer einen Fehler. Die 6 wird beim
+       Laden aus /api/status gesetzt - eine Zahl, eine Quelle. -->
+  <div class="regel" id="regel">
+    <span class="regel-schild" data-t="REGEL">REGEL</span>
+    <span data-tp="Eine Runde zählt nur, wenn mindestens {0} Verstecker im Scoreboard stehen."
+      >Eine Runde zählt nur, wenn mindestens 6 Verstecker im Scoreboard stehen.</span>
+  </div>
   <div class="tafel aktiv" id="t-rang"><div id="rangliste"></div></div>
   <div class="tafel" id="t-konto"><div id="inhalt"></div></div>
   <div class="fuss">
@@ -588,6 +612,9 @@ export function kontoSeite(): string {
         'Enter your name exactly as it appears on the in-game leaderboard, paste the token into the app – done. From then on, F9 is enough.',
 
       'Los geht es': 'Get started',
+      'REGEL': 'RULE',
+      'Eine Runde zählt nur, wenn mindestens {0} Verstecker im Scoreboard stehen.':
+        'A round only counts when at least {0} hiders are on the scoreboard.',
       '⚠  Windows warnt vor der Datei? Das ist normal – hier steht warum.':
         '⚠  Windows warns about the file? That is normal – here is why.',
       'Das Programm ist nicht digital signiert. Windows und der Browser können deshalb nicht nachsehen, wer es gebaut hat, und warnen vorsichtshalber. Das ist keine Aussage darüber, ob etwas schädlich ist – nur darüber, dass ein Nachweis fehlt.':
@@ -733,6 +760,9 @@ export function kontoSeite(): string {
         '按游戏排行榜上显示的名称填写，把令牌粘贴到程序里即可。之后按 F9 就够了。',
 
       'Los geht es': '开始使用',
+      'REGEL': '规则',
+      'Eine Runde zählt nur, wenn mindestens {0} Verstecker im Scoreboard stehen.':
+        '只有当记分板上至少有 {0} 名躲藏者时，该局才计入。',
       '⚠  Windows warnt vor der Datei? Das ist normal – hier steht warum.':
         '⚠  Windows 提示该文件有风险？这是正常现象 — 原因如下。',
       'Das Programm ist nicht digital signiert. Windows und der Browser können deshalb nicht nachsehen, wer es gebaut hat, und warnen vorsichtshalber. Das ist keine Aussage darüber, ob etwas schädlich ist – nur darüber, dass ein Nachweis fehlt.':
@@ -863,6 +893,11 @@ export function kontoSeite(): string {
     return 'en';
   })();
 
+  /* Die Mindestzahl Verstecker. Vorbelegt mit 6, damit der Streifen auch
+     dann etwas Sinnvolles zeigt, wenn /api/status noch nicht geantwortet
+     hat - der echte Wert kommt vom Server und ueberschreibt sie. */
+  var minSpieler = 6;
+
   /** Übersetzt einen deutschen Satz. Fehlt er, bleibt er deutsch. */
   function t(text) {
     if (sprache === 'de') return text;
@@ -891,6 +926,11 @@ export function kontoSeite(): string {
   function zeichneSprache() {
     Array.prototype.forEach.call(document.querySelectorAll('[data-t]'), function (e) {
       e.textContent = t(e.getAttribute('data-t'));
+    });
+    /* data-tp: derselbe Weg, aber mit {0} fuer die Mindestzahl. Sie steht
+       in minSpieler und wird bei jedem Sprachwechsel neu eingesetzt. */
+    Array.prototype.forEach.call(document.querySelectorAll('[data-tp]'), function (e) {
+      e.textContent = tv(e.getAttribute('data-tp'), [minSpieler]);
     });
     Array.prototype.forEach.call(
       document.querySelectorAll('#sprachen button'), function (b) {
@@ -1513,6 +1553,16 @@ export function kontoSeite(): string {
       melde(fehler, 9000);
       history.replaceState(null, '', '/konto');
     }
+
+    /* Die echte Mindestzahl vom Server holen und den Regelstreifen damit
+       neu beschriften. Klappt es nicht, bleibt die vorbelegte 6 stehen -
+       besser eine plausible Zahl als eine leere Luecke. */
+    fetch('/api/status').then(function (r) { return r.json(); }).then(function (s) {
+      if (s && typeof s.minSpieler === 'number') {
+        minSpieler = s.minSpieler;
+        zeichneSprache();
+      }
+    }).catch(function () { /* Regel bleibt bei 6 */ });
 
     ladeRangliste();
 

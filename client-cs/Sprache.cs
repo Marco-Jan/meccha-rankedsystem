@@ -164,6 +164,9 @@ namespace MecchaRanked
             { "Dieser Token gilt nicht (mehr).",
               new[] { "This token is not valid (any more).", "此令牌无效或已失效。" } },
             { "Angenommen", new[] { "Accepted", "已接受" } },
+            { "Zählt nicht: nur {0} Verstecker im Scoreboard, nötig sind {1}",
+              new[] { "Does not count: only {0} hiders on the scoreboard, {1} needed",
+                      "不计入：记分板上只有 {0} 名躲藏者，需要 {1} 名" } },
 
             /* --------------------------------------------- Einstellungen */
             { "Einstellungen", new[] { "Settings", "设置" } },

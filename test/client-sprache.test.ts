@@ -130,6 +130,22 @@ describe('Client - Oberflaeche', () => {
     assert.ok(tls > 0 && tls < lauf, 'TLS muss vor Application.Run gesetzt werden');
   });
 
+  test('zeigt zu wenige Verstecker gelb, nicht rot als Abgelehnt', () => {
+    /* Eine kleine Lobby ist kein Betrug - der Zuschauer hat nichts falsch
+       gemacht. Rot mit "Abgelehnt" waere ein Vorwurf. */
+    const kern = readFileSync(path.join(CLIENT, 'Kern.cs'), 'utf8');
+    assert.match(kern, /art.*zu-wenige-spieler/);
+    assert.match(kern, /public bool ZuWenige/);
+    assert.match(fenster, /a\.ZuWenige/);
+    assert.match(fenster, /zuWenige \? Farben\.Gelb/);
+  });
+
+  test('uebersetzt die Zu-wenige-Meldung', () => {
+    assert.match(sprache, /Verstecker im Scoreboard/);
+    assert.match(sprache, /hiders on the scoreboard/);
+    assert.match(sprache, /躲藏者/);
+  });
+
   test('die Farben stehen an einer Stelle', () => {
     assert.match(sprache, /static class Farben/);
     /* Im Fenster duerfen keine losen Farbwerte mehr stehen - die waren

@@ -45,6 +45,25 @@ import type { RohZeile } from './parse.js';
 /** Groesste erlaubte Bildgroesse. Ein 1920x1080-PNG liegt bei rund 2 MB. */
 export const MAX_BILD = 8 * 1024 * 1024;
 
+/**
+ * Mindestzahl Verstecker im Scoreboard, damit eine Zuschauer-Runde zaehlt.
+ *
+ * Im Scoreboard von MECCHA CHAMELEON stehen nur die Verstecker, keine
+ * Hunter - jede gelesene Zeile ist also ein Verstecker. In einer winzigen
+ * Runde ist der eigene Platz beliebig steuerbar; die Latte liegt bei 6,
+ * damit man nicht allein eine Lobby aufmacht und farmt. Ueber
+ * MC_MIN_SPIELER einstellbar, falls sich 6 als zu hoch oder niedrig zeigt.
+ *
+ * Nur eine ungueltige oder fehlende Angabe faellt auf 6 zurueck; eine
+ * bewusste 0 schaltet die Pruefung ab (fuer Tests und Sonderfaelle).
+ */
+export const MIN_SPIELER = (() => {
+  const roh = process.env.MC_MIN_SPIELER;
+  if (roh === undefined || roh.trim() === '') return 6;
+  const n = Number(roh);
+  return Number.isInteger(n) && n >= 0 ? n : 6;
+})();
+
 const ERLAUBTE_TYPEN = new Map<string, string>([
   ['image/png', '.png'],
   ['image/jpeg', '.jpg'],
@@ -122,6 +141,10 @@ export interface ServerOptionen {
    * Serverumzug keiner mehr funktioniert.
    */
   readonly clientDatei?: string;
+
+  /** Mindestzahl Verstecker im Scoreboard. Vorgabe: MIN_SPIELER (6). Als
+   *  Option, damit Tests sie setzen koennen, ohne die Umgebung anzufassen. */
+  readonly minSpieler?: number;
 }
 
 function sendeDatei(res: http.ServerResponse, datei: string, typ: string): void {
@@ -277,6 +300,9 @@ async function bearbeite(
          nach einem Serverumzug: die Adresse steckt fest in der .exe, eine
          alte Fassung wuerde sonst schweigend ins Leere senden. */
       neuesteVersion: verteilung().clientVersion,
+      /* Damit der Client die Regel nennen kann, ohne sie doppelt zu
+         pflegen: die Zahl steht nur hier, der Client zeigt sie an. */
+      minSpieler: o.minSpieler ?? MIN_SPIELER,
       brauchtFreigabe: brauchtFreigabe(token),
       gesperrt: token.gesperrt === true,
       sperrgrund: token.sperrgrund ?? null
@@ -464,7 +490,10 @@ async function bearbeite(
     return sendeJson(res, 200, {
       ok: true,
       offen: o.freigabe.offene().length,
-      maxBild: MAX_BILD
+      maxBild: MAX_BILD,
+      /* Damit die Kontoseite die Regel nennen kann, ohne Anmeldung und
+         ohne die Zahl doppelt zu pflegen. */
+      minSpieler: o.minSpieler ?? MIN_SPIELER
     });
   }
 
@@ -552,6 +581,47 @@ async function bearbeite(
       fehler: unbrauchbar
         ? 'Auf dem Bild war keine brauchbare Rangliste zu erkennen'
         : 'Lesen fehlgeschlagen'
+    });
+  }
+
+  /*
+     Genug Verstecker in der Runde?
+
+     In einer winzigen Runde laesst sich der eigene Platz beliebig
+     schoenspielen - zu zweit wird man immer Erster. Damit eine Runde
+     zaehlt, muss das Scoreboard also eine Mindestzahl an Versteckern
+     zeigen. Das haelt niemanden ab, der sich sechs Freunde sucht und
+     absprachegemaess verliert; es hebt die Latte aber ueber "allein eine
+     Lobby aufmachen und farmen".
+
+     Gezaehlt werden die Zeilen der Rangliste - im Scoreboard von MECCHA
+     CHAMELEON stehen nur die Verstecker, keine Hunter. Also ist jede
+     Zeile ein Verstecker, und zeilen.length ist genau ihre Zahl.
+
+     Die Pruefung steht bewusst frueh: vor der Zuordnung, vor der
+     Dublettensperre, vor dem Eintragen. Ein zu kleines Bild soll gar
+     nicht erst in den Bestand kommen.
+
+     Ueber MC_MIN_SPIELER einstellbar, Vorgabe 6. Der eigene Rechner
+     (vertraut) ist ausgenommen: der erfasst die ganze Runde ohnehin auf
+     einen Griff, da waere die Sperre nur im Weg.
+  */
+  const minAktiv = o.minSpieler ?? MIN_SPIELER;
+  if (!token.vertraut && zeilen.length < minAktiv) {
+    console.log('  Zu wenige Verstecker (' + token.name + '): ' +
+      zeilen.length + ' < ' + minAktiv);
+    /* art markiert den Fall eindeutig, damit der Client ihn NICHT als
+       "Abgelehnt" (rot, klingt nach Betrug) anzeigt, sondern neutral als
+       "zaehlt nicht". Der Spieler hat nichts falsch gemacht - es waren
+       nur zu wenige Verstecker in der Runde. */
+    return sendeJson(res, 422, {
+      ok: false,
+      art: 'zu-wenige-spieler',
+      minSpieler: minAktiv,
+      erkannt: zeilen.length,
+      fehler: 'Zaehlt nicht: nur ' + zeilen.length + ' Verstecker im Scoreboard, ' +
+        'noetig sind ' + minAktiv,
+      zeilen: zeilen.map((z) => ({ rohName: z.rohName, rohPunkte: z.rohPunkte }))
     });
   }
 

@@ -56,6 +56,9 @@ before(async () => {
   server = baueServer({
     get freigabe() { return freigabe; },
     get tokens() { return tokens; },
+    // Die Mindestzahl-Regel wird eigens in server.test.ts geprueft - hier
+    // wuerden die kleinen Fixtures sonst als "zu wenige Verstecker" abgelehnt.
+    minSpieler: 0,
     bilderDir: path.join(ORDNER, 'bilder'),
     adminKey: ADMIN,
     leser: async () => leserAntwort,

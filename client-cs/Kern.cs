@@ -243,6 +243,10 @@ namespace MecchaRanked
         public bool Ok;
         public bool Nochmal;
         public string Hinweis = "";
+        /* Kein Fehler im engeren Sinn: die Lobby war zu klein, die Runde
+           zaehlt nicht. Der Client zeigt das gelb statt rot - der
+           Zuschauer hat nichts falsch gemacht. */
+        public bool ZuWenige;
         public List<string> Zeilen = new List<string>();
     }
 
@@ -496,6 +500,21 @@ namespace MecchaRanked
             a.Hinweis = a.Ok
                 ? (hinweis ?? Sprache.T("Angenommen"))
                 : (fehler ?? ("HTTP " + code));
+
+            /* Zu kleine Lobby: der Server markiert das mit art. Der Client
+               nimmt dann seinen eigenen, uebersetzten Satz samt Zahlen -
+               so muss der Text nicht aus der Server-Antwort uebersetzt
+               werden, und es liest sich als "zaehlt nicht", nicht als
+               Vorwurf. */
+            a.ZuWenige = koerper.IndexOf("\"art\":\"zu-wenige-spieler\"",
+                StringComparison.Ordinal) >= 0;
+            if (a.ZuWenige)
+            {
+                long min = Zahl(koerper, "minSpieler");
+                long da = Zahl(koerper, "erkannt");
+                a.Hinweis = Sprache.T(
+                    "Zählt nicht: nur {0} Verstecker im Scoreboard, nötig sind {1}", da, min);
+            }
 
             /* Wiederholen lohnt nur bei Serverfehlern. Ein falscher Token
                oder ein unlesbares Bild scheitert beim naechsten Versuch

@@ -35,6 +35,10 @@ let leserAntwort = JSON.stringify({
   ]
 });
 let leserWirft: Error | null = null;
+/* Die Mindestzahl Verstecker. In den meisten Tests aus, damit die
+   Drei-Zeilen-Fixtures durchkommen - die eigene Regel prueft ein eigener
+   Block, der sie hochsetzt. Als Getter am Server, also je Anfrage frisch. */
+let minSpielerTest = 0;
 /* Die Testbilder ("PNG-abc") haben keine echte PNG-Struktur - fuer die
    Bildpruefung waeren sie allesamt nachbearbeitet. Hier wird sie deshalb
    eingesetzt und nur dort auf "auffaellig" gestellt, wo genau das
@@ -58,6 +62,7 @@ before(async () => {
   server = baueServer({
     get freigabe() { return freigabe; },
     get tokens() { return tokens; },
+    get minSpieler() { return minSpielerTest; },
     bilderDir: path.join(ORDNER, 'bilder'),
     leser: async () => {
       if (leserWirft) throw leserWirft;
@@ -97,6 +102,7 @@ beforeEach(() => {
   leserWirft = null;
   zustandWirft = null;
   bildWirktEcht = true;
+  minSpielerTest = 0;
   leserAntwort = JSON.stringify({
     zeilen: [
       { name: 'Jones', rohPunkte: '2 771' },
@@ -349,6 +355,56 @@ describe('Server - Zuschauer laden hoch', () => {
   test('sagt dem Absender, dass noch nichts gewertet ist', async () => {
     const { body } = await lade(bild('runde1'), { 'X-MC-Token': zuschauerToken });
     assert.match(String(body.hinweis), /erst nach Pruefung/);
+  });
+});
+
+/* ---------------------------------------------------- Mindestzahl */
+
+describe('Server - zu kleine Runde', () => {
+  /* In einer winzigen Runde laesst sich der eigene Platz schoenspielen.
+     Das Scoreboard zeigt nur die Verstecker - jede Zeile ist einer, also
+     zaehlt einfach ihre Zahl. Der Fixture-Leser gibt drei Zeilen zurueck. */
+  test('haelt eine Zuschauer-Runde mit zu wenigen Versteckern zurueck', async () => {
+    minSpielerTest = 6;
+    const { code, body } = await lade(bild('runde1'), { 'X-MC-Token': zuschauerToken });
+
+    assert.equal(code, 422);
+    assert.equal(body.art, 'zu-wenige-spieler');
+    assert.equal(body.erkannt, 3);
+    assert.equal(body.minSpieler, 6);
+    // Nichts eingetragen, nichts zur Freigabe gelegt - gar nicht erst rein.
+    assert.equal(eingetragen.length, 0);
+    assert.equal(freigabe.offene().length, 0);
+  });
+
+  test('nennt kein "Abgelehnt" - der Zuschauer hat nichts falsch gemacht', async () => {
+    minSpielerTest = 6;
+    const { body } = await lade(bild('runde1'), { 'X-MC-Token': zuschauerToken });
+    // Neutrale Sprache: "Zaehlt nicht", nicht "Abgelehnt".
+    assert.match(String(body.fehler), /[Zz]aehlt nicht|Zählt nicht/);
+  });
+
+  test('laesst genug Verstecker durch', async () => {
+    minSpielerTest = 3;   // genau die drei aus dem Fixture
+    const { code, body } = await lade(bild('runde1'), { 'X-MC-Token': zuschauerToken });
+    assert.equal(code, 200);
+    assert.equal(body.status, 'offen');
+  });
+
+  test('gilt NICHT fuer die eigenen Rechner', async () => {
+    // Der Spiel-PC erfasst die ganze Runde auf einen Griff - da waere die
+    // Sperre nur im Weg, und Betrug am eigenen Rechner ist ein anderes Thema.
+    minSpielerTest = 6;
+    const { code } = await lade(bild('runde1'), { 'X-MC-Token': eigenerToken });
+    assert.equal(code, 200);
+    assert.ok(eingetragen.length >= 1);
+  });
+
+  test('meldet die Zahl ueber /api/status', async () => {
+    minSpielerTest = 6;
+    const r = await fetch(basis + '/api/status');
+    const s = await r.json() as { minSpieler?: number };
+    assert.equal(s.minSpieler, 6);
   });
 });
 

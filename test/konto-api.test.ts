@@ -475,9 +475,12 @@ describe('Kontoseite und API passen zusammen', () => {
 
     for (const p of pfade) {
       /* /client und /freigabe liefert der Server selbst aus - die .exe
-         liegt neben ihm, das Dashboard ist eine eigene Seite. Dafuer
-         gibt es Tests in server.test.ts bzw. dashboard.test.ts. */
-      if (p === '/client' || p === '/freigabe' || p === '/api/rangliste') continue;
+         liegt neben ihm, das Dashboard ist eine eigene Seite. /api/status
+         und /api/rangliste bedient ebenfalls der Hauptserver, nicht der
+         Kontobereich. Dafuer gibt es Tests in server.test.ts bzw.
+         dashboard.test.ts. */
+      if (p === '/client' || p === '/freigabe'
+          || p === '/api/rangliste' || p === '/api/status') continue;
 
       const text = await (await hole(p)).text();
       assert.notEqual(text, 'nicht meine', p + ' wird von der Seite aufgerufen, aber nicht bedient');
