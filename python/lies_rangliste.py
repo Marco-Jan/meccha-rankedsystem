@@ -50,7 +50,7 @@ STANDARD_GEOMETRIE = {
     # Oberkante und Unterkante des Ranglistenblocks, ohne die Kopfzeile.
     # Die Kopfzeile MUSS draussen bleiben: sie wird sonst als Zeile
     # gelesen und verschiebt die Paarung Name/Punkte um eins.
-    "bereich_y": [465, 810],
+    "bereich_y": [165, 810],
     "spalten": {
         "name":   [55, 320],
         "punkte": [318, 400]
