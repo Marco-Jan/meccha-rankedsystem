@@ -124,7 +124,11 @@ hole() {
 
   # Aenderungen von Hand am Server wuerde ein Pull sonst wegwerfen oder
   # daran scheitern. Lieber vorher sagen, was da liegt.
-  if [[ -n "$(alsBesitzer git status --porcelain)" ]]; then
+  #
+  # Nur VERFOLGTE Dateien zaehlen. Unversioniertes stand hier anfangs
+  # auch drin, und prompt blockierte die per scp hochgeladene Client-ZIP
+  # den ganzen Rollout - obwohl ein Pull sie gar nicht anfassen kann.
+  if [[ -n "$(alsBesitzer git status --porcelain --untracked-files=no)" ]]; then
     warn "hier liegen ungespeicherte Aenderungen:"
     alsBesitzer git status --short | sed 's/^/       /'
     ende "Erst aufraeumen (git stash oder git checkout .), dann nochmal."
