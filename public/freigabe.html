@@ -35,7 +35,32 @@
   }
   .huelle { max-width:var(--breite); margin:0 auto; }
 
-  /* --- Kopf ---------------------------------------------------------- */
+  /* --- Kopf ----------------------------------------------------------
+     Titel links, Rueckweg und Sprachwahl rechts. Auf schmalen Fenstern
+     bricht die rechte Seite unter den Titel, statt ihn zu quetschen. */
+  .kopfzeile {
+    display:flex; align-items:flex-start; justify-content:space-between;
+    gap:18px; flex-wrap:wrap;
+  }
+  .kopf-rechts {
+    display:flex; align-items:center; gap:10px; padding-top:44px;
+  }
+  .zurueck {
+    display:inline-block; padding:6px 13px; border-radius:8px;
+    border:1px solid var(--rand, #2c303a); background:transparent;
+    color:var(--leise); text-decoration:none;
+    font:600 12.5px/1 var(--schrift); white-space:nowrap;
+  }
+  .zurueck:hover { color:var(--text); border-color:var(--akzent); }
+  .sprachen { display:flex; gap:4px; }
+  .sprachen button {
+    padding:6px 10px; border-radius:8px; cursor:pointer;
+    border:1px solid var(--rand, #2c303a); background:transparent;
+    color:var(--leise); font:600 12px/1 var(--mono);
+  }
+  .sprachen button:hover { color:var(--text); }
+  .sprachen button.aktiv { color:var(--akzent); border-color:var(--akzent); }
+
   .augen {
     font:600 11px/1 var(--mono); letter-spacing:.16em; text-transform:uppercase;
     color:var(--akzent); padding-top:40px;
@@ -317,10 +342,17 @@
       <div class="augen">Meccha Ranked · Verwaltung</div>
       <h1 data-t="Was heute reinkam.">Was heute reinkam.</h1>
     </div>
-    <div class="sprachen" id="sprachen">
-      <button data-sprache="en">EN</button>
-      <button data-sprache="de">DE</button>
-      <button data-sprache="zh">中文</button>
+    <div class="kopf-rechts">
+      <!-- Der Weg zurueck. Ohne ihn kommt man aus der Verwaltung nur
+           ueber die Adresszeile oder den Zurueck-Knopf des Browsers
+           wieder heraus - und beides findet niemand, der hier zum
+           ersten Mal steht. -->
+      <a class="zurueck" href="/" data-t="← Zur Rangliste">← Zur Rangliste</a>
+      <div class="sprachen" id="sprachen">
+        <button data-sprache="en">EN</button>
+        <button data-sprache="de">DE</button>
+        <button data-sprache="zh">中文</button>
+      </div>
     </div>
   </div>
 

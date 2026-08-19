@@ -114,6 +114,22 @@ describe('Client - Oberflaeche', () => {
     assert.match(kern, /\\"sprache\\": /);
   });
 
+  test('spricht TLS 1.2, bevor irgendetwas gesendet wird', () => {
+    /* .NET Framework 4 nimmt von sich aus TLS 1.0, und nginx laesst nur
+       noch 1.2 und 1.3 zu. Fehlt das hier, scheitert schon der
+       Verbindungsaufbau und der Client meldet "Server nicht erreichbar",
+       obwohl der Server laeuft. Genau so ist es beim Umzug auf https
+       passiert - vorher fiel es nicht auf, weil localhost unverschluesselt
+       war. */
+    assert.match(fenster, /SecurityProtocol =/);
+    assert.match(fenster, /\(System\.Net\.SecurityProtocolType\)3072/);
+
+    // Vor dem ersten Fenster, nicht irgendwann spaeter.
+    const tls = fenster.indexOf('SecurityProtocol =');
+    const lauf = fenster.indexOf('Application.Run');
+    assert.ok(tls > 0 && tls < lauf, 'TLS muss vor Application.Run gesetzt werden');
+  });
+
   test('die Farben stehen an einer Stelle', () => {
     assert.match(sprache, /static class Farben/);
     /* Im Fenster duerfen keine losen Farbwerte mehr stehen - die waren

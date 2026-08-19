@@ -124,6 +124,14 @@ describe('Dashboard - was angezeigt werden muss', () => {
     assert.match(js, /ausSpiegel/);
   });
 
+  test('man kommt wieder heraus', () => {
+    /* Ohne Rueckweg fuehrt aus der Verwaltung nur die Adresszeile oder
+       der Zurueck-Knopf des Browsers - beides findet niemand, der hier
+       zum ersten Mal steht. */
+    assert.match(html, /class="zurueck" href="\/"/);
+    assert.match(js, /Zur Rangliste/);
+  });
+
   test('haelt lange Listen im Rahmen', () => {
     const rollen = html.match(/class="rollen"/g) ?? [];
     assert.ok(rollen.length >= 3, 'die langen Listen sollten scrollen, gefunden: ' + rollen.length);

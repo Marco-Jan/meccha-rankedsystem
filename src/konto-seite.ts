@@ -250,6 +250,29 @@ export function kontoSeite(): string {
   .laden .gross { font-size:17px; font-weight:700; letter-spacing:-.2px; }
   .laden .klein { font:12.5px/1.3 var(--mono); opacity:.75; }
 
+  /* Der Warnkasten. Zugeklappt eine Zeile, aufgeklappt die ganze
+     Erklaerung - wer die Warnung nicht bekommt, soll sie nicht lesen
+     muessen, wer sie bekommt, findet sie an Ort und Stelle. */
+  .warnkasten {
+    margin:14px 0 0; padding:0 14px;
+    border:1px solid rgba(240,180,65,.32); border-radius:10px;
+    background:rgba(240,180,65,.06);
+  }
+  .warnkasten > summary {
+    cursor:pointer; padding:11px 0; list-style:none;
+    font-size:13.5px; font-weight:600; color:#f0b441;
+  }
+  .warnkasten > summary::-webkit-details-marker { display:none; }
+  .warnkasten > summary:hover { color:#ffc95e; }
+  .warnkasten[open] > summary { border-bottom:1px solid rgba(240,180,65,.2); }
+  .warnkasten h3 {
+    margin:14px 0 4px; font-size:12px; letter-spacing:.09em;
+    text-transform:uppercase; color:#f0b441; opacity:.85;
+  }
+  .warnkasten p { margin:0 0 9px; font-size:13.5px; line-height:1.55; color:var(--leise); }
+  .warnkasten[open] > p:last-child { padding-bottom:12px; }
+  .warnkasten p:first-of-type { margin-top:12px; }
+
   /* Trennt die beiden Schritte innerhalb einer Karte, ohne sie zu
      zerreissen: eine Linie mit dem Wort in der Mitte. */
   .trenner {
@@ -517,6 +540,20 @@ export function kontoSeite(): string {
         'Enter your name exactly as it appears on the in-game leaderboard, paste the token into the app – done. From then on, F9 is enough.',
 
       'Los geht es': 'Get started',
+      '⚠  Windows warnt vor der Datei? Das ist normal – hier steht warum.':
+        '⚠  Windows warns about the file? That is normal – here is why.',
+      'Das Programm ist nicht digital signiert. Windows und der Browser können deshalb nicht nachsehen, wer es gebaut hat, und warnen vorsichtshalber. Das ist keine Aussage darüber, ob etwas schädlich ist – nur darüber, dass ein Nachweis fehlt.':
+        'The app is not digitally signed. Windows and your browser therefore cannot check who built it, so they warn you as a precaution. That says nothing about whether anything is harmful – only that a proof of origin is missing.',
+      'Eine solche Signatur muss man jährlich kaufen. Für ein kostenloses Zuschauer-Werkzeug lohnt sich das nicht, deshalb bleibt die Warnung.':
+        'Such a signature has to be bought every year. For a free viewer tool that is not worth it, so the warning stays.',
+      'Beim Herunterladen': 'While downloading',
+      'Der Browser meldet „Verdächtiger Download blockiert". Deshalb wird das Programm als ZIP ausgeliefert – damit kommt es durch. Melde es trotzdem, wählst du im Download-Menü „Beibehalten".':
+        'Your browser says "Suspicious download blocked". That is why the app ships as a ZIP – it gets through that way. If it still complains, choose "Keep" in the download menu.',
+      'Beim ersten Start': 'On first launch',
+      'Es erscheint ein blaues Fenster: „Der Computer wurde durch Windows geschützt". Klick auf „Weitere Informationen" und dann auf „Trotzdem ausführen". Das musst du nur einmal machen – danach startet es normal.':
+        'A blue window appears: "Windows protected your PC". Click "More info", then "Run anyway". You only need to do this once – after that it starts normally.',
+      'Du willst es selbst prüfen? Lad die Datei bei virustotal.com hoch, das ist kostenlos und lässt sie von über 60 Virenscannern ansehen.':
+        'Want to check for yourself? Upload the file to virustotal.com – it is free and has over 60 antivirus engines look at it.',
       'ZIP · 21 KB · entpacken, starten, fertig':
         'ZIP · 21 KB · unzip, run, done',
       'Als ZIP, damit der Browser den Download nicht blockiert. Entpacken und die .exe darin starten.':
@@ -648,6 +685,20 @@ export function kontoSeite(): string {
         '按游戏排行榜上显示的名称填写，把令牌粘贴到程序里即可。之后按 F9 就够了。',
 
       'Los geht es': '开始使用',
+      '⚠  Windows warnt vor der Datei? Das ist normal – hier steht warum.':
+        '⚠  Windows 提示该文件有风险？这是正常现象 — 原因如下。',
+      'Das Programm ist nicht digital signiert. Windows und der Browser können deshalb nicht nachsehen, wer es gebaut hat, und warnen vorsichtshalber. Das ist keine Aussage darüber, ob etwas schädlich ist – nur darüber, dass ein Nachweis fehlt.':
+        '本程序没有数字签名，因此 Windows 和浏览器无法核实它的开发者，出于谨慎会发出警告。这并不表示程序有害，只是缺少来源证明。',
+      'Eine solche Signatur muss man jährlich kaufen. Für ein kostenloses Zuschauer-Werkzeug lohnt sich das nicht, deshalb bleibt die Warnung.':
+        '这种签名需要每年付费购买。对一个免费的观众工具来说并不划算，所以警告会一直存在。',
+      'Beim Herunterladen': '下载时',
+      'Der Browser meldet „Verdächtiger Download blockiert". Deshalb wird das Programm als ZIP ausgeliefert – damit kommt es durch. Melde es trotzdem, wählst du im Download-Menü „Beibehalten".':
+        '浏览器会提示“已拦截可疑下载”。因此程序以 ZIP 形式提供，这样即可正常下载。若仍被拦截，请在下载菜单中选择“保留”。',
+      'Beim ersten Start': '首次运行时',
+      'Es erscheint ein blaues Fenster: „Der Computer wurde durch Windows geschützt". Klick auf „Weitere Informationen" und dann auf „Trotzdem ausführen". Das musst du nur einmal machen – danach startet es normal.':
+        '会出现一个蓝色窗口：“Windows 已保护你的电脑”。请点击“更多信息”，然后选择“仍要运行”。这一步只需操作一次，之后即可正常启动。',
+      'Du willst es selbst prüfen? Lad die Datei bei virustotal.com hoch, das ist kostenlos und lässt sie von über 60 Virenscannern ansehen.':
+        '想自己验证？可将文件上传到 virustotal.com，该服务免费，会用 60 多款杀毒引擎进行检测。',
       'ZIP · 21 KB · entpacken, starten, fertig':
         'ZIP · 21 KB · 解压后直接运行',
       'Als ZIP, damit der Browser den Download nicht blockiert. Entpacken und die .exe darin starten.':
@@ -807,6 +858,54 @@ export function kontoSeite(): string {
     return e;
   }
 
+  /* Der Kasten zu den Windows-Warnungen.
+
+     Zwei verschiedene Warnungen treffen den Zuschauer nacheinander: der
+     Browser beim Laden, SmartScreen beim ersten Start. Beide sehen aus,
+     als waere etwas faul, und beide haben denselben harmlosen Grund -
+     das Programm ist nicht signiert. Ohne Erklaerung bricht genau hier
+     ein Teil der Leute ab und meldet sich nie wieder.
+
+     Aufklappbar statt dauerhaft offen: wer die Warnung nicht bekommt,
+     soll keine halbe Seite Text daruebersehen muessen. Wer sie bekommt,
+     findet die Antwort an der Stelle, an der er gerade steht. */
+  function warnungsKasten() {
+    var d = document.createElement('details');
+    d.className = 'warnkasten';
+
+    var z = document.createElement('summary');
+    z.textContent = t('⚠  Windows warnt vor der Datei? Das ist normal – hier steht warum.');
+    d.appendChild(z);
+
+    d.appendChild(el('p', null, t(
+      'Das Programm ist nicht digital signiert. Windows und der Browser können ' +
+      'deshalb nicht nachsehen, wer es gebaut hat, und warnen vorsichtshalber. ' +
+      'Das ist keine Aussage darüber, ob etwas schädlich ist – nur darüber, dass ' +
+      'ein Nachweis fehlt.')));
+
+    d.appendChild(el('p', null, t(
+      'Eine solche Signatur muss man jährlich kaufen. Für ein kostenloses ' +
+      'Zuschauer-Werkzeug lohnt sich das nicht, deshalb bleibt die Warnung.')));
+
+    d.appendChild(el('h3', null, t('Beim Herunterladen')));
+    d.appendChild(el('p', null, t(
+      'Der Browser meldet „Verdächtiger Download blockiert". Deshalb wird das ' +
+      'Programm als ZIP ausgeliefert – damit kommt es durch. Melde es trotzdem, ' +
+      'wählst du im Download-Menü „Beibehalten".')));
+
+    d.appendChild(el('h3', null, t('Beim ersten Start')));
+    d.appendChild(el('p', null, t(
+      'Es erscheint ein blaues Fenster: „Der Computer wurde durch Windows ' +
+      'geschützt". Klick auf „Weitere Informationen" und dann auf „Trotzdem ' +
+      'ausführen". Das musst du nur einmal machen – danach startet es normal.')));
+
+    d.appendChild(el('p', 'leise', t(
+      'Du willst es selbst prüfen? Lad die Datei bei virustotal.com hoch, das ' +
+      'ist kostenlos und lässt sie von über 60 Virenscannern ansehen.')));
+
+    return d;
+  }
+
   function melde(text, dauer, art) {
     var m = $('meldung');
     m.textContent = text;
@@ -957,9 +1056,7 @@ export function kontoSeite(): string {
     kd.appendChild(el('p', 'leise', t(
       'Als ZIP, damit der Browser den Download nicht blockiert. Entpacken und die .exe darin starten.')));
 
-    kd.appendChild(el('div', 'hinweis', t(
-      'Windows meldet „Der Computer wurde geschützt"? Auf „Weitere Informationen" ' +
-      'klicken, dann „Trotzdem ausführen". Das ist bei unsignierten Programmen normal.')));
+    kd.appendChild(warnungsKasten());
 
     kd.appendChild(el('div', 'trenner', t('und dann')));
 
@@ -1202,6 +1299,9 @@ export function kontoSeite(): string {
     kd.appendChild(dl);
     kd.appendChild(el('p', 'leise', t(
       'Als ZIP, damit der Browser den Download nicht blockiert. Entpacken und die .exe darin starten.')));
+    // Auch hier erreichbar: wer sich die neue Fassung holt, trifft auf
+    // dieselben zwei Warnungen wie beim ersten Mal.
+    kd.appendChild(warnungsKasten());
     ziel.appendChild(kd);
   }
 

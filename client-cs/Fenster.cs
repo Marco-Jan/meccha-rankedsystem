@@ -1151,6 +1151,40 @@ namespace MecchaRanked
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
 
+            /* ------------------------------------------------------ TLS
+
+               .NET Framework 4 spricht von sich aus SSL 3.0 und TLS 1.0.
+               Beides nimmt kein Server mehr an - nginx laesst nur noch
+               TLS 1.2 und 1.3 zu. Ohne diese Zeilen scheitert schon der
+               Verbindungsaufbau, und der Client meldet stumpf "Server
+               nicht erreichbar", obwohl der Server tadellos laeuft.
+
+               Solange die Adresse auf http://localhost zeigte, fiel das
+               nicht auf - da gab es keine Verschluesselung. Erst mit dem
+               Umzug auf https wurde daraus ein Totalausfall.
+
+               Die Zahlen statt der Namen: SecurityProtocolType.Tls12 und
+               .Tls13 gibt es im Enum von .NET 4.0 noch nicht. Die Werte
+               wirken trotzdem, weil auf jedem Windows 10 laengst .NET
+               4.5+ als Ersatz derselben Dateien liegt. */
+            try
+            {
+                System.Net.ServicePointManager.SecurityProtocol =
+                    (System.Net.SecurityProtocolType)3072 |    // TLS 1.2
+                    (System.Net.SecurityProtocolType)12288;    // TLS 1.3
+            }
+            catch
+            {
+                /* Aeltere Maschine, die TLS 1.3 nicht kennt: dann
+                   wenigstens 1.2 - damit kommt man ueberall durch. */
+                try
+                {
+                    System.Net.ServicePointManager.SecurityProtocol =
+                        (System.Net.SecurityProtocolType)3072;
+                }
+                catch { /* dann bleibt es bei der Vorgabe */ }
+            }
+
             /* Die Einstellungen liegen NEBEN der Datei, nicht im
                Arbeitsverzeichnis - der Zuschauer legt das Programm
                irgendwohin und erwartet sie daneben. */
