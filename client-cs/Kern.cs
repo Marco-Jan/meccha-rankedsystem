@@ -29,13 +29,13 @@ namespace MecchaRanked
     static class Info
     {
         public const string Projekt = "Meccha Ranked";
-        public const string Version = "0.3.0";
+        public const string Version = "0.4.0";
         public const string Entwickler = "Baloou";
 
         /* Wird beim Bauen ersetzt - siehe baue.ps1 und
            config/verteilung.json. Damit braucht ein Serverumzug keine
            Codeaenderung, nur einen Neubau. */
-        public const string VorgabeServer = "http://localhost:8790";
+        public const string VorgabeServer = "https://meccha-ranked.com";
     }
 
     /* ==================================================================

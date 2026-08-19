@@ -312,48 +312,57 @@
 <body>
 <div class="huelle">
 
-  <div class="augen">Meccha Ranked · Verwaltung</div>
-  <h1>Was heute reinkam.</h1>
+  <div class="kopfzeile">
+    <div>
+      <div class="augen">Meccha Ranked · Verwaltung</div>
+      <h1 data-t="Was heute reinkam.">Was heute reinkam.</h1>
+    </div>
+    <div class="sprachen" id="sprachen">
+      <button data-sprache="en">EN</button>
+      <button data-sprache="de">DE</button>
+      <button data-sprache="zh">中文</button>
+    </div>
+  </div>
 
   <div class="status" id="status"></div>
 
   <div class="reiter" id="reiter">
-    <button data-tafel="t-freigabe" class="aktiv">Freigabe<span class="zahl" id="r-offen">0</span></button>
-    <button data-tafel="t-liste">Punkteliste</button>
-    <button data-tafel="t-zuschauer">Zuschauer</button>
-    <button data-tafel="t-zugaenge">Zugänge</button>
-    <button data-tafel="t-verlauf">Entschieden</button>
+    <button data-tafel="t-freigabe" class="aktiv"><span data-t="Freigabe">Freigabe</span><span class="zahl" id="r-offen">0</span></button>
+    <button data-tafel="t-liste" data-t="Punkteliste">Punkteliste</button>
+    <button data-tafel="t-zuschauer" data-t="Zuschauer">Zuschauer</button>
+    <button data-tafel="t-zugaenge" data-t="Zugänge">Zugänge</button>
+    <button data-tafel="t-verlauf" data-t="Entschieden">Entschieden</button>
   </div>
 
   <div class="tafel aktiv" id="t-freigabe">
-  <h2>Wartet auf Freigabe <span class="leise" id="zaehler"></span></h2>
+  <h2><span data-t="Wartet auf Freigabe">Wartet auf Freigabe</span> <span class="leise" id="zaehler"></span></h2>
   <div id="offen"></div>
-  <div id="leer" style="display:none">Nichts offen.</div>
+  <div id="leer" style="display:none" data-t="Nichts offen.">Nichts offen.</div>
   </div>
 
   <div class="tafel" id="t-liste">
   <h2 class="listenkopf">
-    <span>Zuletzt in der Punkteliste</span>
+    <span data-t="Zuletzt in der Punkteliste">Zuletzt in der Punkteliste</span>
     <span class="leise" id="letzte-zaehler" style="font-size:13px;font-weight:400"></span>
   </h2>
   <div class="block">
     <div class="rollen">
       <table id="letzte"><thead><tr>
-        <th>Spieler</th><th style="text-align:right">Punkte</th><th>wann</th>
+        <th data-t="Spieler">Spieler</th><th style="text-align:right" data-t="Punkte">Punkte</th><th data-t="wann">wann</th>
       </tr></thead><tbody></tbody></table>
     </div>
     <p class="leise" id="letzte-leer" style="display:none;margin-bottom:0">
-      Noch nichts eingetragen.
+      <span data-t="Noch nichts eingetragen.">Noch nichts eingetragen.</span>
     </p>
   </div>
   </div>
 
   <div class="tafel" id="t-zuschauer">
-  <h2>Angemeldete Zuschauer</h2>
+  <h2 data-t="Angemeldete Zuschauer">Angemeldete Zuschauer</h2>
   <div class="block">
     <div class="rollen">
     <table id="konten"><thead><tr>
-      <th>Anzeigename</th><th>im Spiel</th><th>Freigabe</th><th>zuletzt da</th><th>Zugang</th><th></th>
+      <th data-t="Anzeigename">Anzeigename</th><th data-t="im Spiel">im Spiel</th><th data-t="Freigabe">Freigabe</th><th data-t="Rolle">Rolle</th><th data-t="zuletzt da">zuletzt da</th><th data-t="Zugang">Zugang</th><th></th>
     </tr></thead><tbody></tbody></table>
     </div>
     <p class="leise" id="konten-leer" style="display:none;margin-bottom:0">
@@ -367,20 +376,20 @@
   </div>
 
   <div class="tafel" id="t-zugaenge">
-  <h2>Zugänge ohne Konto</h2>
+  <h2 data-t="Zugänge ohne Konto">Zugänge ohne Konto</h2>
   <div class="block">
     <div class="rollen">
       <table id="tokens"><thead><tr>
-        <th>Name</th><th>im Spiel</th><th>wertet</th><th>Freigabe</th><th>zuletzt</th><th></th>
+        <th data-t="Name">Name</th><th data-t="im Spiel">im Spiel</th><th data-t="wertet">wertet</th><th data-t="Freigabe">Freigabe</th><th data-t="zuletzt">zuletzt</th><th></th>
       </tr></thead><tbody></tbody></table>
     </div>
 
     <div class="neuer-token">
-      <input id="t-name" placeholder="Name (für dich)" style="width:170px">
-      <input id="t-ingame" placeholder="Name im Spiel" style="width:170px">
-      <label><input type="checkbox" id="t-lobby"> ganze Lobby</label>
-      <label><input type="checkbox" id="t-ohne"> ohne Freigabe</label>
-      <button class="haupt" id="t-neu">Zugang anlegen</button>
+      <input id="t-name" data-tp="Name (für dich)" placeholder="Name (für dich)" style="width:170px">
+      <input id="t-ingame" data-tp="Name im Spiel" placeholder="Name im Spiel" style="width:170px">
+      <label><input type="checkbox" id="t-lobby"> <span data-t="ganze Lobby">ganze Lobby</span></label>
+      <label><input type="checkbox" id="t-ohne"> <span data-t="ohne Freigabe">ohne Freigabe</span></label>
+      <button class="haupt" id="t-neu" data-t="Zugang anlegen">Zugang anlegen</button>
     </div>
     <p class="leise" style="margin-bottom:0">
       „ganze Lobby" nur für deine eigenen Rechner – ein Zuschauer soll nur
@@ -391,7 +400,7 @@
   </div>
 
   <div class="tafel" id="t-verlauf">
-  <h2>Zuletzt entschieden</h2>
+  <h2 data-t="Zuletzt entschieden">Zuletzt entschieden</h2>
   <div class="block"><div class="rollen"><table id="erledigt"></table></div></div>
   </div>
 

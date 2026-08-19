@@ -74,6 +74,12 @@ function zahlArg(argv: readonly string[], flagge: string, standard: number): num
 async function main(): Promise<void> {
   const argv = process.argv.slice(2);
   const port = zahlArg(argv, '--port', Number(process.env.MC_PORT || 8790));
+
+  /* Nur die eigene Maschine darf den Port sehen. Auf dem Server steht nginx
+     davor und spricht ueber localhost - fuer den aendert sich nichts, aber
+     der Umweg an Zertifikat und Verschluesselung vorbei faellt weg. Wer den
+     Dienst wirklich ins Netz haengen will, setzt MC_HOST=0.0.0.0. */
+  const host = process.env.MC_HOST || '127.0.0.1';
   const adminKey = process.env.MC_ADMIN_KEY || '';
 
   const freigabe = ladeFreigabeliste(path.join(DATEN_DIR, 'freigabe.json'));
@@ -117,7 +123,7 @@ async function main(): Promise<void> {
     nachtrag
   });
 
-  server.listen(port, () => {
+  server.listen(port, host, () => {
     console.log('');
     console.log('  ############################################');
     console.log('  #   M C - R A N K E D   S E R V E R        #');

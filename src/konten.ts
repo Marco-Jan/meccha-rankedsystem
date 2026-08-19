@@ -75,6 +75,19 @@ export const NAMENSSPERRE_TAGE = Number(process.env.MC_NAMENSSPERRE_TAGE || 30);
  */
 export const NEUE_BRAUCHEN_FREIGABE = process.env.MC_NEUE_BRAUCHEN_FREIGABE === '1';
 
+/**
+ * SteamIDs, die IMMER Admin sind - komma-getrennt aus MC_ADMIN_STEAM.
+ *
+ * Loest das Henne-Ei-Problem: Rollen vergibt ein Admin, aber den ersten
+ * kann niemand ernennen. Diese Liste steht in der Env-Datei des Servers,
+ * also ausserhalb der Datenbank - wer sie aendern kann, hat ohnehin
+ * Zugriff auf die Maschine.
+ */
+export const ADMIN_STEAM: readonly string[] =
+  (process.env.MC_ADMIN_STEAM ?? '').split(',').map((s) => s.trim()).filter((s) => s.length > 0);
+
+export type Rolle = 'admin' | 'mod' | 'zuschauer';
+
 export interface Konto {
   readonly id: string;
   /** SteamID64 - 17 Ziffern, eindeutig und unveraenderlich. */
@@ -86,6 +99,16 @@ export interface Konto {
   token: string;
   letzteNamensaenderung?: number;
   letzteAnmeldung?: number;
+  /**
+   * Rolle im Dashboard. Fehlt sie, ist es ein gewoehnlicher Zuschauer.
+   *
+   *   mod     darf Runden freigeben und ablehnen
+   *   admin   darf zusaetzlich Konten und Zugaenge verwalten
+   *
+   * Wer in MC_ADMIN_STEAM steht, ist Admin, egal was hier steht - sonst
+   * koennte man sich selbst aussperren.
+   */
+  rolle?: 'admin' | 'mod';
   /**
    * Wann das Konto geloescht wurde. Fehlt es, ist das Konto aktiv.
    *
@@ -212,6 +235,44 @@ export class Kontenliste {
   alle(): readonly Konto[] {
     this.aktualisieren();
     return this.konten;
+  }
+
+  /**
+   * Welche Rolle hat dieses Konto wirklich?
+   *
+   * Die Env-Liste sticht die Datenbank: wer dort steht, bleibt Admin,
+   * auch wenn ihm jemand die Rolle im Dashboard wegnimmt. Und ein
+   * geloeschtes Konto hat keine Rolle mehr.
+   */
+  rolleVon(konto: Konto): Rolle {
+    if (ADMIN_STEAM.includes(konto.steamId)) return 'admin';
+    if (konto.geloescht !== undefined) return 'zuschauer';
+    return konto.rolle ?? 'zuschauer';
+  }
+
+  /**
+   * Setzt oder entfernt eine Rolle.
+   *
+   * Wer in MC_ADMIN_STEAM steht, laesst sich nicht herabstufen - das
+   * waere der schnellste Weg, sich selbst auszusperren.
+   */
+  setzeRolle(id: string, rolle: Rolle): Ergebnis<Konto> {
+    const konto = this.findeNachId(id);
+    if (!konto) return { ok: false, fehler: 'Konto nicht gefunden.' };
+
+    if (ADMIN_STEAM.includes(konto.steamId) && rolle !== 'admin') {
+      return {
+        ok: false,
+        fehler: 'Dieses Konto ist in der Servereinstellung als Admin gesetzt ' +
+          'und laesst sich hier nicht herabstufen.'
+      };
+    }
+
+    if (rolle === 'zuschauer') delete konto.rolle;
+    else konto.rolle = rolle;
+
+    this.speichern();
+    return { ok: true, wert: konto };
   }
 
   /** Nur die nicht geloeschten. */

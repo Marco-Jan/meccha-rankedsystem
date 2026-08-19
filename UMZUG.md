@@ -338,29 +338,44 @@ sudo certbot --nginx -d meccha-ranked.com
 
 ### Die Ports zumachen
 
-`turnier` und mc-ranked lauschen auf **allen** Schnittstellen, nicht nur auf
-localhost. Ohne Firewall wären `89.167.44.253:8777` und `:8790` direkt erreichbar —
-an nginx vorbei, **ohne TLS**, und beim Turnier-Server auch das Admin-Panel.
+`turnier` und mc-ranked lauschten frueher auf **allen** Schnittstellen. Damit
+waren `89.167.44.253:8777` und `:8790` direkt erreichbar - an nginx vorbei,
+**ohne TLS**, und beim Turnier-Server auch das Admin-Panel.
+
+Das ist inzwischen im Code geloest und nicht mehr deine Aufgabe: beide Dienste
+binden an `127.0.0.1` und nehmen nur noch Verbindungen von der Maschine selbst
+an. nginx laeuft dort ebenfalls und spricht sie ueber localhost an - fuer den
+aendert sich nichts. Von aussen sind die Ports nicht gefiltert, sondern gar
+nicht vorhanden.
 
 ```bash
-sudo ufw status                       # erst schauen, ob sie ueberhaupt laeuft
-
-# Falls "inactive" - vorsichtig, SSH zuerst freigeben:
-sudo ufw allow 22/tcp
-sudo ufw allow 80,443/tcp
-sudo ufw enable
-
-# Falls sie schon laeuft, reicht das Zumachen:
-sudo ufw deny 8777/tcp
-sudo ufw deny 8790/tcp
-sudo ufw status numbered
+# Nachpruefen, dass wirklich nur localhost dranhaengt:
+sudo ss -tlnp | grep -E '8777|8790'
 ```
 
-Von außen prüfen (von deinem PC):
+Richtig sieht so aus - `127.0.0.1:8790`, **nicht** `0.0.0.0:8790` oder `*:8790`:
+
+```
+LISTEN 0 511 127.0.0.1:8777 0.0.0.0:*  users:(("node",pid=...))
+LISTEN 0 511 127.0.0.1:8790 0.0.0.0:*  users:(("node",pid=...))
+```
+
+Von aussen gegenpruefen, von deinem PC:
 
 ```bash
 curl -m 5 http://89.167.44.253:8790/api/status    # muss ins Leere laufen
 ```
+
+> **Keine Firewall noetig.** Eine fruehere Fassung dieser Anleitung liess dich
+> hier `ufw` einschalten. Das ist der gefaehrlichere Weg: kommt `ufw enable`,
+> bevor die Regel fuer Port 22 wirklich steht, sperrt es dich aus deinem
+> eigenen Server aus, und es nimmt **alle** Dienste mit - auch die, die mit
+> mc-ranked nichts zu tun haben. Zurueck kommst du dann nur ueber die
+> Hetzner-Konsole mit `sudo ufw disable`. Die Bindung an localhost loest
+> dasselbe Problem und kann dir dabei nichts kaputt machen.
+>
+> Willst du das Overlay im Heimnetz von einem zweiten Geraet holen, startest
+> du `turnier` lokal mit `HOST=0.0.0.0`. Auf dem Server bleibt es zu.
 
 > **Kein Overlay von außen.** `turnier` bleibt damit intern, so wie besprochen.
 > Brauchst du das Scoreboard später doch von unterwegs, ist es ein zweiter

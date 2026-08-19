@@ -175,6 +175,30 @@ describe('Server - Routing', () => {
     assert.match(await res.text(), /Admin oder Mod/);
   });
 
+  test('gibt die Rangliste ohne Anmeldung heraus', async () => {
+    /* Sie ist der Grund, warum jemand die Seite aufruft - dafuer soll
+       niemand erst einen Zugang brauchen. */
+    const res = await fetch(basis + '/api/rangliste');
+    const j = (await res.json()) as {
+      ok: boolean; liste: string; voll: number;
+      gewertet: unknown[]; anwaerter: unknown[];
+    };
+
+    assert.equal(res.status, 200);
+    assert.equal(j.ok, true);
+    assert.equal(j.liste, 'Meccha 2026');
+    assert.equal(j.voll, 10);
+    assert.ok(Array.isArray(j.gewertet));
+  });
+
+  test('liefert die Rangliste auch ohne Turnier-Server', async () => {
+    // Lieber leer als ein Fehler - die Seite soll trotzdem laden.
+    zustandWirft = new Error('turnier weg');
+    const res = await fetch(basis + '/api/rangliste');
+    assert.equal(res.status, 200);
+    assert.deepEqual(((await res.json()) as { gewertet: unknown[] }).gewertet, []);
+  });
+
   test('weist unbekannte Pfade ab', async () => {
     assert.equal((await fetch(basis + '/irgendwas')).status, 404);
   });

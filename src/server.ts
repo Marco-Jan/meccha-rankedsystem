@@ -361,6 +361,37 @@ async function bearbeite(
     });
   }
 
+  /*
+     DIE RANGLISTE - oeffentlich, ohne Anmeldung.
+
+     Sie ist der Grund, warum jemand die Seite ueberhaupt aufruft.
+     turnier rechnet sie fertig (listen.js:168): Schnitt der letzten
+     zehn, Platzierung, Trennung Wertung/Anwaerter. Hier wird sie nur
+     durchgereicht.
+
+     Ueber den Kartei-Spiegel funktioniert das auch, waehrend turnier
+     gerade nicht antwortet - dann eben mit dem letzten bekannten Stand.
+  */
+  if (pfad === '/api/rangliste') {
+    try {
+      const { zustand, spiel } = await holeZustand();
+      return sendeJson(res, 200, {
+        ok: true,
+        liste: spiel.name,
+        fenster: zustand.fenster,
+        voll: zustand.voll,
+        gewertet: spiel.gewertet ?? [],
+        anwaerter: spiel.anwaerter ?? []
+      });
+    } catch {
+      /* Kein Spiegel, kein turnier - dann eben leer. Ein Fehler waere
+         hier uebertrieben: die Seite soll trotzdem laden. */
+      return sendeJson(res, 200, {
+        ok: true, liste: '', fenster: 10, voll: 10, gewertet: [], anwaerter: []
+      });
+    }
+  }
+
   /* Die Client-Datei zum Herunterladen - verlinkt von der Kontoseite. */
   if (pfad === '/client' || pfad === '/client.exe') {
     if (!o.clientDatei || !existsSync(o.clientDatei)) {

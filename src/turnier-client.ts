@@ -30,12 +30,31 @@ export interface Listeneintrag {
   readonly zeit: number;
 }
 
+/**
+ * Eine Zeile der Rangliste, wie turnier sie rechnet (listen.js:168).
+ *
+ * Der Schnitt entsteht aus den letzten zehn Eintraegen. Wer noch keine
+ * zehn hat, steht als Anwaerter daneben statt in der Wertung.
+ */
+export interface Ranglistenzeile {
+  readonly name: string;
+  readonly schnitt: number;
+  readonly imFenster: number;
+  readonly gesamt: number;
+  /** Platz in der Wertung. Bei Anwaertern nicht gesetzt. */
+  readonly platz?: number;
+}
+
 export interface Spiel {
   readonly id: string;
   readonly name: string;
   readonly eintraege: number;
   /** Die juengsten Eintraege, neueste zuerst. Leer bei aelteren Servern. */
   readonly letzte?: readonly Listeneintrag[];
+  /** In der Wertung - mindestens zehn Eintraege, mit Platzierung. */
+  readonly gewertet?: readonly Ranglistenzeile[];
+  /** Noch nicht genug Eintraege fuer die Wertung. */
+  readonly anwaerter?: readonly Ranglistenzeile[];
 }
 
 export interface TurnierZustand {
@@ -84,6 +103,8 @@ export async function ladeZustand(basis = TURNIER_URL): Promise<TurnierZustand> 
       spiele?: Array<{
         id: string; name: string; eintraege: number;
         letzte?: Array<{ id: string; name: string; points: number; ts: number }>;
+        gewertet?: unknown[];
+        anwaerter?: unknown[];
       }>;
     };
   };
@@ -105,10 +126,28 @@ export async function ladeZustand(basis = TURNIER_URL): Promise<TurnierZustand> 
      Feldnamen deutsch, und die Umbenennung gehoert an die Naht zum
      Server, nicht in jede Anzeige.
   */
+  /* Die Ranglistenzeilen kommen fertig gerechnet von turnier - Schnitt,
+     Platzierung und die Trennung Wertung/Anwaerter macht listen.js. Wir
+     picken nur heraus, was angezeigt wird. */
+  const zeilen = (roh: unknown[] | undefined): Ranglistenzeile[] =>
+    (Array.isArray(roh) ? roh : []).map((z) => {
+      const r = z as { name?: unknown; schnitt?: unknown; imFenster?: unknown;
+                       gesamt?: unknown; platz?: unknown };
+      return {
+        name: String(r.name ?? '?'),
+        schnitt: Number(r.schnitt ?? 0),
+        imFenster: Number(r.imFenster ?? 0),
+        gesamt: Number(r.gesamt ?? 0),
+        ...(typeof r.platz === 'number' ? { platz: r.platz } : {})
+      };
+    });
+
   const spiele: Spiel[] = (daten.listen?.spiele ?? []).map((s) => ({
     id: s.id,
     name: s.name,
     eintraege: s.eintraege,
+    gewertet: zeilen(s.gewertet),
+    anwaerter: zeilen(s.anwaerter),
     letzte: (Array.isArray(s.letzte) ? s.letzte : []).map((e) => ({
       id: String(e.id),
       name: String(e.name),

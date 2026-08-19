@@ -74,6 +74,33 @@ describe('Dashboard - Kennungen', () => {
   });
 });
 
+describe('Dashboard - Sprachen', () => {
+  test('bringt Englisch und Chinesisch mit', () => {
+    assert.match(js, /en: \{/);
+    assert.match(js, /zh: \{/);
+    assert.match(js, /Waiting for review/);
+    assert.match(js, /等待审核/);
+  });
+
+  test('faengt auf Englisch an', () => {
+    assert.match(js, /return 'en';/);
+  });
+
+  test('hat drei Knoepfe zum Umschalten', () => {
+    for (const s of ['en', 'de', 'zh']) {
+      assert.match(html, new RegExp('data-sprache="' + s + '"'));
+    }
+  });
+
+  test('keine Variable verdeckt die Uebersetzungsfunktion', () => {
+    /* var t = ... wuerde t() in der ganzen Funktion unbrauchbar machen -
+       genau das hat auf der Kontoseite einmal die Rangliste verschluckt,
+       und der stille catch hat es verdeckt. */
+    assert.doesNotMatch(js, /var t = /);
+    assert.doesNotMatch(js, /function \(t\)/);
+  });
+});
+
 describe('Dashboard - was angezeigt werden muss', () => {
   test('zeigt den Verdacht getrennt von den uebrigen Hinweisen', () => {
     // Gelb heisst "sieh genau hin", rot heisst "wurde angehalten".
@@ -89,7 +116,7 @@ describe('Dashboard - was angezeigt werden muss', () => {
 
   test('zeigt, was wirklich in der Punkteliste steht', () => {
     assert.match(js, /function zeigeLetzte/);
-    assert.match(js, /t\.letzte/);
+    assert.match(js, /tn\.letzte/);
   });
 
   test('sagt es, wenn die Anzeige aus dem Spiegel kommt', () => {

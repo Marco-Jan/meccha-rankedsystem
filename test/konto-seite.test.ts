@@ -104,6 +104,39 @@ describe('Kontoseite - Skript', () => {
   });
 });
 
+describe('Kontoseite - Sprachen', () => {
+  test('bringt Englisch und Chinesisch mit', () => {
+    /* Englisch ist die Vorgabe, Deutsch der Schluessel im Woerterbuch -
+       fehlt eine Uebersetzung, steht dort deutscher Text statt einer
+       leeren Stelle. */
+    assert.match(skript(), /en: \{/);
+    assert.match(skript(), /zh: \{/);
+    assert.match(skript(), /Sign in with Steam/);
+    assert.match(skript(), /使用 Steam 登录/);
+  });
+
+  test('faengt auf Englisch an', () => {
+    assert.match(skript(), /return 'en';/);
+  });
+
+  test('merkt sich die Wahl', () => {
+    // Sonst muesste jeder bei jedem Besuch neu umstellen.
+    assert.match(skript(), /localStorage.setItem\('mc_sprache'/);
+  });
+
+  test('hat drei Knoepfe zum Umschalten', () => {
+    for (const s of ['en', 'de', 'zh']) {
+      assert.match(html, new RegExp('data-sprache="' + s + '"'));
+    }
+  });
+
+  test('uebersetzt auch die festen Texte im Geruest', () => {
+    // Ueberschrift und Fusszeile stehen im HTML, nicht im Skript.
+    assert.match(html, /data-t="Deine Runden zählen mit\."/);
+    assert.match(skript(), /querySelectorAll\('\[data-t\]'\)/);
+  });
+});
+
 describe('Kontoseite - Inhalt', () => {
   test('bietet die Anmeldung ueber Steam an', () => {
     assert.match(skript(), /href = '\/anmelden'/);

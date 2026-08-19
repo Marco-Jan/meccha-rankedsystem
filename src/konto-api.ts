@@ -113,6 +113,9 @@ function alsAnsicht(konto: Konto, tokens: Tokenliste, konten: Kontenliste) {
     benutzername: konto.benutzername,
     ingameName: konto.ingameName,
     steamId: konto.steamId,
+    /* Damit die Kontoseite Mods und Admins den Weg zur Verwaltung
+       zeigen kann - Zuschauer sehen davon nichts. */
+    rolle: konten.rolleVon(konto),
     token: token && !token.gesperrt ? token.token : null,
     brauchtFreigabe: token ? brauchtFreigabe(token) : true,
     gesperrt: token ? token.gesperrt === true : false,

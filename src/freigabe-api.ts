@@ -23,6 +23,7 @@ import { timingSafeEqual } from 'node:crypto';
 import { Freigabeliste, type OffeneRunde } from './freigabe.js';
 import { Tokenliste, brauchtFreigabe } from './tokens.js';
 import type { Kontenliste } from './konten.js';
+import { cookieLesen, SITZUNG_COOKIE } from './konto-api.js';
 import type { Karteispiegel } from './spiegel.js';
 import type { Nachtragliste, Eintragsergebnis } from './nachtrag.js';
 import { leserBeschreibung } from './leser-wahl.js';
@@ -72,7 +73,7 @@ function sendeJson(res: http.ServerResponse, code: number, obj: unknown): void {
  * nicht eine, die jeder bedienen kann. Auf einem Server im Netz waere die
  * andere Wahl fatal.
  */
-export function adminOk(req: http.IncomingMessage, adminKey: string): boolean {
+export function schluesselOk(req: http.IncomingMessage, adminKey: string): boolean {
   if (!adminKey) return false;
 
   const url = new URL(req.url ?? '/', 'http://localhost');
@@ -83,6 +84,40 @@ export function adminOk(req: http.IncomingMessage, adminKey: string): boolean {
   const b = Buffer.from(adminKey);
   if (a.length !== b.length) return false;
   return timingSafeEqual(a, b);
+}
+
+/* =========================================================================
+   WER DARF WAS
+
+   Frueher hing alles an einem Schluessel in der Adresse (?key=...). Das
+   war eine Notloesung: er steht in der Browser-History, wandert beim
+   Weitergeben unkontrolliert weiter, und einzeln entziehen kann man ihn
+   niemandem.
+
+   Jetzt entscheidet die ROLLE des angemeldeten Kontos:
+
+     mod     Runden freigeben und ablehnen
+     admin   zusaetzlich Konten, Zugaenge, Nachtraege
+
+   Der Schluessel bleibt als Notausgang - wenn Steam streikt oder sich
+   jemand aussperrt, kommt man weiter herein. Er gilt dann als Admin.
+   ========================================================================= */
+
+export type Zugangsstufe = 'keine' | 'mod' | 'admin';
+
+export function zugangVon(req: http.IncomingMessage, o: FreigabeApiOptionen): Zugangsstufe {
+  // Notausgang zuerst - er soll auch dann gehen, wenn die Konten kaputt sind.
+  if (schluesselOk(req, o.adminKey)) return 'admin';
+
+  if (!o.konten) return 'keine';
+  const code = cookieLesen(req, SITZUNG_COOKIE);
+  if (!code) return 'keine';
+
+  const konto = o.konten.ausSitzung(code);
+  if (!konto) return 'keine';
+
+  const rolle = o.konten.rolleVon(konto);
+  return rolle === 'zuschauer' ? 'keine' : rolle;
 }
 
 /** Was die Freigabeseite ueber eine Runde erfaehrt - ohne Bilddaten. */
@@ -176,12 +211,30 @@ export async function bearbeiteFreigabe(
   ];
   if (!meine.includes(pfad)) return false;
 
-  if (!adminOk(req, o.adminKey)) {
+  /*
+     NUR-ADMIN-PFADE: alles, was Konten und Zugaenge betrifft. Ein Mod
+     soll Runden entscheiden koennen, aber niemandem den Zugang nehmen
+     oder Rollen vergeben.
+  */
+  const nurAdmin = [
+    '/api/tokens', '/api/token-neu', '/api/token-sperren',
+    '/api/konten', '/api/konto-admin'
+  ];
+
+  const stufe = zugangVon(req, o);
+
+  if (stufe === 'keine') {
     sendeJson(res, 401, {
       ok: false,
-      fehler: o.adminKey
-        ? 'Falscher Admin-Schluessel'
-        : 'Kein Admin-Schluessel eingerichtet - MC_ADMIN_KEY setzen'
+      fehler: 'Nicht angemeldet oder keine Berechtigung.',
+      anmelden: '/anmelden'
+    });
+    return true;
+  }
+  if (stufe === 'mod' && nurAdmin.includes(pfad)) {
+    sendeJson(res, 403, {
+      ok: false,
+      fehler: 'Dafuer brauchst du Admin-Rechte. Melde dich bei einem Admin.'
     });
     return true;
   }
@@ -244,6 +297,9 @@ export async function bearbeiteFreigabe(
         wartend: o.nachtrag?.anzahl() ?? 0,
         letzterFehler: o.nachtrag?.alle()[0]?.letzterFehler ?? null
       },
+      /* Damit das Dashboard weiss, was es anzeigen darf - ein Mod sieht
+         die Reiter fuer Konten und Zugaenge gar nicht erst. */
+      stufe,
       leser: leserBeschreibung(),
       freigabe: {
         offen: alle.filter((r) => r.status === 'offen').length,
@@ -338,6 +394,7 @@ export async function bearbeiteFreigabe(
           brauchtFreigabe: t ? brauchtFreigabe(t) : true,
           gesperrt: t?.gesperrt === true,
           angelegt: k.angelegt,
+          rolle: o.konten!.rolleVon(k),
           geloescht: k.geloescht ?? null,
           letzteAnmeldung: k.letzteAnmeldung ?? null,
           /* Wie lange der Nutzer selbst noch warten muesste. Du bist
@@ -361,7 +418,7 @@ export async function bearbeiteFreigabe(
       return true;
     }
 
-    let d: { id?: string; ingame?: string; ohneFreigabe?: boolean; aktion?: string };
+    let d: { id?: string; ingame?: string; ohneFreigabe?: boolean; aktion?: string; rolle?: string };
     try {
       d = JSON.parse(await leseKoerper(req)) as typeof d;
     } catch {
@@ -380,6 +437,20 @@ export async function bearbeiteFreigabe(
        nachvollziehbar und der Ingame-Name belegt. Meldet sich die Person
        erneut ueber Steam an, ist sie wieder da - wer draussen bleiben
        soll, dessen Token wird gesperrt. */
+    /* Rollen vergeben. Nur Admins kommen ueberhaupt hierher - der
+       nurAdmin-Filter oben hat Mods schon abgewiesen. */
+    if (d.aktion === 'rolle') {
+      const gewuenscht = String(d.rolle ?? '');
+      if (gewuenscht !== 'admin' && gewuenscht !== 'mod' && gewuenscht !== 'zuschauer') {
+        sendeJson(res, 400, { ok: false, fehler: 'Unbekannte Rolle' });
+        return true;
+      }
+      const e = o.konten.setzeRolle(konto.id, gewuenscht);
+      sendeJson(res, e.ok ? 200 : 400,
+        e.ok ? { ok: true } : { ok: false, fehler: e.fehler });
+      return true;
+    }
+
     if (d.aktion === 'loeschen' || d.aktion === 'wiederherstellen') {
       const e = d.aktion === 'loeschen'
         ? o.konten.loeschen(konto.id)

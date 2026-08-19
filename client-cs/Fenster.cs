@@ -112,16 +112,23 @@ namespace MecchaRanked
                 ForeColor = Color.FromArgb(150, 158, 172)
             };
 
+            /* Ein Zahnrad rechts oben statt eines Streifens, der das
+               Fenster aufklappt. Einstellungen sind etwas, das man selten
+               anfasst - sie sollen den Blick auf den Verlauf nicht
+               dauerhaft verkleinern. */
             knopfEinstellungen = new Button
             {
-                Text = "Einstellungen",
-                Dock = DockStyle.Top,
+                Text = "⚙",
+                Width = 42,
                 Height = 30,
                 FlatStyle = FlatStyle.Flat,
-                BackColor = Color.FromArgb(44, 48, 57)
+                BackColor = Color.FromArgb(44, 48, 57),
+                Font = new Font("Segoe UI Symbol", 12f)
             };
-            knopfEinstellungen.Click += (a, b) => ZeigeEinstellungen(!einstellungsBereich.Visible);
+            knopfEinstellungen.Click += (a, b) => ZeigeEinstellungen(true);
 
+            /* Der Bereich wird gebaut, aber NICHT ins Fenster gehaengt -
+               er zieht beim Klick in einen eigenen Dialog um. */
             einstellungsBereich = BaueEinstellungsBereich();
 
             verlauf = new ListView
@@ -202,13 +209,26 @@ namespace MecchaRanked
             fussLeiste.Controls.Add(knopfAktualisieren);
             fussLeiste.Controls.Add(knopfBeenden);
 
+            /* Das Zahnrad sitzt rechts neben der Statuszeile - dort, wo
+               man es erwartet, und ohne eigene Zeile zu verbrauchen. */
+            Panel kopfLeiste = new Panel { Dock = DockStyle.Top, Height = 62 };
+            knopfEinstellungen.Location = new Point(0, 0);
+            knopfEinstellungen.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            Panel zahnradPlatz = new Panel { Dock = DockStyle.Right, Width = 54, Padding = new Padding(6, 10, 12, 0) };
+            knopfEinstellungen.Dock = DockStyle.Top;
+            zahnradPlatz.Controls.Add(knopfEinstellungen);
+
+            Panel texte = new Panel { Dock = DockStyle.Fill };
+            texte.Controls.Add(serverZeile);
+            texte.Controls.Add(statusZeile);
+
+            kopfLeiste.Controls.Add(texte);
+            kopfLeiste.Controls.Add(zahnradPlatz);
+
             Controls.Add(verlauf);
             Controls.Add(knopfSenden);
             Controls.Add(fussLeiste);
-            Controls.Add(einstellungsBereich);
-            Controls.Add(knopfEinstellungen);
-            Controls.Add(serverZeile);
-            Controls.Add(statusZeile);
+            Controls.Add(kopfLeiste);
 
             FormClosing += BeimSchliessen;
         }
@@ -419,11 +439,50 @@ namespace MecchaRanked
 
         /* --------------------------------------------------- Bedienung */
 
+        /* Einstellungen als eigenes Fenster.
+
+           Der Bereich zieht dafuer in einen Dialog um und danach wieder
+           zurueck - so gibt es ihn nur einmal, mit allen Feldern und
+           ihrem Zustand. Ein zweiter Aufbau waere eine zweite Stelle,
+           die man beim Aendern vergessen kann. */
+        Form einstellungsFenster;
+
         void ZeigeEinstellungen(bool an)
         {
-            einstellungsBereich.Visible = an;
-            knopfEinstellungen.Text = an ? "Einstellungen zuklappen" : "Einstellungen";
-            if (an) BaueSchirme();
+            if (!an) { if (einstellungsFenster != null) einstellungsFenster.Close(); return; }
+            if (einstellungsFenster != null) { einstellungsFenster.Activate(); return; }
+
+            einstellungsBereich.Dock = DockStyle.Fill;
+            einstellungsBereich.Visible = true;
+
+            einstellungsFenster = new Form
+            {
+                Text = Info.Projekt + " – Einstellungen",
+                Width = 540,
+                Height = 430,
+                StartPosition = FormStartPosition.CenterParent,
+                FormBorderStyle = FormBorderStyle.FixedDialog,
+                MinimizeBox = false,
+                MaximizeBox = false,
+                ShowInTaskbar = false,
+                BackColor = Color.FromArgb(38, 41, 49),
+                ForeColor = Color.FromArgb(230, 233, 239),
+                Font = Font
+            };
+
+            einstellungsFenster.Controls.Add(einstellungsBereich);
+            BaueSchirme();
+
+            einstellungsFenster.FormClosed += (a, b) =>
+            {
+                // Den Bereich zurueckholen, sonst ist er beim naechsten
+                // Oeffnen mit dem Dialog verschwunden.
+                einstellungsFenster.Controls.Remove(einstellungsBereich);
+                einstellungsBereich.Visible = false;
+                einstellungsFenster = null;
+            };
+
+            einstellungsFenster.ShowDialog(this);
         }
 
         /* --------------------------------------------------- Token

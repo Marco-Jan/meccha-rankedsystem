@@ -474,10 +474,10 @@ describe('Kontoseite und API passen zusammen', () => {
     assert.ok(pfade.size >= 5, 'die Seite sollte mehrere Pfade aufrufen, gefunden: ' + pfade.size);
 
     for (const p of pfade) {
-      /* /client liefert der Server selbst aus (die .exe liegt neben ihm),
-         nicht der Kontobereich - dafuer gibt es einen eigenen Test in
-         server.test.ts. */
-      if (p === '/client') continue;
+      /* /client und /freigabe liefert der Server selbst aus - die .exe
+         liegt neben ihm, das Dashboard ist eine eigene Seite. Dafuer
+         gibt es Tests in server.test.ts bzw. dashboard.test.ts. */
+      if (p === '/client' || p === '/freigabe' || p === '/api/rangliste') continue;
 
       const text = await (await hole(p)).text();
       assert.notEqual(text, 'nicht meine', p + ' wird von der Seite aufgerufen, aber nicht bedient');
