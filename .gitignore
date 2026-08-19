@@ -23,6 +23,13 @@ daten/
 # Persoenliche Client-Einstellungen (enthalten den Token)
 client.json
 
+# EINSTELLUNGEN.bat traegt den Admin-Schluessel fuer die Freigabeseite.
+# Als Vorlage ohne Schluessel liegt EINSTELLUNGEN.bat.beispiel daneben -
+# derselbe Grund wie bei START.bat im Turnier-Projekt, wo genau das
+# schiefgegangen ist (Discord-Token im Klartext in einer Datei, die
+# nicht ignoriert wird).
+EINSTELLUNGEN.bat
+
 
 # Gebauter Zuschauer-Client. Wird mit client-csBAUEN.bat neu erzeugt.
 client-cs/Meccha-Ranked.exe

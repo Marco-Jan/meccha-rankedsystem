@@ -2,6 +2,9 @@
 REM ===================================================================
 REM  ZENTRALE EINSTELLUNGEN - hier und nirgends sonst.
 REM
+REM  Vorlage: zu EINSTELLUNGEN.bat kopieren und anpassen. Die echte
+REM  Datei ist in der .gitignore - dort steht der Admin-Schluessel.
+REM
 REM  Diese Datei wird von MECCHA-START.bat eingelesen. Beim Umzug auf
 REM  einen anderen Server aenderst du NUR hier etwas, nichts am Code.
 REM ===================================================================
@@ -15,7 +18,7 @@ set TURNIER_URL=http://localhost:8778
 REM --- Passwort fuer die Freigabeseite --------------------------------
 REM  Sobald der Server aus dem Internet erreichbar ist: etwas Langes,
 REM  Zufaelliges nehmen.
-set MC_ADMIN_KEY=geheim
+set MC_ADMIN_KEY=HIER-EIN-LANGES-ZUFAELLIGES-WORT
 
 REM --- Port des mc-ranked-Servers -------------------------------------
 set MC_PORT=8790

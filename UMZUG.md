@@ -66,37 +66,61 @@ sudo chown -R meccha:meccha /opt/meccha
 
 ---
 
-## Schritt 2 · Dateien hochladen
+## Schritt 2 · Code auf den Server
 
-**Von deinem PC aus** (Git Bash, im Ordner `E:\myprojects\twitch\scripte`):
+Das Repo ist **privat**, also braucht der Server einen eigenen Schlüssel — ein
+Deploy-Key, der nur lesen darf.
 
 ```bash
-# turnier: nur der Code, KEINE Daten, KEINE START.bat
-rsync -av --delete \
-  --exclude 'node_modules' --exclude 'data' --exclude 'START.bat' \
-  turnier/*.js turnier/public turnier/package.json \
-  DEIN-USER@DEIN-SERVER:/tmp/turnier/
-
-# mc-ranked: Code, ohne Laufzeitdaten und ohne fremde Umgebungen
-rsync -av --delete \
-  --exclude 'node_modules' --exclude '.venv' --exclude 'daten' \
-  --exclude 'dist' --exclude 'client-cs/mc-ranked-daten' \
-  turnier/mc-ranked/ DEIN-USER@DEIN-SERVER:/tmp/mc-ranked/
+# auf dem SERVER
+sudo -u meccha ssh-keygen -t ed25519 -f /opt/meccha/.ssh/id_ed25519 -N ""
+sudo cat /opt/meccha/.ssh/id_ed25519.pub
 ```
 
-Auf dem Server an den richtigen Platz:
+Den ausgegebenen Schlüssel auf GitHub eintragen:
+**Repo → Settings → Deploy keys → Add deploy key**, Häkchen bei „Allow write access"
+**nicht** setzen. Dann:
 
 ```bash
+sudo -u meccha git clone git@github.com:DEIN-NAME/DEIN-REPO.git /opt/meccha/mc-ranked
+```
+
+Spätere Aktualisierungen sind dann ein Zweizeiler:
+
+```bash
+cd /opt/meccha/mc-ranked && sudo -u meccha git pull && sudo systemctl restart meccha-ranked
+```
+
+### Was NICHT im Repo ist — und trotzdem gebraucht wird
+
+| Fehlt | Warum | Was tun |
+|---|---|---|
+| `client-cs/Meccha-Ranked.exe` | ignoriert (Binärdatei) | nach jedem `BAUEN.bat` einzeln hochladen, siehe Schritt 7 |
+| `EINSTELLUNGEN.bat` | trägt den Admin-Schlüssel | brauchst du auf dem Server nicht — dort steht alles in `/etc/meccha-ranked.env` |
+| `daten/` | Konten, Tokens, Bilder | wird beim ersten Start leer angelegt |
+| `.venv/` | Python-Umgebung | Schritt 4 |
+
+### turnier ist nicht im Repo
+
+`turnier` liegt eine Ebene darüber und gehört nicht dazu. Das lädst du per rsync
+hoch — **ohne** `START.bat` und **ohne** `data/`:
+
+```bash
+# von deinem PC, im Ordner  E:/myprojects/twitch/scripte
+rsync -av \
+  --exclude 'node_modules' --exclude 'data' \
+  --exclude 'START.bat' --exclude 'mc-ranked' \
+  turnier/ DEIN-USER@DEIN-SERVER:/tmp/turnier/
+
+# auf dem Server
 sudo cp -r /tmp/turnier/* /opt/meccha/turnier/
-sudo cp -r /tmp/mc-ranked/* /opt/meccha/mc-ranked/
-sudo chown -R meccha:meccha /opt/meccha
+sudo chown -R meccha:meccha /opt/meccha/turnier
 ```
 
-> **Nicht mitnehmen:** `turnier/START.bat` — dort steht dein Discord-Token im Klartext.
-> Auf dem Server kommt er in eine Umgebungsdatei mit `chmod 600` (Schritt 3), oder du
-> lässt den Bot vorerst weg.
->
-> **Auch nicht:** `daten/` und `data/`. Wir fangen frisch an, wie besprochen.
+> **`turnier/START.bat` bleibt zu Hause.** Dort steht dein Discord-Token im Klartext,
+> und im Turnier-Projekt gibt es **keine `.gitignore`**. Solltest du turnier später
+> auch versionieren, lege zuerst eine an — sonst liegt der Token im Verlauf und lässt
+> sich nur noch durch Zurücksetzen bei Discord entschärfen.
 
 ---
 
@@ -331,7 +355,7 @@ Die hochgeladenen Bilder unter `daten/uploads/` räumt der Server selbst auf: na
 | **`MC_OEFFENTLICHE_URL`** | Ohne sie leitet Steam falsch zurück, und der Cookie bekommt kein `Secure` |
 | **Discord-Token** | Steht im Klartext in `turnier/START.bat`, die **nicht** ignoriert wird. Nicht hochladen — und wenn die Datei je in einem Backup gelandet ist, den Token bei Discord zurücksetzen |
 | **Admin-Schlüssel in der URL** | `?key=…` landet in Proxy-Logs. Deshalb `log { output discard }` |
-| **`EINSTELLUNGEN.bat`** | Steht nicht in der `.gitignore`, enthält aber Schlüssel. Bleibt lokal |
+| **`EINSTELLUNGEN.bat`** | Steht **jetzt** in der `.gitignore`, als Vorlage liegt `EINSTELLUNGEN.bat.beispiel` daneben. Bleibt lokal |
 | **Groß-/Kleinschreibung** | Auf Linux streng. Alle Dateinamen in `public/` sind konsequent klein — geprüft, passt |
 | **turnier ohne npm** | Keine Abhängigkeiten, kein `npm install`, kein Build |
 
