@@ -41,10 +41,14 @@ if errorlevel 1 (
 
 echo.
 echo   Uebersetze ...
-"%CSC%" -nologo -target:winexe -optimize+ ^
+REM  -codepage:65001 ist Pflicht: ohne ihn liest csc.exe die Quellen in
+REM  der Windows-Codepage. Aus "primaer" wurde so schon einmal Buchstaben-
+REM  salat in der fertigen .exe, und die chinesischen Texte wuerden ganz
+REM  zerfallen. Die Dateien haben zusaetzlich eine BOM - doppelt haelt.
+"%CSC%" -nologo -target:winexe -optimize+ -codepage:65001 ^
   -out:"Meccha-Ranked.exe" ^
   -r:System.dll -r:System.Drawing.dll -r:System.Windows.Forms.dll -r:System.Core.dll ^
-  Kern.cs Fenster.cs
+  Kern.cs Sprache.cs Fenster.cs
 
 if errorlevel 1 (
   echo.

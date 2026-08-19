@@ -3,9 +3,12 @@
 
    Aufbau nach Absprache:
      - ein Fenster, nichts versteckt: Status oben, letzte Runden darunter
-     - Einstellungen klappen ueber einen Knopf auf
+     - Einstellungen als eigener Dialog hinter dem Zahnrad
      - X legt das Programm neben die Uhr, es laeuft weiter
-     - Beenden per Rechtsklick auf das Symbol
+     - Beenden ueber den Knopf unten oder per Rechtsklick auf das Symbol
+
+   Alle sichtbaren Texte laufen durch Sprache.T(). Der deutsche Satz ist
+   dabei der Schluessel - siehe Sprache.cs.
 
    Die Bildschirmauswahl zeigt Vorschaubilder nebeneinander. Das ist der
    wichtigste Teil der Einrichtung: an geratenen Bildschirmnummern ist
@@ -30,12 +33,13 @@ namespace MecchaRanked
         Einstellungen e;
 
         NotifyIcon symbol;
-        Label statusZeile, serverZeile;
+        Label statusZeile, serverZeile, fussZeile;
         ListView verlauf;
-        Button knopfSenden, knopfEinstellungen;
-        Panel einstellungsBereich;
+        Button knopfSenden, knopfEinstellungen, knopfAktualisieren, knopfBeenden;
+        ToolStripItem punktZeigen, punktBeenden;
         TextBox feldToken;
         Button knopfTokenAendern;
+        ComboBox feldSprache;
         /* Der echte Token, solange im Feld nur die Maske steht. Ohne den
            wuerde ein Speichern die Maske als Token uebernehmen. */
         string tokenGemerkt = "";
@@ -61,10 +65,16 @@ namespace MecchaRanked
             einstellungenDatei = datei;
             sender = s;
             e = Einstellungen.Laden(datei);
+            /* Vor dem ersten Aufbau setzen, sonst entsteht das Fenster
+               auf Englisch und wechselt sichtbar nach. */
+            Sprache.Aktuell = e.Sprache;
             gewaehlterSchirm = e.Bildschirm;
 
             BaueFenster();
             BaueSymbol();
+            /* Erst hier: Beschriften fasst auch das Symbolmenue an, und
+               das entsteht in BaueSymbol. */
+            Beschriften();
             SetzeTaste();
 
             /* Beim Start zeigen, was zu tun ist: fehlt etwas, geht der
@@ -90,8 +100,8 @@ namespace MecchaRanked
             Height = 620;
             StartPosition = FormStartPosition.CenterScreen;
             MinimumSize = new Size(480, 480);
-            BackColor = Color.FromArgb(32, 34, 40);
-            ForeColor = Color.FromArgb(230, 233, 239);
+            BackColor = Farben.Grund;
+            ForeColor = Farben.Text;
             Font = new Font("Segoe UI", 9.5f);
 
             statusZeile = new Label
@@ -109,7 +119,7 @@ namespace MecchaRanked
                 Dock = DockStyle.Top,
                 Height = 24,
                 Padding = new Padding(14, 0, 14, 0),
-                ForeColor = Color.FromArgb(150, 158, 172)
+                ForeColor = Farben.Leise
             };
 
             /* Ein Zahnrad rechts oben statt eines Streifens, der das
@@ -122,14 +132,10 @@ namespace MecchaRanked
                 Width = 42,
                 Height = 30,
                 FlatStyle = FlatStyle.Flat,
-                BackColor = Color.FromArgb(44, 48, 57),
+                BackColor = Farben.Kante,
                 Font = new Font("Segoe UI Symbol", 12f)
             };
             knopfEinstellungen.Click += (a, b) => ZeigeEinstellungen(true);
-
-            /* Der Bereich wird gebaut, aber NICHT ins Fenster gehaengt -
-               er zieht beim Klick in einen eigenen Dialog um. */
-            einstellungsBereich = BaueEinstellungsBereich();
 
             verlauf = new ListView
             {
@@ -137,23 +143,25 @@ namespace MecchaRanked
                 View = View.Details,
                 FullRowSelect = true,
                 GridLines = false,
-                BackColor = Color.FromArgb(26, 28, 34),
-                ForeColor = Color.FromArgb(230, 233, 239),
+                BackColor = Farben.Tiefe,
+                ForeColor = Farben.Text,
                 BorderStyle = BorderStyle.None
             };
-            verlauf.Columns.Add("Zeit", 60);
+            // Beschriftet werden sie in Beschriften() - hier nur der Platz.
+            verlauf.Columns.Add("", 60);
             verlauf.Columns.Add("", 26);
-            verlauf.Columns.Add("Was", 300);
-            verlauf.Columns.Add("Punkte", 90, HorizontalAlignment.Right);
+            verlauf.Columns.Add("", 300);
+            verlauf.Columns.Add("", 90, HorizontalAlignment.Right);
 
             knopfSenden = new Button
             {
-                Text = "Jetzt aufnehmen und senden",
                 Dock = DockStyle.Bottom,
                 Height = 38,
                 FlatStyle = FlatStyle.Flat,
-                BackColor = Color.FromArgb(38, 78, 130)
+                BackColor = Farben.Blau,
+                Cursor = Cursors.Hand
             };
+            knopfSenden.FlatAppearance.BorderSize = 0;
             knopfSenden.Click += (a, b) => EineRunde();
 
             /*
@@ -165,47 +173,48 @@ namespace MecchaRanked
                Rechtsklick auf das Symbol, und den findet niemand von
                selbst. Also hier ein sichtbarer Knopf.
             */
-            Label fuss = new Label
+            fussZeile = new Label
             {
-                Text = Info.Projekt + " " + Info.Version + "   ·   von " + Info.Entwickler,
                 Dock = DockStyle.Fill,
                 TextAlign = ContentAlignment.MiddleLeft,
-                ForeColor = Color.FromArgb(120, 128, 142),
+                ForeColor = Farben.Sehrleise,
                 Padding = new Padding(14, 0, 0, 0)
             };
 
-            Button knopfBeenden = new Button
+            knopfBeenden = new Button
             {
-                Text = "Beenden",
                 Dock = DockStyle.Right,
                 Width = 110,
                 FlatStyle = FlatStyle.Flat,
-                BackColor = Color.FromArgb(58, 42, 46),
-                ForeColor = Color.FromArgb(232, 150, 145)
+                BackColor = Farben.RotFlaeche,
+                ForeColor = Farben.Rot,
+                Cursor = Cursors.Hand
             };
+            knopfBeenden.FlatAppearance.BorderSize = 0;
             knopfBeenden.Click += (a, b) => Beenden();
 
             /* Nachsehen, ohne auf den Minutentakt zu warten - nach einer
                Einreichung will man gleich wissen, ob sie durch ist. */
-            Button knopfAktualisieren = new Button
+            knopfAktualisieren = new Button
             {
-                Text = "Aktualisieren",
                 Dock = DockStyle.Right,
                 Width = 120,
                 FlatStyle = FlatStyle.Flat,
-                BackColor = Color.FromArgb(44, 48, 57)
+                BackColor = Farben.Kante,
+                Cursor = Cursors.Hand
             };
+            knopfAktualisieren.FlatAppearance.BorderSize = 0;
             knopfAktualisieren.Click += (a, b) =>
             {
                 HoleAuskunft();
                 HoleRueckmeldungen();
                 Nachreichen();
-                Melde("Wird nachgesehen …");
+                Melde(Sprache.T("Wird nachgesehen …"));
             };
 
             Panel fussLeiste = new Panel { Dock = DockStyle.Bottom, Height = 30 };
             // Reihenfolge zaehlt: das zuletzt hinzugefuegte dockt zuerst.
-            fussLeiste.Controls.Add(fuss);
+            fussLeiste.Controls.Add(fussZeile);
             fussLeiste.Controls.Add(knopfAktualisieren);
             fussLeiste.Controls.Add(knopfBeenden);
 
@@ -233,143 +242,12 @@ namespace MecchaRanked
             FormClosing += BeimSchliessen;
         }
 
-        Panel BaueEinstellungsBereich()
-        {
-            /* Hoehe muss zur Summe der Kinder passen: Hinweis 22 +
-               Vorschau 130 + Erneuern 26 + Felder 96 + Speichern 34,
-               dazu Innenabstand. Zu knapp bemessen, und der
-               Speichern-Knopf verschwindet unter der Tabelle - genau das
-               ist passiert. */
-            Panel p = new Panel
-            {
-                Dock = DockStyle.Top,
-                Height = 340,
-                Visible = false,
-                Padding = new Padding(14, 6, 14, 10),
-                BackColor = Color.FromArgb(38, 41, 49)
-            };
-
-            Label hinweis = new Label
-            {
-                Text = "Auf welchem Bildschirm läuft Meccha?",
-                Dock = DockStyle.Top,
-                Height = 22
-            };
-
-            schirmLeiste = new FlowLayoutPanel
-            {
-                Dock = DockStyle.Top,
-                Height = 130,
-                AutoScroll = true,
-                WrapContents = false
-            };
-
-            Button erneuern = new Button
-            {
-                Text = "Vorschau erneuern",
-                Dock = DockStyle.Top,
-                Height = 26,
-                FlatStyle = FlatStyle.Flat,
-                BackColor = Color.FromArgb(52, 56, 66)
-            };
-            erneuern.Click += (a, b) => BaueSchirme();
-
-            TableLayoutPanel felder = new TableLayoutPanel
-            {
-                Dock = DockStyle.Top,
-                Height = 66,
-                ColumnCount = 2,
-                RowCount = 2
-            };
-            felder.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 90));
-            felder.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-
-            feldToken = new TextBox { Dock = DockStyle.Fill, Text = e.Token };
-            feldTaste = new ComboBox { Dock = DockStyle.Fill, DropDownStyle = ComboBoxStyle.DropDownList };
-            feldTaste.Items.AddRange(Tasten.Namen);
-            feldTaste.SelectedItem = e.Taste;
-            if (feldTaste.SelectedIndex < 0) feldTaste.SelectedItem = "F9";
-
-            /*
-               Der Token steht nicht einfach so zum Ueberschreiben da.
-               Ist einer eingetragen, zeigt das Feld nur eine Maske, ist
-               gesperrt und ausgegraut - aendern geht ueber den Knopf
-               daneben, mit Rueckfrage. Ein Zuschauer soll seinen Zugang
-               nicht mit einem Tastendruck loeschen, waehrend er
-               eigentlich die Taste umstellen wollte.
-            */
-            knopfTokenAendern = new Button
-            {
-                Text = "Ändern",
-                Dock = DockStyle.Fill,
-                FlatStyle = FlatStyle.Flat,
-                BackColor = Color.FromArgb(52, 56, 66),
-                Margin = new Padding(6, 0, 0, 0)
-            };
-            knopfTokenAendern.Click += (a, b) => TokenFreigeben();
-
-            TableLayoutPanel tokenZeile = new TableLayoutPanel
-            {
-                Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 1, Margin = new Padding(0)
-            };
-            tokenZeile.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-            tokenZeile.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 84));
-            tokenZeile.Controls.Add(feldToken, 0, 0);
-            tokenZeile.Controls.Add(knopfTokenAendern, 1, 0);
-
-            felder.Controls.Add(new Label { Text = "Token", Dock = DockStyle.Fill }, 0, 0);
-            felder.Controls.Add(tokenZeile, 1, 0);
-            felder.Controls.Add(new Label { Text = "Taste", Dock = DockStyle.Fill }, 0, 1);
-            felder.Controls.Add(feldTaste, 1, 1);
-
-            TokenSperren();
-
-            /*
-               Der Weg zum Token, ohne dass jemand eine Adresse kennen muss.
-
-               Die Serveradresse steht fest in der .exe und wird bewusst
-               nirgends angezeigt - also kann der Zuschauer die Kontoseite
-               auch nicht selbst aufrufen. Dieser Knopf oeffnet sie im
-               Browser: dort meldet er sich ueber Steam an, traegt seinen
-               Ingame-Namen ein und kopiert den Token hierher.
-            */
-            Button zugang = new Button
-            {
-                Text = "Zugang holen  –  Anmeldung über Steam",
-                Dock = DockStyle.Top,
-                Height = 30,
-                FlatStyle = FlatStyle.Flat,
-                BackColor = Color.FromArgb(40, 56, 74),
-                ForeColor = Color.FromArgb(150, 195, 245)
-            };
-            zugang.Click += (a, b) => OeffneKontoseite();
-
-            Button speichern = new Button
-            {
-                Text = "Speichern",
-                Dock = DockStyle.Top,
-                Height = 34,
-                FlatStyle = FlatStyle.Flat,
-                BackColor = Color.FromArgb(38, 78, 130)
-            };
-            speichern.Click += (a, b) => Speichern();
-
-            p.Controls.Add(new Panel { Dock = DockStyle.Top, Height = 6 });
-            p.Controls.Add(speichern);
-            p.Controls.Add(zugang);
-            p.Controls.Add(felder);
-            p.Controls.Add(erneuern);
-            p.Controls.Add(schirmLeiste);
-            p.Controls.Add(hinweis);
-            return p;
-        }
-
         void BaueSymbol()
         {
             ContextMenuStrip menue = new ContextMenuStrip();
-            menue.Items.Add("Fenster zeigen", null, (a, b) => ZeigeFenster());
+            punktZeigen = menue.Items.Add("", null, (a, b) => ZeigeFenster());
             menue.Items.Add(new ToolStripSeparator());
-            menue.Items.Add("Beenden", null, (a, b) => { wirklichBeenden = true; Close(); });
+            punktBeenden = menue.Items.Add("", null, (a, b) => { wirklichBeenden = true; Close(); });
 
             symbol = new NotifyIcon
             {
@@ -396,8 +274,8 @@ namespace MecchaRanked
                     Height = 118,
                     Margin = new Padding(0, 0, 8, 0),
                     BackColor = (nummer == gewaehlterSchirm)
-                        ? Color.FromArgb(38, 78, 130)
-                        : Color.FromArgb(52, 56, 66),
+                        ? Farben.Blau
+                        : Farben.Kante,
                     Padding = new Padding(2)
                 };
 
@@ -439,49 +317,300 @@ namespace MecchaRanked
 
         /* --------------------------------------------------- Bedienung */
 
-        /* Einstellungen als eigenes Fenster.
+        /* ============================================== EINSTELLUNGEN
 
-           Der Bereich zieht dafuer in einen Dialog um und danach wieder
-           zurueck - so gibt es ihn nur einmal, mit allen Feldern und
-           ihrem Zustand. Ein zweiter Aufbau waere eine zweite Stelle,
-           die man beim Aendern vergessen kann. */
+           Ein eigenes Fenster, das bei jedem Oeffnen frisch entsteht.
+
+           Vorher war es ein Panel, das ins Hauptfenster gehoerte und zum
+           Anzeigen in einen Dialog umzog. Das sparte Code, hatte aber
+           zwei Haken: der Bereich musste danach wieder zurueckgeholt
+           werden - vergisst man das, ist er beim naechsten Mal weg - und
+           beim Sprachwechsel haetten alle Beschriftungen nachgezogen
+           werden muessen. Frisch bauen ist ein paar Zeilen mehr und
+           dafuer eine Sorge weniger.
+
+           Gegliedert nach dem, was man tut: erst der Zugang, dann die
+           Aufnahme, dann die Sprache. Vorher standen Token, Bildschirm
+           und Taste ohne Trennung untereinander, und der Speichern-Knopf
+           schwamm irgendwo dazwischen mit. Jetzt sitzt er unten in einer
+           festen Leiste, wo er in jedem Dialog sitzt.
+        */
         Form einstellungsFenster;
+
+        static Label Ueberschrift(string text)
+        {
+            /* Gesperrt gesetzt und klein: eine Abschnittsmarke soll den
+               Blick fuehren, nicht um Aufmerksamkeit mit dem Inhalt
+               konkurrieren. */
+            return new Label
+            {
+                Text = string.Join(" ", Sprache.T(text).ToUpperInvariant().ToCharArray()),
+                Dock = DockStyle.Top,
+                Height = 20,
+                ForeColor = Farben.BlauText,
+                Font = new Font("Segoe UI", 7.5f, FontStyle.Bold)
+            };
+        }
+
+        static Label Hilfe(string text)
+        {
+            return new Label
+            {
+                Text = Sprache.T(text),
+                Dock = DockStyle.Top,
+                Height = 32,
+                ForeColor = Farben.Sehrleise,
+                Padding = new Padding(0, 1, 0, 0)
+            };
+        }
+
+        static Panel Trenner()
+        {
+            Panel aussen = new Panel { Dock = DockStyle.Top, Height = 21 };
+            aussen.Controls.Add(new Panel
+            {
+                Dock = DockStyle.Bottom, Height = 1, BackColor = Farben.Kante
+            });
+            return aussen;
+        }
+
+        static Panel Luft(int hoehe)
+        {
+            return new Panel { Dock = DockStyle.Top, Height = hoehe };
+        }
+
+        static Button Knopf(string text, int hoehe, Color hintergrund, Color vordergrund)
+        {
+            Button b = new Button
+            {
+                Text = Sprache.T(text),
+                Height = hoehe,
+                FlatStyle = FlatStyle.Flat,
+                BackColor = hintergrund,
+                ForeColor = vordergrund,
+                Cursor = Cursors.Hand
+            };
+            b.FlatAppearance.BorderSize = 0;
+            return b;
+        }
 
         void ZeigeEinstellungen(bool an)
         {
-            if (!an) { if (einstellungsFenster != null) einstellungsFenster.Close(); return; }
+            if (!an)
+            {
+                if (einstellungsFenster != null) einstellungsFenster.Close();
+                return;
+            }
             if (einstellungsFenster != null) { einstellungsFenster.Activate(); return; }
-
-            einstellungsBereich.Dock = DockStyle.Fill;
-            einstellungsBereich.Visible = true;
 
             einstellungsFenster = new Form
             {
-                Text = Info.Projekt + " – Einstellungen",
-                Width = 540,
-                Height = 430,
+                Text = Info.Projekt + " – " + Sprache.T("Einstellungen"),
+                Width = 640,
+                Height = 600,
                 StartPosition = FormStartPosition.CenterParent,
                 FormBorderStyle = FormBorderStyle.FixedDialog,
                 MinimizeBox = false,
                 MaximizeBox = false,
                 ShowInTaskbar = false,
-                BackColor = Color.FromArgb(38, 41, 49),
-                ForeColor = Color.FromArgb(230, 233, 239),
+                BackColor = Farben.Grund,
+                ForeColor = Farben.Text,
                 Font = Font
             };
 
-            einstellungsFenster.Controls.Add(einstellungsBereich);
-            BaueSchirme();
-
-            einstellungsFenster.FormClosed += (a, b) =>
+            /* -------------------------------------------------- Zugang */
+            feldToken = new TextBox
             {
-                // Den Bereich zurueckholen, sonst ist er beim naechsten
-                // Oeffnen mit dem Dialog verschwunden.
-                einstellungsFenster.Controls.Remove(einstellungsBereich);
-                einstellungsBereich.Visible = false;
-                einstellungsFenster = null;
+                Dock = DockStyle.Fill,
+                Text = e.Token,
+                BorderStyle = BorderStyle.FixedSingle
             };
 
+            knopfTokenAendern = Knopf("Ändern", 24, Farben.Kante, Farben.Text);
+            knopfTokenAendern.Dock = DockStyle.Fill;
+            knopfTokenAendern.Margin = new Padding(8, 0, 0, 0);
+            knopfTokenAendern.Click += (a, b) => TokenFreigeben();
+
+            TableLayoutPanel tokenZeile = new TableLayoutPanel
+            {
+                Dock = DockStyle.Top, Height = 26, ColumnCount = 3, RowCount = 1,
+                Margin = new Padding(0)
+            };
+            tokenZeile.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 72));
+            tokenZeile.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+            tokenZeile.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 96));
+            tokenZeile.Controls.Add(new Label
+            {
+                Text = Sprache.T("Token"), Dock = DockStyle.Fill,
+                TextAlign = ContentAlignment.MiddleLeft
+            }, 0, 0);
+            tokenZeile.Controls.Add(feldToken, 1, 0);
+            tokenZeile.Controls.Add(knopfTokenAendern, 2, 0);
+
+            TokenSperren();
+
+            /* Der Weg zum Token, ohne dass jemand eine Adresse kennen muss.
+
+               Die Serveradresse steht fest in der .exe und wird bewusst
+               nirgends angezeigt - also kann der Zuschauer die Kontoseite
+               auch nicht selbst aufrufen. Dieser Knopf oeffnet sie im
+               Browser: dort meldet er sich ueber Steam an, traegt seinen
+               Ingame-Namen ein und kopiert den Token hierher. */
+            Button zugang = Knopf("Zugang holen  –  Anmeldung über Steam", 32,
+                                  Farben.BlauLeise, Farben.BlauText);
+            zugang.Dock = DockStyle.Top;
+            zugang.Click += (a, b) => OeffneKontoseite();
+
+            /* ------------------------------------------------ Aufnahme */
+            schirmLeiste = new FlowLayoutPanel
+            {
+                Dock = DockStyle.Top,
+                Height = 128,
+                AutoScroll = true,
+                WrapContents = false
+            };
+
+            Button erneuern = Knopf("Vorschau erneuern", 26, Farben.Kante, Farben.Leise);
+            erneuern.Dock = DockStyle.Top;
+            erneuern.Click += (a, b) => BaueSchirme();
+
+            feldTaste = new ComboBox
+            {
+                Dock = DockStyle.Fill,
+                DropDownStyle = ComboBoxStyle.DropDownList,
+                FlatStyle = FlatStyle.Flat
+            };
+            feldTaste.Items.AddRange(Tasten.Namen);
+            feldTaste.SelectedItem = e.Taste;
+            if (feldTaste.SelectedIndex < 0) feldTaste.SelectedItem = "F9";
+
+            TableLayoutPanel tastenZeile = new TableLayoutPanel
+            {
+                Dock = DockStyle.Top, Height = 26, ColumnCount = 3, RowCount = 1,
+                Margin = new Padding(0)
+            };
+            tastenZeile.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 72));
+            tastenZeile.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 150));
+            tastenZeile.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+            tastenZeile.Controls.Add(new Label
+            {
+                Text = Sprache.T("Taste"), Dock = DockStyle.Fill,
+                TextAlign = ContentAlignment.MiddleLeft
+            }, 0, 0);
+            tastenZeile.Controls.Add(feldTaste, 1, 0);
+
+            /* ------------------------------------------------- Sprache */
+            feldSprache = new ComboBox
+            {
+                Dock = DockStyle.Fill,
+                DropDownStyle = ComboBoxStyle.DropDownList,
+                FlatStyle = FlatStyle.Flat
+            };
+            feldSprache.Items.AddRange(Sprache.Namen);
+            /* Ueber den Index, nicht ueber den angezeigten Namen: gesucht
+               wird die Kennung ("en"), und die steht nicht im Feld. Eine
+               Suche nach dem Namen haette bei jeder Umbenennung still auf
+               den ersten Eintrag zurueckgesetzt. */
+            feldSprache.SelectedIndex = 0;
+            for (int i = 0; i < Sprache.Kennungen.Length; i++)
+                if (Sprache.Kennungen[i] == e.Sprache) feldSprache.SelectedIndex = i;
+
+            TableLayoutPanel sprachZeile = new TableLayoutPanel
+            {
+                Dock = DockStyle.Top, Height = 26, ColumnCount = 3, RowCount = 1,
+                Margin = new Padding(0)
+            };
+            sprachZeile.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 72));
+            sprachZeile.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 150));
+            sprachZeile.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+            sprachZeile.Controls.Add(new Label
+            {
+                Text = Sprache.T("Sprache"), Dock = DockStyle.Fill,
+                TextAlign = ContentAlignment.MiddleLeft
+            }, 0, 0);
+            sprachZeile.Controls.Add(feldSprache, 1, 0);
+
+            /* ---------------------------------------------------- Fuss */
+            Button speichern = Knopf("Speichern", 32, Farben.Blau, Farben.Text);
+            speichern.Dock = DockStyle.Right;
+            speichern.Width = 130;
+            speichern.Click += (a, b) => Speichern();
+
+            Button abbrechen = Knopf("Abbrechen", 32, Farben.Kante, Farben.Leise);
+            abbrechen.Dock = DockStyle.Right;
+            abbrechen.Width = 110;
+            abbrechen.Margin = new Padding(0, 0, 8, 0);
+            abbrechen.Click += (a, b) => ZeigeEinstellungen(false);
+
+            Panel fussInnen = new Panel { Dock = DockStyle.Fill, Padding = new Padding(0, 10, 0, 0) };
+            // Zuletzt hinzugefuegt dockt zuerst - Speichern soll ganz rechts stehen.
+            fussInnen.Controls.Add(new Panel { Dock = DockStyle.Right, Width = 8 });
+            fussInnen.Controls.Add(abbrechen);
+            fussInnen.Controls.Add(new Panel { Dock = DockStyle.Right, Width = 8 });
+            fussInnen.Controls.Add(speichern);
+
+            Panel fuss = new Panel
+            {
+                Dock = DockStyle.Bottom,
+                Height = 56,
+                Padding = new Padding(20, 0, 20, 12),
+                BackColor = Farben.Flaeche
+            };
+            fuss.Controls.Add(fussInnen);
+
+            /* --------------------------------------------- zusammenbauen
+
+               Dock=Top heisst: das zuletzt Hinzugefuegte sitzt oben.
+               Deshalb steht die Liste hier von unten nach oben. */
+            Panel inhalt = new Panel
+            {
+                Dock = DockStyle.Fill,
+                Padding = new Padding(20, 14, 20, 6),
+                AutoScroll = true
+            };
+            inhalt.Controls.Add(sprachZeile);
+            inhalt.Controls.Add(Ueberschrift("Sprache"));
+            inhalt.Controls.Add(Trenner());
+            inhalt.Controls.Add(Hilfe("Diese Taste löst die Aufnahme aus. Das Spiel bekommt sie weiterhin."));
+            inhalt.Controls.Add(tastenZeile);
+            inhalt.Controls.Add(Luft(10));
+            inhalt.Controls.Add(erneuern);
+            inhalt.Controls.Add(schirmLeiste);
+            inhalt.Controls.Add(Hilfe("Auf welchem Bildschirm läuft Meccha?"));
+            inhalt.Controls.Add(Ueberschrift("Aufnahme"));
+            inhalt.Controls.Add(Trenner());
+            inhalt.Controls.Add(zugang);
+            inhalt.Controls.Add(Luft(10));
+            inhalt.Controls.Add(tokenZeile);
+            inhalt.Controls.Add(Hilfe("Dein Zugang zum Server. Steht auf der Kontoseite."));
+            inhalt.Controls.Add(Ueberschrift("Zugang"));
+
+            einstellungsFenster.Controls.Add(inhalt);
+            einstellungsFenster.Controls.Add(fuss);
+
+            /* Beim ersten Start geht dieser Dialog von allein auf, und
+               dann steht der Zuschauer vor drei Abschnitten ohne zu
+               wissen, welche er ausfuellen muss. Der Streifen sagt es -
+               und verschwindet, sobald es eingerichtet ist. */
+            if (!e.Vollstaendig)
+            {
+                Label wink = new Label
+                {
+                    Text = Sprache.T("Beides muss eingetragen sein, sonst wird nichts gesendet: " +
+                                     "der Token sagt, wer du bist, der Bildschirm, wo Meccha läuft."),
+                    Dock = DockStyle.Top,
+                    Height = 46,
+                    Padding = new Padding(20, 9, 20, 0),
+                    BackColor = Farben.BlauLeise,
+                    ForeColor = Farben.BlauText
+                };
+                einstellungsFenster.Controls.Add(wink);
+                einstellungsFenster.Height += wink.Height;
+            }
+
+            BaueSchirme();
+
+            einstellungsFenster.FormClosed += (a, b) => { einstellungsFenster = null; };
             einstellungsFenster.ShowDialog(this);
         }
 
@@ -506,8 +635,8 @@ namespace MecchaRanked
 
             feldToken.ReadOnly = hat;
             feldToken.Text = hat ? Maske(tokenGemerkt) : "";
-            feldToken.BackColor = hat ? Color.FromArgb(38, 41, 49) : Color.White;
-            feldToken.ForeColor = hat ? Color.FromArgb(150, 158, 172) : Color.Black;
+            feldToken.BackColor = hat ? Farben.Flaeche : Color.White;
+            feldToken.ForeColor = hat ? Farben.Leise : Color.Black;
             knopfTokenAendern.Enabled = hat;
         }
 
@@ -518,10 +647,11 @@ namespace MecchaRanked
                weggeworfen hat, und dann braucht er einen neuen vom
                Streamer. Ein Fehlklick soll das nicht ausloesen. */
             DialogResult r = MessageBox.Show(
-                "Deinen Zugang wirklich ändern?\r\n\r\n" +
-                "Der eingetragene Token wird dabei entfernt. Du brauchst " +
-                "dann einen neuen von der Kontoseite - ohne ihn kannst du " +
-                "nichts mehr einreichen.",
+                Sprache.T("Deinen Zugang wirklich ändern?") +
+                Environment.NewLine + Environment.NewLine +
+                Sprache.T("Der eingetragene Token wird dabei entfernt. Du brauchst " +
+                          "dann einen neuen von der Kontoseite - ohne ihn kannst du " +
+                          "nichts mehr einreichen."),
                 Info.Projekt, MessageBoxButtons.YesNo, MessageBoxIcon.Warning,
                 MessageBoxDefaultButton.Button2);
 
@@ -545,7 +675,8 @@ namespace MecchaRanked
 
             if (token.Length == 0)
             {
-                MessageBox.Show("Trag zuerst deinen Token ein. Den bekommst du auf der Kontoseite.",
+                MessageBox.Show(
+                    Sprache.T("Trag zuerst deinen Token ein. Den bekommst du auf der Kontoseite."),
                     Info.Projekt, MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
@@ -553,15 +684,25 @@ namespace MecchaRanked
             e.Token = token;
             e.Bildschirm = gewaehlterSchirm;
             e.Taste = (feldTaste.SelectedItem ?? "F9").ToString();
+
+            /* Sprache erst hier uebernehmen: waehrend der Dialog offen
+               ist, soll er nicht mitten unter der Hand umspringen. */
+            int i = feldSprache != null ? feldSprache.SelectedIndex : -1;
+            if (i >= 0 && i < Sprache.Kennungen.Length) e.Sprache = Sprache.Kennungen[i];
+            bool andereSprache = Sprache.Aktuell != e.Sprache;
+            Sprache.Aktuell = e.Sprache;
+
             e.Speichern(einstellungenDatei);
 
             TokenSperren();
             SetzeTaste();
             ZeigeEinstellungen(false);
+            if (andereSprache) Beschriften();
             auskunft = null;
             Aktualisiere();
             HoleAuskunft();
-            Melde("Gespeichert.");
+            HoleRueckmeldungen();
+            Melde(Sprache.T("Gespeichert."));
         }
 
         void SetzeTaste()
@@ -595,14 +736,14 @@ namespace MecchaRanked
             if (laeuft) return;
             if (!e.Vollstaendig)
             {
-                Melde("Erst den Token eintragen.");
+                Melde(Sprache.T("Erst den Token eintragen."));
                 ZeigeEinstellungen(true);
                 return;
             }
 
             laeuft = true;
             knopfSenden.Enabled = false;
-            statusZeile.Text = "Nehme auf und sende …";
+            statusZeile.Text = Sprache.T("Nehme auf und sende …");
 
             byte[] bild;
             try
@@ -614,7 +755,7 @@ namespace MecchaRanked
             }
             catch (Exception ex)
             {
-                Fertig(false, "Aufnahme fehlgeschlagen: " + ex.Message, null);
+                Fertig(false, Sprache.T("Aufnahme fehlgeschlagen: {0}", ex.Message), null);
                 return;
             }
 
@@ -630,8 +771,8 @@ namespace MecchaRanked
                 BeginInvoke((MethodInvoker)delegate
                 {
                     Fertig(a.Ok, a.Ok ? a.Hinweis
-                        : (a.Nochmal ? a.Hinweis + " – liegt in der Warteschlange"
-                                     : "Abgelehnt: " + a.Hinweis), a);
+                        : (a.Nochmal ? a.Hinweis + " – " + Sprache.T("liegt in der Warteschlange")
+                                     : Sprache.T("Abgelehnt: {0}", a.Hinweis)), a);
                 });
             });
         }
@@ -647,7 +788,7 @@ namespace MecchaRanked
             eintrag.SubItems.Add(ok ? "OK" : "!");
             eintrag.SubItems.Add(text);
             eintrag.SubItems.Add("");
-            eintrag.ForeColor = ok ? Color.FromArgb(120, 210, 150) : Color.FromArgb(232, 130, 120);
+            eintrag.ForeColor = ok ? Farben.Gruen : Farben.Rot;
             /* Eine erfolgreiche Einreichung gehoert zum STAND: beim
                naechsten Aktualisieren ersetzt sie die Zeile vom Server
                ("wartet auf Pruefung" bzw. "zaehlt"). Sonst stuende die
@@ -687,7 +828,7 @@ namespace MecchaRanked
                 {
                     BeginInvoke((MethodInvoker)delegate
                     {
-                        Melde(raus + " Runde(n) nachgereicht.");
+                        Melde(Sprache.T("{0} Runde(n) nachgereicht.", raus));
                         Aktualisiere();
                     });
                 }
@@ -779,23 +920,24 @@ namespace MecchaRanked
 
                 if (m.Status == "freigegeben" && m.Zaehlt)
                 {
-                    text = "Zählt";
-                    farbe = Color.FromArgb(120, 210, 150);
+                    text = Sprache.T("Zählt");
+                    farbe = Farben.Gruen;
                 }
                 else if (m.Status == "freigegeben")
                 {
-                    text = "Zählt nicht mehr (aus den letzten 10 gefallen)";
-                    farbe = Color.FromArgb(130, 138, 152);
+                    text = Sprache.T("Zählt nicht mehr (aus den letzten 10 gefallen)");
+                    farbe = Farben.Grau;
                 }
                 else if (m.Status == "abgelehnt")
                 {
-                    text = "Abgelehnt: " + (m.Grund.Length > 0 ? m.Grund : "ohne Angabe");
-                    farbe = Color.FromArgb(232, 130, 120);
+                    text = Sprache.T("Abgelehnt: {0}",
+                        m.Grund.Length > 0 ? m.Grund : Sprache.T("ohne Angabe"));
+                    farbe = Farben.Rot;
                 }
                 else
                 {
-                    text = "Wartet auf Prüfung";
-                    farbe = Color.FromArgb(240, 180, 65);
+                    text = Sprache.T("Wartet auf Prüfung");
+                    farbe = Farben.Gelb;
                 }
 
                 long zeit = m.BearbeitetAm > 0 ? m.BearbeitetAm : m.Eingegangen;
@@ -846,14 +988,14 @@ namespace MecchaRanked
         {
             if (!e.Vollstaendig)
             {
-                statusZeile.Text = "Noch nicht eingerichtet";
-                serverZeile.Text = "Token eintragen, dann Bildschirm wählen.";
+                statusZeile.Text = Sprache.T("Noch nicht eingerichtet");
+                serverZeile.Text = Sprache.T("Öffne oben rechts das Zahnrad und trag Token und Bildschirm ein.");
                 return;
             }
 
             int w = sender.Wartend;
-            statusZeile.Text = "Bereit  –  " + e.Taste + " drücken" +
-                (w > 0 ? "   (" + w + " in der Warteschlange)" : "");
+            statusZeile.Text = Sprache.T("Bereit  –  {0} drücken", e.Taste) +
+                (w > 0 ? "   " + Sprache.T("({0} in der Warteschlange)", w) : "");
             /* Die Serveradresse steht hier bewusst NICHT mehr. Sie ist
                fest eingebaut, und niemand soll sie abschreiben und
                anderswo hinschicken muessen oder koennen.
@@ -862,16 +1004,17 @@ namespace MecchaRanked
                entscheidet, welche Zeile aus dem Bild gewertet wird, und
                ist das Einzige, was der Zuschauer nachpruefen kann. */
             string wer;
-            if (auskunft == null) wer = "Zugang wird geprüft …";
+            if (auskunft == null) wer = Sprache.T("Zugang wird geprüft …");
             else if (auskunft.Gesperrt)
-                wer = "Zugang GESPERRT" +
+                wer = Sprache.T("Zugang GESPERRT") +
                       (auskunft.Sperrgrund.Length > 0 ? ": " + auskunft.Sperrgrund : "");
             else if (!auskunft.Ok)
-                wer = auskunft.Fehler.Length > 0 ? auskunft.Fehler : "Zugang unklar";
-            else if (auskunft.GanzeLobby) wer = auskunft.Name + " · ganze Lobby";
-            else wer = "Im Spiel: " + (auskunft.IngameName.Length > 0
+                wer = auskunft.Fehler.Length > 0 ? auskunft.Fehler : Sprache.T("Zugang unklar");
+            else if (auskunft.GanzeLobby)
+                wer = auskunft.Name + " · " + Sprache.T("ganze Lobby");
+            else wer = Sprache.T("Im Spiel: {0}", auskunft.IngameName.Length > 0
                 ? auskunft.IngameName
-                : "kein Name hinterlegt");
+                : Sprache.T("kein Name hinterlegt"));
 
             /* Veraltete Fassung deutlich sagen: nach einem Serverumzug
                ist die Adresse in der alten .exe falsch, und der Zuschauer
@@ -886,21 +1029,22 @@ namespace MecchaRanked
                auftaucht. */
             Wertung wert = sender.LetzteWertung;
             string stand = wert.Gewertet >= wert.Voll
-                ? "in der Wertung"
-                : wert.Gewertet + "/" + wert.Voll + " bis zur Wertung";
+                ? Sprache.T("in der Wertung")
+                : Sprache.T("{0}/{1} bis zur Wertung", wert.Gewertet, wert.Voll);
 
             serverZeile.Text = wer + "   ·   " + stand +
-                "   ·   Bildschirm " + e.Bildschirm +
+                "   ·   " + Sprache.T("Bildschirm {0}", e.Bildschirm) +
                 " (" + Schirme.Beschriftung(e.Bildschirm) + ")" +
-                (veraltet ? "   ·   NEUE FASSUNG " + auskunft.NeuesteVersion +
-                            " verfügbar – „Zugang holen\" öffnet die Seite" : "");
+                (veraltet ? "   ·   " + Sprache.T(
+                    "NEUE FASSUNG {0} verfügbar – „Zugang holen\" öffnet die Seite",
+                    auskunft.NeuesteVersion) : "");
 
             if (veraltet)
-                serverZeile.ForeColor = Color.FromArgb(240, 180, 65);
+                serverZeile.ForeColor = Farben.Gelb;
             else if (auskunft != null && (auskunft.Gesperrt || !auskunft.Ok))
-                serverZeile.ForeColor = Color.FromArgb(232, 130, 120);
+                serverZeile.ForeColor = Farben.Rot;
             else
-                serverZeile.ForeColor = Color.FromArgb(150, 158, 172);
+                serverZeile.ForeColor = Farben.Leise;
         }
 
         /// <summary>Oeffnet die Kontoseite des Servers im Browser.</summary>
@@ -910,7 +1054,7 @@ namespace MecchaRanked
             try
             {
                 System.Diagnostics.Process.Start(adresse);
-                Melde("Kontoseite im Browser geöffnet. Dort Token kopieren.");
+                Melde(Sprache.T("Kontoseite im Browser geöffnet. Dort Token kopieren."));
             }
             catch (Exception ex)
             {
@@ -918,7 +1062,7 @@ namespace MecchaRanked
                    dann wenigstens die Adresse zeigen, damit man sie
                    abtippen kann. */
                 MessageBox.Show(
-                    "Der Browser ließ sich nicht öffnen (" + ex.Message + ")." +
+                    Sprache.T("Der Browser ließ sich nicht öffnen ({0}).", ex.Message) +
                     Environment.NewLine + Environment.NewLine + adresse,
                     Info.Projekt, MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
@@ -930,14 +1074,38 @@ namespace MecchaRanked
                erst zu merken, wenn drei Runden nicht angekommen sind, ist
                aergerlicher als ein Klick zu viel. */
             DialogResult r = MessageBox.Show(
-                "Meccha Ranked beenden?" + Environment.NewLine + Environment.NewLine +
-                "Danach reagiert " + e.Taste + " nicht mehr, und Runden werden " +
-                "nicht mehr verschickt.",
+                Sprache.T("Meccha Ranked beenden?") +
+                Environment.NewLine + Environment.NewLine +
+                Sprache.T("Danach reagiert {0} nicht mehr, und Runden werden " +
+                          "nicht mehr verschickt.", e.Taste),
                 Info.Projekt, MessageBoxButtons.YesNo, MessageBoxIcon.Question);
 
             if (r != DialogResult.Yes) return;
             wirklichBeenden = true;
             Close();
+        }
+
+        /* Alle festen Beschriftungen an einer Stelle.
+
+           Beim Sprachwechsel wird sie erneut gerufen - haetten die Texte
+           weiterhin bei ihren Steuerelementen gestanden, muesste man dazu
+           das ganze Fenster neu bauen und verloere den Verlauf. */
+        void Beschriften()
+        {
+            Text = Info.Projekt;
+            knopfSenden.Text = Sprache.T("Jetzt aufnehmen und senden");
+            knopfAktualisieren.Text = Sprache.T("Aktualisieren");
+            knopfBeenden.Text = Sprache.T("Beenden");
+            fussZeile.Text = Info.Projekt + " " + Info.Version + "   ·   " +
+                             Sprache.T("von {0}", Info.Entwickler);
+
+            verlauf.Columns[0].Text = Sprache.T("Zeit");
+            verlauf.Columns[2].Text = Sprache.T("Was");
+            verlauf.Columns[3].Text = Sprache.T("Punkte");
+
+            if (punktZeigen != null) punktZeigen.Text = Sprache.T("Fenster zeigen");
+            if (punktBeenden != null) punktBeenden.Text = Sprache.T("Beenden");
+            if (symbol != null) symbol.Text = Info.Projekt;
         }
 
         void Melde(string text)
@@ -965,7 +1133,9 @@ namespace MecchaRanked
             {
                 b.Cancel = true;
                 Hide();
-                Melde("Läuft weiter. " + e.Taste + " funktioniert. Beenden per Rechtsklick auf das Symbol.");
+                Melde(Sprache.T(
+                    "Läuft weiter. {0} funktioniert. Beenden per Rechtsklick auf das Symbol.",
+                    e.Taste));
                 return;
             }
             tastenUhr.Stop();

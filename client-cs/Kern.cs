@@ -1,4 +1,4 @@
-/* =========================================================================
+﻿/* =========================================================================
    MECCHA RANKED - Client fuer Zuschauer, Kernteil
 
    Gegen .NET Framework 4 uebersetzt, das auf jedem Windows liegt. Die
@@ -62,6 +62,9 @@ namespace MecchaRanked
         public string Token = "";
         public int Bildschirm = 0;
         public string Taste = "F9";
+        /* Vorgabe Englisch: die Zuschauer kommen aus dem Stream, nicht
+           aus dem Nachbarort. Wer Deutsch will, stellt es einmal um. */
+        public string Sprache = "en";
 
         public bool Vollstaendig
         {
@@ -102,6 +105,7 @@ namespace MecchaRanked
                 string token = LiesFeld(roh, "token");
                 string schirm = LiesFeld(roh, "bildschirm");
                 string taste = LiesFeld(roh, "taste");
+                string sprache = LiesFeld(roh, "sprache");
 
                 /* Platzhalter aus alten Vorlagen nicht als echte Werte
                    uebernehmen - sonst startet das Programm scheinbar
@@ -112,6 +116,7 @@ namespace MecchaRanked
                 if (!string.IsNullOrEmpty(token) && token.IndexOf("HIER-", StringComparison.Ordinal) < 0)
                     e.Token = token;
                 if (!string.IsNullOrEmpty(taste)) e.Taste = taste.ToUpperInvariant();
+                if (sprache == "de" || sprache == "en" || sprache == "zh") e.Sprache = sprache;
 
                 int n;
                 if (int.TryParse(schirm, out n)) e.Bildschirm = n;
@@ -130,7 +135,8 @@ namespace MecchaRanked
             sb.AppendLine("{");
             sb.AppendLine("  \"token\": \"" + Fluchten(Token) + "\",");
             sb.AppendLine("  \"bildschirm\": " + Bildschirm + ",");
-            sb.AppendLine("  \"taste\": \"" + Fluchten(Taste) + "\"");
+            sb.AppendLine("  \"taste\": \"" + Fluchten(Taste) + "\",");
+            sb.AppendLine("  \"sprache\": \"" + Fluchten(Sprache) + "\"");
             sb.AppendLine("}");
             File.WriteAllText(datei, sb.ToString(), new UTF8Encoding(false));
         }
@@ -175,9 +181,10 @@ namespace MecchaRanked
         public static string Beschriftung(int nummer)
         {
             Screen[] alle = Screen.AllScreens;
-            if (nummer < 1 || nummer > alle.Length) return "primärer Bildschirm";
+            if (nummer < 1 || nummer > alle.Length) return Sprache.T("primärer Bildschirm");
             Screen s = alle[nummer - 1];
-            return s.Bounds.Width + "×" + s.Bounds.Height + (s.Primary ? "  (primär)" : "");
+            return s.Bounds.Width + "×" + s.Bounds.Height +
+                   (s.Primary ? "  (" + Sprache.T("primär") + ")" : "");
         }
 
         public static int Anzahl { get { return Screen.AllScreens.Length; } }
@@ -337,8 +344,8 @@ namespace MecchaRanked
             {
                 HttpWebResponse r = wex.Response as HttpWebResponse;
                 a.Fehler = (r != null && (int)r.StatusCode == 401)
-                    ? "Dieser Token gilt nicht (mehr)."
-                    : "Server nicht erreichbar.";
+                    ? Sprache.T("Dieser Token gilt nicht (mehr).")
+                    : Sprache.T("Server nicht erreichbar.");
             }
             catch (Exception ex)
             {
@@ -467,7 +474,7 @@ namespace MecchaRanked
                     /* Netz weg, Server aus, Zeitlimit - alles wiederholbar. */
                     a.Ok = false;
                     a.Nochmal = true;
-                    a.Hinweis = "Server nicht erreichbar";
+                    a.Hinweis = Sprache.T("Server nicht erreichbar.");
                 }
             }
             catch (Exception ex)
@@ -487,7 +494,7 @@ namespace MecchaRanked
             string hinweis = Feld(koerper, "hinweis");
             string fehler = Feld(koerper, "fehler");
             a.Hinweis = a.Ok
-                ? (hinweis ?? "Angenommen")
+                ? (hinweis ?? Sprache.T("Angenommen"))
                 : (fehler ?? ("HTTP " + code));
 
             /* Wiederholen lohnt nur bei Serverfehlern. Ein falscher Token
