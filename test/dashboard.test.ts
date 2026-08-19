@@ -124,6 +124,12 @@ describe('Dashboard - was angezeigt werden muss', () => {
     assert.match(js, /ausSpiegel/);
   });
 
+  test('gehoert nicht in Suchmaschinen', () => {
+    /* robots.txt steuert nur, ob gelesen wird. Verlinkt jemand die
+       Adresse woanders, landet sie trotzdem im Index - das hier nicht. */
+    assert.match(html, /<meta name="robots" content="noindex, nofollow">/);
+  });
+
   test('man kommt wieder heraus', () => {
     /* Ohne Rueckweg fuehrt aus der Verwaltung nur die Adresszeile oder
        der Zurueck-Knopf des Browsers - beides findet niemand, der hier

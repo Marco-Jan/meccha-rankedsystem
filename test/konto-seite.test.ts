@@ -180,6 +180,23 @@ describe('Kontoseite - Inhalt', () => {
     assert.match(html, /entpacken/i);
   });
 
+  test('ist auffindbar und hat ein Zeichen in der Reiterleiste', () => {
+    /* Die Seite hat einen Zweck: jemand sucht die Rangliste oder bekommt
+       den Link aus dem Stream. Ohne Beschreibung steht in der Suche und
+       in der Chat-Vorschau nur die nackte Adresse. */
+    assert.match(html, /<meta name="description" content="[^"]{60,}">/);
+    assert.match(html, /<meta name="robots" content="index, follow">/);
+    assert.match(html, /<meta property="og:title"/);
+    assert.match(html, /<meta property="og:description"/);
+    assert.match(html, /<link rel="icon" href="data:image\/svg\+xml,/);
+  });
+
+  test('behauptet kein Vorschaubild, das es nicht gibt', () => {
+    // Discord und X rendern kein SVG - ein toter Bildlink sieht in der
+    // Vorschau schlechter aus als gar keiner.
+    assert.doesNotMatch(html, /<meta property="og:image"/);
+  });
+
   test('erklaert die Windows-Warnung', () => {
     /* Ohne diesen Satz bricht ein Teil der Zuschauer beim SmartScreen ab
        und meldet sich nie wieder. */

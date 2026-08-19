@@ -422,6 +422,44 @@ async function bearbeite(
     return;
   }
 
+  /* ------------------------------------------------- Suchmaschinen
+
+     Nur die Startseite gehoert in den Index. Die Verwaltung ist ohnehin
+     ohne Rolle nicht zu gebrauchen, aber sie hat in Suchergebnissen
+     nichts verloren - und /client als Treffer waere ein Download-Link
+     ohne jede Erklaerung drumherum. */
+  if (pfad === '/robots.txt') {
+    const zeilen = [
+      'User-agent: *',
+      'Allow: /$',
+      'Disallow: /freigabe',
+      'Disallow: /api/',
+      'Disallow: /client',
+      'Disallow: /anmelden',
+      'Disallow: /abmelden'
+    ];
+    if (o.oeffentlicheUrl) zeilen.push('', 'Sitemap: ' + o.oeffentlicheUrl.replace(/\/+$/, '') + '/sitemap.xml');
+    res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
+    res.end(zeilen.join('\n') + '\n');
+    return;
+  }
+
+  if (pfad === '/sitemap.xml') {
+    const basis = (o.oeffentlicheUrl || '').replace(/\/+$/, '');
+    if (!basis) {
+      // Ohne bekannte Adresse waere jeder Eintrag geraten.
+      res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
+      res.end('Keine oeffentliche Adresse hinterlegt.');
+      return;
+    }
+    res.writeHead(200, { 'Content-Type': 'application/xml; charset=utf-8' });
+    res.end('<?xml version="1.0" encoding="UTF-8"?>\n'
+      + '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+      + '  <url><loc>' + basis + '/</loc><changefreq>hourly</changefreq><priority>1.0</priority></url>\n'
+      + '</urlset>\n');
+    return;
+  }
+
   if (pfad === '/api/status') {
     return sendeJson(res, 200, {
       ok: true,

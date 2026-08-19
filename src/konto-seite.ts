@@ -20,12 +20,60 @@ export function kontoSeite(): string {
      Hinweis, statt auf eine tote Adresse zu zeigen. */
   const discord = verteilung().discord;
 
+  /* Die oeffentliche Adresse. Ohne sie waeren canonical und og:url raten -
+     lieber weglassen als etwas Falsches behaupten. */
+  const url = (verteilung().server || '').replace(/\/+$/, '');
+
   return `<!doctype html>
 <html lang="de">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Meccha Ranked</title>
+<title>Meccha Ranked – MECCHA CHAMELEON Leaderboard</title>
+
+<!-- ====================================================================
+     Auffindbarkeit
+
+     Die Seite hat genau einen Zweck: jemand sucht die Rangliste oder
+     bekommt den Link aus dem Stream. Beides soll funktionieren - in der
+     Suche mit einer brauchbaren Beschreibung, im Chat mit einer Vorschau
+     statt einer nackten Adresse.
+
+     Sprache: das ausgelieferte HTML ist deutsch, weil der deutsche Satz
+     hier ueberall der Schluessel ist. Die Anzeige stellt sich beim Laden
+     auf Englisch um und setzt dabei auch lang= und den Titel nach - siehe
+     setzeSprache().
+     ==================================================================== -->
+<meta name="description" content="Live leaderboard for MECCHA CHAMELEON. Press F9 after a round, the server reads your score from the screenshot and adds it. Average of your last 10 rounds counts.">
+<meta name="robots" content="index, follow">
+<meta name="theme-color" content="#12141a">${url ? `
+<link rel="canonical" href="${url}/">` : ''}
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Meccha Ranked">
+<meta property="og:title" content="Meccha Ranked – MECCHA CHAMELEON Leaderboard">
+<meta property="og:description" content="Press F9 after a round. The server reads your score and puts it on the leaderboard.">${url ? `
+<meta property="og:url" content="${url}/">` : ''}
+<meta property="og:locale" content="en_US">
+<meta property="og:locale:alternate" content="de_DE">
+<meta property="og:locale:alternate" content="zh_CN">
+<!-- Bewusst ohne og:image: Discord und X rendern kein SVG, und ein
+     richtiges Vorschaubild waere eine PNG-Datei, die es noch nicht gibt.
+     Ein Link auf ein fehlendes Bild sieht in der Vorschau schlechter aus
+     als gar keines - dann zeigen sie Titel und Text. -->
+<meta name="twitter:card" content="summary">
+
+<!-- Das Zeichen in der Reiterleiste: eine Rangliste als drei Balken, das
+     laengste in Akzentfarbe. Als SVG direkt eingebettet - eine eigene
+     Datei waere eine zusaetzliche Anfrage fuer 300 Bytes. -->
+<link rel="icon" href="data:image/svg+xml,${encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">' +
+  '<rect width="32" height="32" rx="7" fill="#12141a"/>' +
+  '<rect x="7" y="20" width="18" height="4" rx="2" fill="#5a6474"/>' +
+  '<rect x="7" y="13" width="12" height="4" rx="2" fill="#8b95a6"/>' +
+  '<rect x="7" y="6" width="15" height="4" rx="2" fill="#f0b441"/>' +
+  '</svg>'
+)}">
 <style>
   /* =======================================================================
      Zwei Rollen, beide aus Systemschriften - die Seite laedt NICHTS nach.
