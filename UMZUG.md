@@ -1,6 +1,6 @@
 # Umzug auf den Hetzner-Server
 
-Ziel: **`meccha.walk-budd.app`** — mc-ranked öffentlich erreichbar, `turnier` daneben
+Ziel: **`meccha-ranked.com`** — mc-ranked öffentlich erreichbar, `turnier` daneben
 auf demselben Rechner.
 
 Beide ziehen um. Das ist kein Zusatzaufwand, sondern der einfachere Weg: mc-ranked
@@ -12,13 +12,41 @@ eine Zeile Konfiguration statt eines Tunnels zu dir nach Hause.
 
 ---
 
-## Vorher zu klären
+## Der Server, wie er ist (Stand 19.08.)
 
 | | |
 |---|---|
-| **DNS** | Zeigt `meccha.walk-budd.app` schon auf die Server-IP? Prüfen mit `nslookup meccha.walk-budd.app` |
-| **Webserver** | Auf `walk-budd.app` läuft schon etwas. Caddy? nginx? Das entscheidet Schritt 6 |
-| **turnier öffentlich?** | Dein OBS muss das Overlay erreichen. Entweder eine zweite Subdomain (`turnier.walk-budd.app`) oder nur die Overlay-Pfade freigeben |
+| System | Ubuntu 24.04.4 LTS, `walkbuddy-live`, 89.167.44.253 |
+| Webserver | **nginx** auf 80/443 — drei Seiten: `chew.walk-buddy.app`, `cms.walk-buddy.app`, `walkbuddy` |
+| Node | **v18.19.1** — zu alt, wird in Schritt 1 gehoben |
+| Python | 3.12.3 ✓ |
+| Frei | 8777 und 8790 sind unbelegt ✓ |
+| Platz | 7,7 GB RAM (4 GB frei), 24 GB Plattenplatz ✓ |
+| Sonstiges | Docker auf 8055, ein Python-Dienst auf 127.0.0.1:8000 — beide unberührt |
+
+## Die Adresse
+
+**`https://meccha-ranked.com`** — eigene Domain, unabhängig von `walk-buddy.app`
+und von der alten Hetzner-Anmeldung.
+
+Beim Domain-Anbieter eintragen:
+
+| Typ | Name | Wert |
+|---|---|---|
+| **A** | `@` | `89.167.44.253` |
+| **A** | `www` | `89.167.44.253` |
+| AAAA *(optional)* | `@` | `2a01:4f9:c014:6fb2::1` |
+
+Prüfen, sobald es sich verteilt hat (Minuten bis wenige Stunden):
+
+```bash
+dig +short meccha-ranked.com          # muss 89.167.44.253 zeigen
+```
+
+**`turnier` bekommt keine Adresse.** Es läuft auf dem Server nur intern, mc-ranked
+erreicht es über `localhost:8777`. Von außen kommt niemand daran — auch OBS nicht,
+so wie du es wolltest. Brauchst du das Overlay später doch von unterwegs, ist es ein
+weiterer nginx-Block; heute lassen wir es zu.
 
 ---
 
@@ -47,13 +75,18 @@ besser 22) und welcher Webserver schon auf 443 sitzt.
 
 ## Schritt 1 · Grundausstattung
 
+**Node muss hoch.** v18 ist zu alt: der Code nutzt Dinge, die es dort noch nicht
+gibt, und die Testsuite läuft gar nicht erst. Die anderen Dienste auf dem Server
+stören sich nicht daran — Docker und der Python-Dienst bringen ihre eigenen
+Laufzeiten mit.
+
 ```bash
 sudo apt update
 sudo apt install -y python3-venv python3-pip rsync
 
-# Node 22, falls node -v etwas älteres als v20 zeigt:
 curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
 sudo apt install -y nodejs
+node -v          # muss v22.x zeigen
 ```
 
 Eigener Benutzer, damit nichts als root läuft:
@@ -209,7 +242,7 @@ sudo -u meccha npm install          # MIT devDependencies - tsx steckt dort drin
 sudo tee /etc/meccha-ranked.env >/dev/null <<'EOF'
 MC_PORT=8790
 MC_ADMIN_KEY=HIER-EIN-ANDERES-LANGES-ZUFAELLIGES-WORT
-MC_OEFFENTLICHE_URL=https://meccha.walk-budd.app
+MC_OEFFENTLICHE_URL=https://meccha-ranked.com
 TURNIER_URL=http://localhost:8777
 TURNIER_KEY=DERSELBE-WIE-IN-SCHRITT-3
 MC_SPIEL=Meccha 2026
@@ -252,39 +285,87 @@ Im Log muss stehen: `Turnier erreichbar: Meccha 2026 (0 Eintraege)`.
 
 ---
 
-## Schritt 6 · Caddy
+## Schritt 6 · nginx
 
-**Läuft dort schon Caddy**, kommt das an die `Caddyfile` — sonst streiten sich zwei
-Programme um Port 443:
-
-```caddy
-meccha.walk-budd.app {
-	reverse_proxy localhost:8790
-	# Der Admin-Schlüssel steht in der Adresse (?key=...). Ohne diese Zeile
-	# landet er in jeder Logzeile.
-	log {
-		output discard
-	}
-}
-
-turnier.walk-budd.app {
-	reverse_proxy localhost:8777
-}
-```
+Auf dem Server läuft **nginx** mit drei Seiten. Kein Caddy — wir hängen uns an das
+Vorhandene, sonst streiten sich zwei Programme um Port 443.
 
 ```bash
-sudo caddy validate --config /etc/caddy/Caddyfile
-sudo systemctl reload caddy
+sudo tee /etc/nginx/sites-available/meccha-ranked.com >/dev/null <<'EOF'
+server {
+    listen 80;
+    listen [::]:80;
+    server_name meccha-ranked.com;
+
+    # Screenshots sind 2-5 MB gross. nginx laesst per Vorgabe nur 1 MB
+    # durch und antwortet sonst mit 413 - der Zuschauer saehe nur einen
+    # Fehler, ohne dass im Server-Log etwas steht.
+    client_max_body_size 12m;
+
+    # Der Admin-Schluessel steht in der Adresse (?key=...). Ohne diese
+    # Zeile landet er in jeder Logzeile auf der Platte.
+    access_log off;
+
+    location / {
+        proxy_pass http://127.0.0.1:8790;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # Das Lesen eines Bildes dauert ein paar Sekunden. 60 s Vorgabe
+        # reichen zwar, aber bei zwei Uploads gleichzeitig wird es knapp.
+        proxy_read_timeout 180s;
+        proxy_send_timeout 180s;
+    }
+}
+EOF
+
+sudo ln -s /etc/nginx/sites-available/meccha-ranked.com /etc/nginx/sites-enabled/
+sudo nginx -t && sudo systemctl reload nginx
 ```
 
-**Läuft dort nginx**, sag mir Bescheid — dann schreibe ich den Block passend dazu,
-inklusive `certbot`. Zwei Webserver nebeneinander funktionieren nicht.
+Dann das Zertifikat — certbot trägt sich selbst in den Block ein und legt die
+Umleitung von http auf https an:
 
-> **Überlegung zu `turnier.walk-budd.app`:** `TURNIER_KEY` schützt nur die
-> Schreibzugriffe (`server.js:76`). `/admin`, `/api/state` und `/api/save` sind
-> **ohne Schlüssel lesbar**. Wer die Adresse kennt, sieht dein Admin-Panel und kann
-> Stände herunterladen — ändern kann er nichts. Ist dir das zu offen, geben wir nur
-> die Overlay-Pfade frei, die dein OBS braucht.
+```bash
+sudo certbot --nginx -d meccha-ranked.com
+```
+
+> Ist certbot noch nicht da: `sudo apt install -y certbot python3-certbot-nginx`.
+> Für `chew.` und `cms.` läuft schon eines, also vermutlich vorhanden.
+
+### Die Ports zumachen
+
+`turnier` und mc-ranked lauschen auf **allen** Schnittstellen, nicht nur auf
+localhost. Ohne Firewall wären `89.167.44.253:8777` und `:8790` direkt erreichbar —
+an nginx vorbei, **ohne TLS**, und beim Turnier-Server auch das Admin-Panel.
+
+```bash
+sudo ufw status                       # erst schauen, ob sie ueberhaupt laeuft
+
+# Falls "inactive" - vorsichtig, SSH zuerst freigeben:
+sudo ufw allow 22/tcp
+sudo ufw allow 80,443/tcp
+sudo ufw enable
+
+# Falls sie schon laeuft, reicht das Zumachen:
+sudo ufw deny 8777/tcp
+sudo ufw deny 8790/tcp
+sudo ufw status numbered
+```
+
+Von außen prüfen (von deinem PC):
+
+```bash
+curl -m 5 http://89.167.44.253:8790/api/status    # muss ins Leere laufen
+```
+
+> **Kein Overlay von außen.** `turnier` bleibt damit intern, so wie besprochen.
+> Brauchst du das Scoreboard später doch von unterwegs, ist es ein zweiter
+> nginx-Block plus DNS-Eintrag — aber dann bedenke: `TURNIER_KEY` schützt nur die
+> Schreibzugriffe (`server.js:76`), `/admin` und `/api/state` wären lesbar.
 
 ---
 
@@ -294,7 +375,7 @@ Auf **deinem PC**, in `mc-ranked/config/verteilung.json`:
 
 ```json
 {
-  "server": "https://meccha.walk-budd.app",
+  "server": "https://meccha-ranked.com",
   "clientVersion": "0.4.0",
   "discord": "https://discord.gg/W7tHtSu4p"
 }
@@ -302,7 +383,7 @@ Auf **deinem PC**, in `mc-ranked/config/verteilung.json`:
 
 Dann `client-cs\BAUEN.bat`. Die neue `Meccha-Ranked.exe` nach
 `/opt/meccha/mc-ranked/client-cs/` hochladen — ab dann lädt sie jeder über
-`https://meccha.walk-budd.app/client`.
+`https://meccha-ranked.com/client`.
 
 **`clientVersion` unbedingt hochzählen.** Der Server meldet die Zahl über `/api/wer`;
 wer noch die alte Fassung hat, sieht dann „NEUE FASSUNG verfügbar". Ohne das senden
@@ -314,13 +395,13 @@ alte Programme weiter an `localhost:8790` — also ins Leere — und niemand mer
 
 Der Reihe nach, jedes einzeln prüfen:
 
-- [ ] `https://meccha.walk-budd.app/konto` lädt, Zertifikat gültig
+- [ ] `https://meccha-ranked.com/konto` lädt, Zertifikat gültig
 - [ ] **Mit Steam anmelden** funktioniert und leitet zurück
 - [ ] Ingame-Namen eintragen, Token wird angezeigt
-- [ ] `https://meccha.walk-budd.app/client` lädt die `.exe` herunter
+- [ ] `https://meccha-ranked.com/client` lädt die `.exe` herunter
 - [ ] Client starten, Token einfügen — Kopfzeile zeigt `Im Spiel: …`
 - [ ] Eine Runde per F9 einreichen
-- [ ] Dashboard `https://meccha.walk-budd.app/?key=…` zeigt sie
+- [ ] Dashboard `https://meccha-ranked.com/?key=…` zeigt sie
 - [ ] Freigeben → Eintrag erscheint unter „Zuletzt in der Punkteliste"
 - [ ] Der Name steht in der **Kartei** des Servers (sonst „nicht zugeordnet")
 - [ ] OBS-Quellen auf die neue Turnier-Adresse umstellen
@@ -354,7 +435,7 @@ Die hochgeladenen Bilder unter `daten/uploads/` räumt der Server selbst auf: na
 | **`npm run build`** | Bricht die Pfade. Mit `tsx` starten |
 | **`MC_OEFFENTLICHE_URL`** | Ohne sie leitet Steam falsch zurück, und der Cookie bekommt kein `Secure` |
 | **Discord-Token** | Steht im Klartext in `turnier/START.bat`, die **nicht** ignoriert wird. Nicht hochladen — und wenn die Datei je in einem Backup gelandet ist, den Token bei Discord zurücksetzen |
-| **Admin-Schlüssel in der URL** | `?key=…` landet in Proxy-Logs. Deshalb `log { output discard }` |
+| **Admin-Schlüssel in der URL** | `?key=…` landet in Proxy-Logs. Deshalb `access_log off` |
 | **`EINSTELLUNGEN.bat`** | Steht **jetzt** in der `.gitignore`, als Vorlage liegt `EINSTELLUNGEN.bat.beispiel` daneben. Bleibt lokal |
 | **Groß-/Kleinschreibung** | Auf Linux streng. Alle Dateinamen in `public/` sind konsequent klein — geprüft, passt |
 | **turnier ohne npm** | Keine Abhängigkeiten, kein `npm install`, kein Build |

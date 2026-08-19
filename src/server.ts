@@ -36,6 +36,7 @@ import { pruefeVerdacht } from './verdacht.js';
 import { verteilung } from './config.js';
 import { bearbeiteFreigabe } from './freigabe-api.js';
 import { bearbeiteKonto } from './konto-api.js';
+import { kontoSeite } from './konto-seite.js';
 import type { Kontenliste } from './konten.js';
 import type { Karteispiegel } from './spiegel.js';
 import type { Nachtragliste, Eintragsergebnis } from './nachtrag.js';
@@ -219,6 +220,26 @@ async function bearbeite(
       freigabe: o.freigabe
     });
     if (kontoBehandelt) return;
+  }
+
+  /*
+     Die Wurzel gehoert den ZUSCHAUERN.
+
+     Frueher lag dort das Dashboard - aus der Zeit, als es die Kontoseite
+     noch nicht gab. Auf einem Server im Netz ist das die falsche Tuer:
+     wer die Adresse aufruft, sieht eine Verwaltungsoberflaeche, die ihn
+     nichts angeht (leer und gesperrt zwar, aber verwirrend). Die
+     Zuschauerseite ist das, was er sucht.
+
+     Das Dashboard bleibt unter /freigabe erreichbar, mit Schluessel.
+  */
+  if (pfad === '/' && o.konten) {
+    res.writeHead(200, {
+      'Content-Type': 'text/html; charset=utf-8',
+      'Cache-Control': 'no-store'
+    });
+    res.end(kontoSeite());
+    return;
   }
 
   if (o.oeffentlichDir && (pfad === '/' || pfad === '/freigabe')) {
