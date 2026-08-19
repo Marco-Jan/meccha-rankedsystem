@@ -3,9 +3,11 @@
 # =============================================================================
 #  MECCHA RANKED - auf dem Server ausrollen
 #
-#  Aufruf auf dem Server:
+#  Aufruf auf dem Server, als root oder als meccha - beides geht:
 #
 #      /opt/meccha/mc-ranked/deploy.sh
+#
+#  git laeuft immer als der Besitzer der Dateien, systemctl ueber sudo.
 #
 #  Holt beide Repos, startet die Dienste neu und prueft nach, ob sie
 #  wirklich antworten. Geht dabei etwas schief, bricht es ab und sagt wo -
@@ -72,6 +74,32 @@ NODE_HAUPT="$(node -p 'process.versions.node.split(".")[0]')"
 sudo -n true 2>/dev/null || leise "sudo fragt gleich nach dem Passwort."
 
 # -----------------------------------------------------------------------------
+#  Als wer wird gezogen?
+#
+#  Die Dienste laufen als meccha, und die Dateien gehoeren meccha. Zieht
+#  root hier hinein, gehoeren alle neu geholten Dateien danach root - der
+#  Dienst kann sie dann nicht mehr schreiben. Das faellt erst Wochen
+#  spaeter auf und sieht dann nach einem ganz anderen Fehler aus.
+#
+#  Also: systemctl braucht root, git und npm brauchen den Besitzer. Beides
+#  macht dieses Skript selbst, egal als wer es gestartet wurde.
+# -----------------------------------------------------------------------------
+BESITZER="$(stat -c '%U' "$WURZEL/mc-ranked")"
+ICH="$(id -un)"
+
+alsBesitzer() {
+  if [[ "$ICH" == "$BESITZER" ]]; then
+    "$@"
+  else
+    # -H setzt auch das Heimatverzeichnis um, sonst sucht git den
+    # Deploy-Key unter /root/.ssh/ und scheitert an der Anmeldung.
+    sudo -u "$BESITZER" -H "$@"
+  fi
+}
+
+[[ "$ICH" == "$BESITZER" ]] || leise "git laeuft als $BESITZER (du bist $ICH)"
+
+# -----------------------------------------------------------------------------
 #  Holen
 # -----------------------------------------------------------------------------
 hole() {
@@ -83,29 +111,29 @@ hole() {
 
   # Aenderungen von Hand am Server wuerde ein Pull sonst wegwerfen oder
   # daran scheitern. Lieber vorher sagen, was da liegt.
-  if [[ -n "$(git status --porcelain)" ]]; then
+  if [[ -n "$(alsBesitzer git status --porcelain)" ]]; then
     warn "hier liegen ungespeicherte Aenderungen:"
-    git status --short | sed 's/^/       /'
+    alsBesitzer git status --short | sed 's/^/       /'
     ende "Erst aufraeumen (git stash oder git checkout .), dann nochmal."
   fi
 
-  local vorher; vorher="$(git rev-parse --short HEAD)"
-  git pull --ff-only
-  local nachher; nachher="$(git rev-parse --short HEAD)"
+  local vorher; vorher="$(alsBesitzer git rev-parse --short HEAD)"
+  alsBesitzer git pull --ff-only
+  local nachher; nachher="$(alsBesitzer git rev-parse --short HEAD)"
 
   if [[ "$vorher" == "$nachher" ]]; then
     leise "schon aktuell ($nachher)"
   else
     leise "$vorher -> $nachher"
-    git --no-pager log --oneline "$vorher..$nachher" | sed 's/^/       /'
+    alsBesitzer git --no-pager log --oneline "$vorher..$nachher" | sed 's/^/       /'
   fi
 
   # Nur wenn sich die Abhaengigkeiten wirklich geaendert haben - npm ci
   # loescht node_modules und braucht sonst jedes Mal eine Minute umsonst.
   if [[ -f package-lock.json ]] && \
-     ! git diff --quiet "$vorher" "$nachher" -- package-lock.json 2>/dev/null; then
+     ! alsBesitzer git diff --quiet "$vorher" "$nachher" -- package-lock.json 2>/dev/null; then
     leise "package-lock.json hat sich geaendert, installiere neu"
-    npm ci --omit=dev
+    alsBesitzer npm ci --omit=dev
   fi
 }
 
