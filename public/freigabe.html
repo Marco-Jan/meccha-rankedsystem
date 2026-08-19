@@ -1,0 +1,403 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Meccha Ranked – Verwaltung</title>
+<style>
+  /* =======================================================================
+     Dieselbe Sprache wie die Kontoseite: Steam-Blau fuer Bedienbares,
+     Bernstein ausschliesslich fuer Zahlen, Monospace fuer alles
+     Maschinelle. Hier ist es aber kein Text zum Lesen, sondern eine
+     Oberflaeche zum Arbeiten - die Dichte ist hoeher, und der Zustand
+     muss auf einen Blick lesbar sein, nicht erst nach dem Zaehlen.
+     ======================================================================= */
+  :root {
+    --grund:#0d1017;
+    --flaeche:#161b24;
+    --flaeche2:#1d2431;
+    --kante:#28313f;
+    --text:#e8ecf3;
+    --leise:#95a1b3;
+    --akzent:#66c0f4;
+    --zahl:#ffb020;
+    --gut:#4fd18b;
+    --schlecht:#f0736f;
+
+    --schrift:"Segoe UI", system-ui, -apple-system, sans-serif;
+    --mono:Consolas, "SF Mono", ui-monospace, "Cascadia Mono", monospace;
+    --breite:1180px;
+  }
+
+  * { box-sizing:border-box; }
+  body {
+    margin:0; padding:0 22px 70px; background:var(--grund); color:var(--text);
+    font:15px/1.55 var(--schrift); -webkit-font-smoothing:antialiased;
+  }
+  .huelle { max-width:var(--breite); margin:0 auto; }
+
+  /* --- Kopf ---------------------------------------------------------- */
+  .augen {
+    font:600 11px/1 var(--mono); letter-spacing:.16em; text-transform:uppercase;
+    color:var(--akzent); padding-top:40px;
+  }
+  h1 {
+    margin:12px 0 26px; font-size:clamp(28px, 3.6vw, 42px); line-height:1.08;
+    letter-spacing:-.9px; font-weight:680;
+  }
+  h2 {
+    font:700 12px/1 var(--mono); letter-spacing:.13em; text-transform:uppercase;
+    color:var(--leise); margin:30px 0 13px;
+  }
+  .leise { color:var(--leise); font-size:13px; }
+
+  /* --- Statuskacheln -------------------------------------------------
+     Der Zustand des ganzen Systems in einer Zeile. Zahlen in Mono und
+     tabellarisch, damit sie beim Aktualisieren nicht springen. */
+  .status {
+    display:grid; gap:10px; margin-bottom:8px;
+    grid-template-columns:repeat(auto-fit, minmax(158px, 1fr));
+  }
+  .kachel {
+    position:relative; background:var(--flaeche); border:1px solid var(--kante);
+    border-radius:11px; padding:13px 15px; overflow:hidden;
+  }
+  .kachel::before {
+    content:""; position:absolute; inset:0 auto 0 0; width:2px;
+    background:var(--kante);
+  }
+  .kachel .wert {
+    font:650 20px/1.2 var(--mono); font-variant-numeric:tabular-nums;
+    letter-spacing:-.3px;
+  }
+  .kachel .bez {
+    color:var(--leise); font-size:12px; margin-top:3px;
+    /* Eine lange Fehlermeldung wuerde sonst die ganze Kachelreihe
+       aufziehen. Der volle Text steht im title. */
+    display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
+    overflow:hidden;
+  }
+  .kachel .wert {
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  }
+  .kachel.warnung::before { background:var(--schlecht); }
+  .kachel.warnung .wert { color:var(--schlecht); }
+
+  /* --- Reiter -------------------------------------------------------- */
+  .reiter {
+    display:flex; gap:6px; flex-wrap:wrap;
+    margin:26px 0 18px; border-bottom:1px solid var(--kante); padding-bottom:0;
+  }
+  .reiter button {
+    border:1px solid transparent; border-bottom:none; background:transparent;
+    color:var(--leise); padding:11px 17px; border-radius:9px 9px 0 0;
+    font:600 14px/1 var(--schrift); cursor:pointer; position:relative; top:1px;
+  }
+  .reiter button:hover { color:var(--text); background:var(--flaeche); }
+  .reiter button.aktiv {
+    background:var(--flaeche); color:var(--text);
+    border-color:var(--kante); border-bottom:1px solid var(--flaeche);
+  }
+  .reiter .zahl {
+    display:inline-block; margin-left:8px; padding:2px 8px; border-radius:20px;
+    background:var(--flaeche2); color:var(--leise);
+    font:700 11px/1.4 var(--mono);
+  }
+  .reiter button.aktiv .zahl { background:var(--kante); color:var(--text); }
+  .reiter .zahl.warn { background:var(--zahl); color:#12141a; }
+  .tafel { display:none; }
+  .tafel.aktiv { display:block; }
+
+  /* --- Runden zur Freigabe ------------------------------------------- */
+  .runde {
+    background:var(--flaeche); border:1px solid var(--kante);
+    border-radius:13px; margin-bottom:18px; overflow:hidden;
+  }
+  .runde.auffaellig { border-color:rgba(255,176,32,.5); }
+  .runde.geflaggt { border-color:rgba(240,115,111,.6); }
+  .runde-kopf {
+    display:flex; justify-content:space-between; align-items:center; gap:12px;
+    padding:14px 18px; border-bottom:1px solid var(--kante);
+    background:var(--flaeche2);
+  }
+  .absender { font-weight:650; font-size:15px; }
+  .runde-kopf .leise { font-family:var(--mono); font-size:12.5px; }
+
+  .warnung, .verdacht {
+    padding:13px 18px; font-size:14px; border-bottom:1px solid var(--kante);
+  }
+  .warnung {
+    background:rgba(255,176,32,.09); color:var(--zahl);
+    border-left:3px solid var(--zahl);
+  }
+  .verdacht {
+    background:rgba(240,115,111,.11); color:var(--schlecht);
+    border-left:3px solid var(--schlecht);
+  }
+  .warnung b, .verdacht b { display:block; margin-bottom:5px; font-size:13.5px; }
+  .warnung ul, .verdacht ul { margin:5px 0 0; padding-left:19px; }
+  .warnung li, .verdacht li { margin:2px 0; }
+
+  .inhalt { display:grid; grid-template-columns:1fr 350px; }
+  @media (max-width:940px) { .inhalt { grid-template-columns:1fr; } }
+  .bild { padding:18px; border-right:1px solid var(--kante); }
+  .bild img {
+    width:100%; border-radius:9px; display:block; background:#000; cursor:zoom-in;
+    border:1px solid var(--kante);
+  }
+  .bild .weg { color:var(--leise); font-style:italic; padding:44px 0; text-align:center; }
+  .zeilen { padding:18px; }
+
+  /* --- Tabellen ------------------------------------------------------ */
+  table { width:100%; border-collapse:collapse; font-size:14px; }
+  td, th { padding:8px 12px 8px 0; text-align:left; }
+  th {
+    color:var(--leise); font:700 11px/1 var(--mono);
+    letter-spacing:.11em; text-transform:uppercase;
+  }
+  tbody td { border-top:1px solid var(--kante); }
+  td.p {
+    text-align:right; font-family:var(--mono); font-variant-numeric:tabular-nums;
+    font-weight:700; color:var(--zahl);
+  }
+  tr.unlesbar td { color:var(--leise); }
+  tr.unlesbar td.p { color:var(--leise); font-weight:400; }
+  tr.unsicher td.p { color:var(--schlecht); }
+  td.zeit { color:var(--leise); font-family:var(--mono); font-size:12.5px; white-space:nowrap; }
+
+  /* Womit verglichen wurde: kleine Bilder nebeneinander, darunter die
+     Punktzahl. Erst damit laesst sich die Behauptung "schon einmal
+     dagewesen" ueberhaupt pruefen. */
+  .vergleiche { margin-top:16px; border-top:1px solid var(--kante); padding-top:12px; }
+  .vergleiche .titel {
+    color:var(--leise); font:700 11px/1 var(--mono);
+    letter-spacing:.11em; text-transform:uppercase; margin-bottom:9px;
+  }
+  .streifen { display:flex; gap:10px; overflow-x:auto; padding-bottom:4px; }
+  .vgl { flex:0 0 118px; }
+  .vgl img {
+    width:118px; height:68px; object-fit:cover; border-radius:7px;
+    border:1px solid var(--kante); background:#000; cursor:zoom-in; display:block;
+  }
+  .vgl .kein-bild {
+    width:118px; height:68px; border-radius:7px; border:1px dashed var(--kante);
+    color:var(--leise); font-size:11px; display:flex;
+    align-items:center; justify-content:center; text-align:center;
+  }
+  .vgl .wert {
+    font:700 15px/1.3 var(--mono); font-variant-numeric:tabular-nums;
+    color:var(--zahl); margin-top:6px;
+  }
+  .vgl .leise { font-size:11.5px; line-height:1.35; }
+
+  /* Der Verlauf einer Person auf der Freigabekarte. */
+  .verlauf { margin-top:16px; border-top:1px solid var(--kante); padding-top:12px; }
+  .verlauf .titel {
+    color:var(--leise); font:700 11px/1 var(--mono);
+    letter-spacing:.11em; text-transform:uppercase; margin-bottom:8px;
+  }
+  .verlauf ul { list-style:none; margin:0; padding:0; }
+  .verlauf li {
+    display:flex; justify-content:space-between; gap:10px;
+    padding:4px 0; font-size:13px;
+  }
+  .verlauf .wert {
+    font:700 14px/1 var(--mono); font-variant-numeric:tabular-nums; color:var(--zahl);
+  }
+  .verlauf .frei { color:var(--gut); }
+  .verlauf .abg { color:var(--schlecht); }
+  .verlauf .off { color:var(--leise); }
+
+  /* --- Bedienelemente ------------------------------------------------ */
+  .knoepfe {
+    display:flex; gap:9px; padding:14px 18px; border-top:1px solid var(--kante);
+    align-items:center; flex-wrap:wrap; background:var(--flaeche2);
+  }
+  button, input, select {
+    font:14px/1 var(--schrift); padding:10px 15px; border-radius:9px;
+    border:1px solid var(--kante); background:var(--flaeche2); color:var(--text);
+  }
+  button { cursor:pointer; transition:background .12s ease; }
+  button:hover { background:var(--kante); }
+  button.gut { border-color:rgba(79,209,139,.5); color:var(--gut); }
+  button.gut:hover { background:rgba(79,209,139,.12); }
+  button.schlecht { border-color:rgba(240,115,111,.5); color:var(--schlecht); }
+  button.schlecht:hover { background:rgba(240,115,111,.12); }
+  button.haupt { border-color:var(--akzent); color:var(--akzent); }
+  button.haupt:hover { background:rgba(102,192,244,.12); }
+  button:disabled { opacity:.42; cursor:default; }
+  input { background:var(--grund); }
+  button:focus-visible, input:focus-visible, select:focus-visible {
+    outline:2px solid var(--akzent); outline-offset:2px;
+  }
+
+  .block {
+    background:var(--flaeche); border:1px solid var(--kante);
+    border-radius:13px; padding:18px;
+  }
+  .neuer-token {
+    display:flex; gap:9px; flex-wrap:wrap; align-items:center;
+    margin-top:16px; padding-top:16px; border-top:1px solid var(--kante);
+  }
+  .neuer-token label {
+    font-size:13px; color:var(--leise); display:flex; gap:6px; align-items:center;
+  }
+  .ja { color:var(--gut); } .nein { color:var(--schlecht); } .warn { color:var(--zahl); }
+  code {
+    background:var(--grund); padding:3px 8px; border-radius:5px;
+    font-family:var(--mono); font-size:13px; color:var(--akzent);
+  }
+
+  /* Lange Listen bleiben im Rahmen, der Kopf steht beim Scrollen still. */
+  .rollen { max-height:340px; overflow-y:auto; }
+  .rollen table { margin:0; }
+  .rollen thead th {
+    position:sticky; top:0; background:var(--flaeche); z-index:1;
+    box-shadow:0 1px 0 var(--kante);
+  }
+  .rollen::-webkit-scrollbar { width:10px; }
+  .rollen::-webkit-scrollbar-thumb { background:var(--kante); border-radius:5px; }
+  .listenkopf { display:flex; justify-content:space-between; align-items:baseline; gap:12px; }
+
+  /* --- Eigene Dialoge statt confirm()/prompt() ---------------------- */
+  .schleier {
+    position:fixed; inset:0; background:rgba(6,8,12,.72);
+    display:flex; align-items:center; justify-content:center; padding:22px;
+    z-index:50; animation:auf .12s ease-out;
+  }
+  .dialog {
+    background:var(--flaeche); border:1px solid var(--kante);
+    border-radius:14px; padding:24px; width:min(430px, 100%);
+    box-shadow:0 24px 60px rgba(0,0,0,.55);
+    animation:hoch .14s ease-out;
+  }
+  .dialog .d-titel {
+    font-size:18px; font-weight:660; letter-spacing:-.3px; margin-bottom:9px;
+  }
+  .dialog p { margin:0 0 4px; max-width:none; }
+  .d-feld {
+    width:100%; margin-top:14px; padding:11px 13px; border-radius:9px;
+    border:1px solid var(--kante); background:var(--grund); color:var(--text);
+    font:15px/1.4 var(--schrift);
+  }
+  .d-knoepfe {
+    display:flex; gap:9px; justify-content:flex-end; margin-top:20px; flex-wrap:wrap;
+  }
+  @keyframes auf { from { opacity:0; } }
+  @keyframes hoch { from { opacity:0; transform:translateY(9px) scale(.985); } }
+
+  /* --- Meldungen ---------------------------------------------------- */
+  #meldung {
+    position:fixed; left:50%; bottom:26px; transform:translateX(-50%);
+    background:var(--flaeche2); border:1px solid var(--kante);
+    border-left:3px solid var(--akzent);
+    padding:13px 20px; border-radius:11px; display:none; max-width:86vw;
+    box-shadow:0 14px 38px rgba(0,0,0,.5); font-size:15px;
+    animation:melden .16s ease-out;
+  }
+  #meldung.gut { border-left-color:var(--gut); }
+  #meldung.schlecht { border-left-color:var(--schlecht); }
+  @keyframes melden { from { opacity:0; transform:translate(-50%, 12px); } }
+
+  @media (prefers-reduced-motion:reduce) {
+    .schleier, .dialog, #meldung { animation:none; }
+  }
+
+  #leer { color:var(--leise); padding:36px 0; text-align:center; }
+
+  @media (prefers-reduced-motion:reduce) {
+    * { transition:none !important; }
+  }
+</style>
+</head>
+<body>
+<div class="huelle">
+
+  <div class="augen">Meccha Ranked · Verwaltung</div>
+  <h1>Was heute reinkam.</h1>
+
+  <div class="status" id="status"></div>
+
+  <div class="reiter" id="reiter">
+    <button data-tafel="t-freigabe" class="aktiv">Freigabe<span class="zahl" id="r-offen">0</span></button>
+    <button data-tafel="t-liste">Punkteliste</button>
+    <button data-tafel="t-zuschauer">Zuschauer</button>
+    <button data-tafel="t-zugaenge">Zugänge</button>
+    <button data-tafel="t-verlauf">Entschieden</button>
+  </div>
+
+  <div class="tafel aktiv" id="t-freigabe">
+  <h2>Wartet auf Freigabe <span class="leise" id="zaehler"></span></h2>
+  <div id="offen"></div>
+  <div id="leer" style="display:none">Nichts offen.</div>
+  </div>
+
+  <div class="tafel" id="t-liste">
+  <h2 class="listenkopf">
+    <span>Zuletzt in der Punkteliste</span>
+    <span class="leise" id="letzte-zaehler" style="font-size:13px;font-weight:400"></span>
+  </h2>
+  <div class="block">
+    <div class="rollen">
+      <table id="letzte"><thead><tr>
+        <th>Spieler</th><th style="text-align:right">Punkte</th><th>wann</th>
+      </tr></thead><tbody></tbody></table>
+    </div>
+    <p class="leise" id="letzte-leer" style="display:none;margin-bottom:0">
+      Noch nichts eingetragen.
+    </p>
+  </div>
+  </div>
+
+  <div class="tafel" id="t-zuschauer">
+  <h2>Angemeldete Zuschauer</h2>
+  <div class="block">
+    <div class="rollen">
+    <table id="konten"><thead><tr>
+      <th>Anzeigename</th><th>im Spiel</th><th>Freigabe</th><th>zuletzt da</th><th>Zugang</th><th></th>
+    </tr></thead><tbody></tbody></table>
+    </div>
+    <p class="leise" id="konten-leer" style="display:none;margin-bottom:0">
+      Noch niemand angemeldet. Schick den Link zur Kontoseite in deinen Discord.
+    </p>
+    <p class="leise" style="margin-bottom:0">
+      Du änderst den Ingame-Namen <b>ohne Wartefrist</b> – Zuschauer selbst nur
+      alle 30 Tage. Und deine Änderung setzt niemanden auf „braucht Freigabe" zurück.
+    </p>
+  </div>
+  </div>
+
+  <div class="tafel" id="t-zugaenge">
+  <h2>Zugänge ohne Konto</h2>
+  <div class="block">
+    <div class="rollen">
+      <table id="tokens"><thead><tr>
+        <th>Name</th><th>im Spiel</th><th>wertet</th><th>Freigabe</th><th>zuletzt</th><th></th>
+      </tr></thead><tbody></tbody></table>
+    </div>
+
+    <div class="neuer-token">
+      <input id="t-name" placeholder="Name (für dich)" style="width:170px">
+      <input id="t-ingame" placeholder="Name im Spiel" style="width:170px">
+      <label><input type="checkbox" id="t-lobby"> ganze Lobby</label>
+      <label><input type="checkbox" id="t-ohne"> ohne Freigabe</label>
+      <button class="haupt" id="t-neu">Zugang anlegen</button>
+    </div>
+    <p class="leise" style="margin-bottom:0">
+      „ganze Lobby" nur für deine eigenen Rechner – ein Zuschauer soll nur
+      seine eigene Zeile einreichen. „ohne Freigabe" heißt: geht direkt in
+      die Punkteliste, ohne dass du klickst.
+    </p>
+  </div>
+  </div>
+
+  <div class="tafel" id="t-verlauf">
+  <h2>Zuletzt entschieden</h2>
+  <div class="block"><div class="rollen"><table id="erledigt"></table></div></div>
+  </div>
+
+</div>
+<div id="meldung"></div>
+
+<script src="freigabe.js"></script>
+</body>
+</html>

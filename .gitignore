@@ -1,0 +1,30 @@
+# START.bat enthaelt das Datenbank-Passwort im Klartext und darf niemals
+# ins Repo. Deshalb steht sie hier von Anfang an drin - im Turnier-Projekt
+# ist genau das schiefgegangen (Discord-Token in der START.bat).
+# Als Vorlage ohne Passwort liegt START.bat.beispiel daneben.
+START.bat
+
+node_modules/
+dist/
+
+# Screenshots der Results-Screens: koennen viele Megabyte werden und
+# gehoeren zu den Daten, nicht zum Code.
+screenshots/
+
+# Python-Umgebung fuer den RapidOCR-Leser. Wird mit
+# python -m venv .venv  neu erzeugt, siehe python/README.md
+.venv/
+__pycache__/
+
+# Laufzeitdaten des Servers: Tokens, Freigabeliste, hochgeladene
+# Bilder. Gehoeren nicht ins Repo.
+daten/
+
+# Persoenliche Client-Einstellungen (enthalten den Token)
+client.json
+
+
+# Gebauter Zuschauer-Client. Wird mit client-csBAUEN.bat neu erzeugt.
+client-cs/Meccha-Ranked.exe
+client-cs/client.json
+client-cs/mc-ranked-daten/

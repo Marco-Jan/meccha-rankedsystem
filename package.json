@@ -1,0 +1,26 @@
+{
+  "name": "mc-ranked",
+  "version": "0.1.0",
+  "description": "Liest die Rangliste von MECCHA CHAMELEON per RapidOCR und traegt die Punkte in die bestehende Punkteliste im Turnier-Server ein. Zuschauer-Client liegt in client-cs/.",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "test": "tsx --test test/*.test.ts",
+    "probelauf": "tsx src/cli/probelauf.ts",
+    "verknuepfen": "tsx src/cli/verknuepfen.ts",
+    "lies": "tsx src/cli/lies.ts",
+    "testserver": "tsx src/cli/testserver.ts",
+    "runde": "tsx src/cli/runde.ts",
+    "wache": "tsx src/cli/wache.ts",
+    "bild": "tsx src/cli/bild.ts",
+    "pruefe": "tsx src/cli/pruefe.ts",
+    "serve": "tsx src/cli/serve.ts",
+    "token": "tsx src/cli/token.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}
