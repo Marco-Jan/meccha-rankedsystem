@@ -166,9 +166,25 @@ describe('Kontoseite - Inhalt', () => {
   });
 
   test('bietet das Programm zum Herunterladen an', () => {
-    // Eine Bezugsquelle statt fuenf Anhaengen im Discord.
-    assert.match(skript(), /href = '\/client'/);
-    assert.match(html, /Meccha-Ranked\.zip/);
+    /* Eine Bezugsquelle statt fuenf Anhaengen im Discord - und im KOPF,
+       nicht unter der Rangliste. Dort wanderte der Knopf mit jedem neuen
+       Spieler weiter nach unten, bis ihn niemand mehr sah. */
+    assert.match(html, /class="holen" href="\/client"/);
+    assert.match(html, /class="holen-warum" href="\/download"/);
+  });
+
+  test('nennt Groesse und Fassung am Knopf', () => {
+    // 21 KB sieht nach dem aus, was es ist. Beides kommt vom Server.
+    assert.match(skript(), /holen-daten/);
+    assert.match(skript(), /c\.groesse/);
+  });
+
+  test('der Download steht nur EINMAL auf der Seite', () => {
+    /* Zweimal derselbe Knopf ist keine Hilfe, sondern die Frage, welcher
+       der richtige ist. */
+    const treffer = (kontoSeite().match(/href="\/client"/g) ?? []).length +
+      (kontoSeite().match(/href = '\/client'/g) ?? []).length;
+    assert.equal(treffer, 1, 'genau ein Weg zur Datei');
   });
 
   test('liefert als ZIP aus, nicht als nackte .exe', () => {

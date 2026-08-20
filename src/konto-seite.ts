@@ -142,6 +142,25 @@ export function kontoSeite(): string {
   }
   .kopf .worte { min-width:0; }
 
+  /* Der Download-Knopf im Kopf. Steam-Blau wie alle Hauptwege - Bernstein
+     bleibt den Punkten vorbehalten. */
+  .holen-reihe {
+    display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin-top:22px;
+  }
+  .holen {
+    display:inline-flex; align-items:center; gap:11px;
+    background:var(--akzent); color:#06121c;
+    text-decoration:none; font-weight:700;
+    padding:12px 22px; border-radius:10px;
+  }
+  .holen:hover { filter:brightness(1.08); }
+  .holen-zeichen { font-size:19px; line-height:1; }
+  .holen-worte { display:flex; flex-direction:column; gap:1px; }
+  .holen-gross { font-size:15px; }
+  .holen-klein { font-size:11.5px; font-weight:500; opacity:.72; }
+  .holen-warum { font-size:13px; color:var(--leise); }
+  .holen-warum:hover { color:var(--akzent); }
+
   /* Der Ablauf in drei Feldern - das ist die ganze Bedienung des
      Programms, und sie passt in eine Zeile. */
   .rechts-oben { display:flex; flex-direction:column; align-items:flex-end; gap:14px; }
@@ -592,6 +611,24 @@ export function kontoSeite(): string {
     <div class="augen">Meccha Chameleon · Rangliste</div>
     <h1 data-t="Deine Runden zählen mit.">Deine Runden zählen mit.</h1>
     <p class="unter" id="untertitel">…</p>
+
+    <!-- Der Download gehört hierher und nicht unter die Rangliste.
+         Dort wanderte er mit jedem neuen Spieler weiter nach unten, bis
+         ihn niemand mehr sah - und er ist das Erste, was jemand braucht.
+
+         Der große Knopf lädt direkt. Daneben klein der Weg zur Seite,
+         die erklärt, warum Windows gleich warnen wird: wer das vorher
+         gelesen hat, erschrickt nicht. -->
+    <div class="holen-reihe">
+      <a class="holen" href="/client">
+        <span class="holen-zeichen">⬇</span>
+        <span class="holen-worte">
+          <span class="holen-gross" data-t="Programm herunterladen">Programm herunterladen</span>
+          <span class="holen-klein" id="holen-daten">ZIP · ohne Installation</span>
+        </span>
+      </a>
+      <a class="holen-warum" href="/download" data-t="Warum warnt mein Browser?">Warum warnt mein Browser?</a>
+    </div>
   </div>
   <div class="rechts-oben">
     <div class="sprachen" id="sprachen">
@@ -691,6 +728,10 @@ export function kontoSeite(): string {
       'Herunterladen und einrichten': 'Download and set up',
       'Alle Regeln': 'All rules →',
       'Regeln': 'Rules',
+      'Programm herunterladen': 'Download the app',
+      'Warum warnt mein Browser?': 'Why does my browser warn me?',
+      'Fassung {0}': 'version {0}',
+      'Hol dir zuerst das Programm – der Knopf steht oben.': 'First get the app – the button is at the top.',
       'in der Rangliste': 'on the leaderboard',
       'Fragen oder Probleme? Melde dich im Discord bei einem':
         'Questions or trouble? Ask an',
@@ -857,6 +898,10 @@ export function kontoSeite(): string {
       'Herunterladen und einrichten': '下载并设置',
       'Alle Regeln': '全部规则 →',
       'Regeln': '规则',
+      'Programm herunterladen': '下载客户端',
+      'Warum warnt mein Browser?': '浏览器为什么提醒？',
+      'Fassung {0}': '版本 {0}',
+      'Hol dir zuerst das Programm – der Knopf steht oben.': '先下载客户端 – 按钮在顶部。',
       'in der Rangliste': '进入排行榜',
       'Fragen oder Probleme? Melde dich im Discord bei einem':
         '有疑问或遇到问题？请在 Discord 联系',
@@ -1116,6 +1161,14 @@ export function kontoSeite(): string {
     d.appendChild(pruef);
 
     fetch('/api/client').then(function (r) { return r.json(); }).then(function (c) {
+      /* Groesse und Fassung unter den Knopf - beides beruhigt: 21 KB
+         sieht nach dem aus, was es ist, und die Fassungsnummer sagt,
+         ob man die aktuelle hat. */
+      var daten = $('holen-daten');
+      if (daten && c && c.ok) {
+        daten.textContent = Math.round(c.groesse / 1024) + ' KB' +
+          (c.version ? '  ·  ' + tv('Fassung {0}', [c.version]) : '');
+      }
       if (!c || !c.ok) { pruef.remove(); return; }
       pruef.innerHTML = '';
 
@@ -1287,12 +1340,11 @@ export function kontoSeite(): string {
     var kd = el('div', 'karte');
     kd.appendChild(el('h2', null, t('Los geht es')));
 
-    var dl = document.createElement('a');
-    dl.className = 'laden';
-    dl.href = '/client';
-    dl.appendChild(el('span', 'gross', '⬇  ' + t('Programm herunterladen')));
-    dl.appendChild(el('span', 'klein', t('ZIP · 21 KB · entpacken, starten, fertig')));
-    kd.appendChild(dl);
+    /* Der Download-Knopf steht oben im Kopf und ist von hier aus zu
+       sehen - ihn hier zu wiederholen waere kein zweiter Weg, sondern
+       die Frage, welcher der richtige ist. Also nur der Verweis. */
+    kd.appendChild(el('p', null, t(
+        'Hol dir zuerst das Programm – der Knopf steht oben.')));
     /* Chrome blockt eine unsignierte .exe von einer jungen Domain hart
        weg. Als ZIP kommt sie durch - dafuer muss man einmal entpacken,
        und das sagt man besser vorher als hinterher. */
@@ -1529,23 +1581,12 @@ export function kontoSeite(): string {
     var kr = baueRunden(letzteRunden);
     if (kr) ziel.appendChild(kr);
 
-    /* Auch hier der Download: wer den Rechner wechselt oder eine alte
-       Fassung hat, soll nicht erst abmelden müssen, um ihn zu finden. */
-    var kd = el('div', 'karte');
-    kd.appendChild(el('h2', null, t('Programm')));
-    kd.appendChild(el('p', 'leise', t(
-      'Immer die aktuelle Fassung. Meldet dein Programm „veraltet", hol sie dir hier neu.')));
-    var dl = document.createElement('a');
-    dl.className = 'laden';
-    dl.href = '/client';
-    dl.appendChild(el('span', 'gross', '⬇  Meccha-Ranked.zip'));
-    kd.appendChild(dl);
-    kd.appendChild(el('p', 'leise', t(
-      'Als ZIP, damit der Browser den Download nicht blockiert. Entpacken und die .exe darin starten.')));
-    // Auch hier erreichbar: wer sich die neue Fassung holt, trifft auf
-    // dieselben zwei Warnungen wie beim ersten Mal.
-    kd.appendChild(warnungsKasten());
-    ziel.appendChild(kd);
+    /* Hier stand bis zum 20.08.2026 noch einmal der Download samt
+       Warnungskasten. Beides gibt es jetzt oben im Kopf - dort steht es
+       immer sichtbar, statt unter einer Rangliste zu verschwinden, die
+       mit jedem Spieler laenger wird. Zweimal derselbe Knopf auf einer
+       Seite ist keine Hilfe, sondern eine Frage, welcher der richtige
+       ist. */
   }
 
   /* ------------------------------------------------- eigene Runden
