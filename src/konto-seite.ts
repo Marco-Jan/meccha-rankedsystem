@@ -233,6 +233,28 @@ export function kontoSeite(): string {
   .tafel.aktiv { display:block; }
 
   #rangliste { margin-bottom:16px; }
+
+  /* Auf dem Sprung. Bernstein, weil es um Punkte geht - nicht Steam-Blau,
+     das gehoert den Knoepfen. */
+  .sprung {
+    border:1px solid var(--zahl); border-radius:9px;
+    padding:11px 13px; margin:0 0 15px;
+    background:color-mix(in srgb, var(--zahl) 8%, transparent);
+  }
+  .sprung-titel {
+    font-size:12px; font-weight:700; letter-spacing:.06em;
+    text-transform:uppercase; color:var(--zahl); margin-bottom:7px;
+  }
+  .sprung-zeile {
+    display:flex; align-items:baseline; gap:10px; padding:3px 0;
+  }
+  .sprung-zeile .wer { font-weight:600; }
+  .sprung-zeile .schnitt {
+    color:var(--zahl); font-weight:700; font-variant-numeric:tabular-nums;
+    margin-left:auto;
+  }
+  .sprung-zeile .leise { font-size:12px; min-width:88px; text-align:right; }
+  .sprung > .leise { font-size:12px; margin-top:6px; }
   #inhalt { columns:2; column-gap:16px; }
   .karte { break-inside:avoid; }
   @media (max-width:860px) { #inhalt { columns:1; } }
@@ -551,10 +573,12 @@ export function kontoSeite(): string {
     <span class="regel-schild" data-t="REGEL">REGEL</span>
     <span data-tp="Eine Runde zählt nur, wenn mindestens {0} Verstecker im Scoreboard stehen."
       >Eine Runde zählt nur, wenn mindestens 6 Verstecker im Scoreboard stehen.</span>
+    <a href="/regeln" data-t="mehr">mehr</a>
   </div>
   <div class="tafel aktiv" id="t-rang"><div id="rangliste"></div></div>
   <div class="tafel" id="t-konto"><div id="inhalt"></div></div>
   <div class="fuss">
+    <p><a href="/regeln" data-t="Alle Regeln nachlesen">Alle Regeln nachlesen</a></p>
     <span data-t="Fragen oder Probleme? Melde dich im Discord bei einem">Fragen oder Probleme? Melde dich im Discord bei einem</span> <b data-t="Admin oder Mod">Admin oder Mod</b>.
     ${discord ? `<a class="discord" href="${discord}" target="_blank" rel="noopener">
       <svg viewBox="0 0 24 18" width="19" height="15" aria-hidden="true"><path fill="currentColor"
@@ -592,6 +616,12 @@ export function kontoSeite(): string {
       'Deine Runden zählen mit.': 'Your rounds count.',
       'im Spiel drücken': 'press in game',
       'Server liest ab': 'server reads it',
+      'Auf dem Sprung': 'On the verge',
+      'Käme mit diesem Schnitt unter die ersten drei.':
+        'Would reach the top three with this average.',
+      'noch {0} Runden': '{0} rounds to go',
+      'Alle Regeln nachlesen': 'Read all rules',
+      'mehr': 'more',
       'in der Rangliste': 'on the leaderboard',
       'Fragen oder Probleme? Melde dich im Discord bei einem':
         'Questions or trouble? Ask an',
@@ -740,6 +770,12 @@ export function kontoSeite(): string {
       'Deine Runden zählen mit.': '你的每一局都算数。',
       'im Spiel drücken': '在游戏中按下',
       'Server liest ab': '服务器识别',
+      'Auf dem Sprung': '即将上榜',
+      'Käme mit diesem Schnitt unter die ersten drei.':
+        '按此均分可进前三。',
+      'noch {0} Runden': '还差 {0} 局',
+      'Alle Regeln nachlesen': '查看全部规则',
+      'mehr': '更多',
       'in der Rangliste': '进入排行榜',
       'Fragen oder Probleme? Melde dich im Discord bei einem':
         '有疑问或遇到问题？请在 Discord 联系',
@@ -1481,6 +1517,37 @@ export function kontoSeite(): string {
       k.appendChild(el('p', 'leise', t(
         'Noch keine Runden gewertet. Sei der Erste – unter „Dein Zugang" steht, wie es geht.')));
       return k;
+    }
+
+    /* AUF DEM SPRUNG - ganz oben, vor der Tabelle.
+
+       Wer noch Anwärter ist, steht ganz unten: hinter allen Gewerteten,
+       auch wenn er besser spielt als sie alle. Für die Wertung ist das
+       richtig — verglichen wird nur über zehn Runden. Für die Motivation
+       ist es genau verkehrt: der Beste der Neuen sieht sich am Ende einer
+       Liste, in der er eigentlich vorne stünde, und hat keinen Grund
+       weiterzumachen.
+
+       Wer hier auftaucht, entscheidet der Server (rangliste.ts): ab fünf
+       Einträgen, und nur wenn der Schnitt für die ersten drei reichen
+       würde. */
+    var sprung = d.aufDemSprung || [];
+    if (sprung.length) {
+      var kasten = el('div', 'sprung');
+      kasten.appendChild(el('div', 'sprung-titel', t('Auf dem Sprung')));
+
+      sprung.forEach(function (z) {
+        var zeile = el('div', 'sprung-zeile');
+        zeile.appendChild(el('span', 'wer', z.name));
+        zeile.appendChild(el('span', 'schnitt', zahl(z.schnitt)));
+        zeile.appendChild(el('span', 'leise',
+          tv('noch {0} Runden', [Math.max(0, d.voll - z.imFenster)])));
+        kasten.appendChild(zeile);
+      });
+
+      kasten.appendChild(el('div', 'leise',
+        t('Käme mit diesem Schnitt unter die ersten drei.')));
+      k.appendChild(kasten);
     }
 
     var tab = document.createElement('table');

@@ -139,12 +139,12 @@ Bestes Ergebnis, zur Erinnerung woran gemessen wird:
 | 4 | Cooldown | **fertig**, 6 neue Tests |
 | 5 | Bilder klein | **fertig**, 10 Tests |
 | 6 | Bildergalerie | **fertig**, 13 Tests |
-| 7 | Öffentliche Seiten | offen |
+| 7 | Öffentliche Seiten | **fertig**, 19 Tests |
 | 8 | Deploy und Server | offen |
 | 9 | Download-Warnung entschärfen | offen, Entscheidung nötig |
 | 10 | Update-Hinweis im Client | offen |
 
-Nach Etappe 6: **568 Tests grün, Typecheck sauber.**
+Nach Etappe 7: **587 Tests grün, Typecheck sauber.**
 
 ## Etappen
 
@@ -263,10 +263,17 @@ Fälschungen fallen im Vergleich auf, nicht im Einzelbild.
 
 ### 7 · Öffentliche Seiten
 
-`meccha-ranked.com/` → die Rangliste. `/regeln` → die Regelseite von oben.
+**Die Rangliste gab es schon** — sie ist der erste Reiter der Kontoseite und war nie
+von `turnier` abhängig. Übrig blieben zwei Dinge:
 
-Bisher hat mc-ranked nur Freigabeseite und Kontoseite; das Leaderboard lag in
-`turnier/public/ranking.html` und fällt damit weg.
+- **„Auf dem Sprung"** als Block über der Tabelle
+- **`/regeln`** — neu, `src/regeln-seite.ts`
+
+Die Regelseite wird **erzeugt, nicht abgelegt**, und das ist der ganze Punkt: Ihre
+Zahlen kommen aus `rangliste.ts`, `leser.ts`, `tokens.ts`, `konten.ts` und `server.ts`.
+Eine Seite, die „mindestens 6 Verstecker" behauptet, während der Server bei 8 abweist,
+wäre schlimmer als gar keine — sie erzeugt Vertrauen, das sie nicht deckt, und beide
+Stellen sähen für sich betrachtet stimmig aus.
 
 ### 8 · Deploy und Server
 

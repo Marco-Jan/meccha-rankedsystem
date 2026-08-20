@@ -120,6 +120,7 @@ async function main(): Promise<void> {
     konten,
     oeffentlicheUrl: OEFFENTLICHE_URL,
     holeStand: () => wertung.stand(),
+    bildStunden: BILD_STUNDEN,
     eintragen: (kontoId, punkte) => { wertung.eintragen(kontoId, punkte); }
   });
 

@@ -33,6 +33,7 @@ import { verteilung } from './config.js';
 import { bearbeiteFreigabe } from './freigabe-api.js';
 import { bearbeiteKonto } from './konto-api.js';
 import { kontoSeite } from './konto-seite.js';
+import { regelnSeite } from './regeln-seite.js';
 import type { Kontenliste } from './konten.js';
 import type { Wertungsstand } from './wertung.js';
 import { schneideAus, ausschnittPfadZu } from './ausschnitt.js';
@@ -142,6 +143,14 @@ export interface ServerOptionen {
    * pruefen, dass der Pfad ueberhaupt vermerkt wird.
    */
   readonly schneideAus?: (bildPfad: string, zielPfad: string) => string | null;
+  /**
+   * Wie lange das Original eines Bildes liegen bleibt, in Stunden.
+   *
+   * Nur fuer die Regelseite - geloescht wird in cli/serve.ts. Steht als
+   * Option da, weil die Zahl dort wohnt und die Seite sie nennen soll,
+   * ohne sie ein zweites Mal zu kennen.
+   */
+  readonly bildStunden?: number;
 }
 
 function sendeDatei(res: http.ServerResponse, datei: string, typ: string): void {
@@ -260,6 +269,27 @@ async function bearbeite(
       'Cache-Control': 'no-store'
     });
     res.end(kontoSeite());
+    return;
+  }
+
+  /*
+     DIE REGELN - oeffentlich, ohne Anmeldung.
+
+     Die Zahlen darin kommen aus dem Code, nicht aus einem Text: eine
+     Regelseite, die "mindestens 6" behauptet, waehrend der Server bei 8
+     abweist, ist schlimmer als gar keine. Siehe regeln-seite.ts.
+  */
+  if (pfad === '/regeln') {
+    res.writeHead(200, {
+      'Content-Type': 'text/html; charset=utf-8',
+      /* Anders als der Rest darf das hier zwischengespeichert werden -
+         die Seite aendert sich nur, wenn eine Regel sich aendert. */
+      'Cache-Control': 'public, max-age=600'
+    });
+    res.end(regelnSeite({
+      minSpieler: o.minSpieler ?? MIN_SPIELER,
+      bildStunden: o.bildStunden ?? 72
+    }));
     return;
   }
 

@@ -220,3 +220,22 @@ describe('Kontoseite - Inhalt', () => {
     assert.match(skript(), /'schritte'/);
   });
 });
+
+describe('Kontoseite - Auf dem Sprung', () => {
+  test('zeichnet den Block aus aufDemSprung', () => {
+    /* Wer noch Anwaerter ist, steht ganz unten - hinter allen
+       Gewerteten, auch wenn er besser spielt als sie alle. Der Block
+       oben ist die Gegenmassnahme. */
+    assert.match(skript(), /d\.aufDemSprung/);
+    assert.match(skript(), /sprung-zeile/);
+  });
+
+  test('sagt dazu, wie viele Runden noch fehlen', () => {
+    // Ohne die Zahl ist es kein Ansporn, sondern nur eine Feststellung.
+    assert.match(skript(), /noch \{0\} Runden/);
+  });
+
+  test('verlinkt die Regelseite', () => {
+    assert.match(kontoSeite(), /href="\/regeln"/);
+  });
+});
