@@ -36,3 +36,8 @@ client-cs/Meccha-Ranked.exe
 client-cs/Meccha-Ranked.zip
 client-cs/client.json
 client-cs/mc-ranked-daten/
+
+# Sicherungen des Datenordners. Sie enthalten Tokens, Steam-Kennungen
+# und hochgeladene Screenshots - also genau das, was daten/ ohnehin
+# nicht ins Repo bringen darf, nur zusammengepackt.
+daten-sicherung-*.tar.gz

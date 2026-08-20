@@ -32,46 +32,54 @@ import { standMit } from './hilfe-stand.js';
 const ORDNER = mkdtempSync(path.join(tmpdir(), 'mc-regeln-'));
 after(() => rmSync(ORDNER, { recursive: true, force: true }));
 
-const seite = (minSpieler = MIN_SPIELER, bildStunden = 72): string =>
-  regelnSeite({ minSpieler, bildStunden });
+const seite = (minSpieler = MIN_SPIELER): string => regelnSeite({ minSpieler });
 
 describe('Regelseite - die Zahlen kommen aus dem Code', () => {
+  /*
+     Geprueft wird der ZAHLEN-Block, den der Server ins Skript schreibt.
+     Aus ihm fuellt die Seite die Platzhalter, egal in welcher Sprache -
+     er ist also die eine Stelle, an der die Zahlen wirklich haengen.
+     Am sichtbaren Text zu pruefen waere bruechig: derselbe Wert steht
+     dort mal als "Rang 1-15", mal als "15 Sekunden".
+  */
+  const zahlen = (s: string): Record<string, number> => {
+    const t = /var ZAHLEN = (\{.*?\});/.exec(s);
+    assert.ok(t, 'der ZAHLEN-Block fehlt - dann kommt gar nichts aus dem Code');
+    return JSON.parse(t[1]!) as Record<string, number>;
+  };
+
   test('nennt die Mindestzahl Verstecker, die der Server benutzt', () => {
-    assert.match(seite(6), />6</);
-    assert.match(seite(8), />8</, 'aendert sich die Regel, aendert sich die Seite');
+    assert.equal(zahlen(seite(6)).min, 6);
+    assert.equal(zahlen(seite(8)).min, 8, 'aendert sich die Regel, aendert sich die Seite');
+    assert.match(seite(8), /8 Verstecker|Verstecker/, 'und sie steht auch im Text');
   });
 
   test('nennt Fenster und Wertungsgrenze', () => {
-    const s = seite();
-    assert.match(s, new RegExp('>' + FENSTER + '<'));
-    assert.match(s, new RegExp('>' + VOLL + '<'));
+    const z = zahlen(seite());
+    assert.equal(z.fenster, FENSTER);
+    assert.equal(z.voll, VOLL);
   });
 
   test('nennt den hoechsten gewerteten Rang', () => {
-    assert.match(seite(), new RegExp('>' + MAX_RANG + '<'));
+    assert.equal(zahlen(seite()).rang, MAX_RANG);
   });
 
   test('nennt die Schwelle fuer "Auf dem Sprung"', () => {
-    const s = seite();
-    assert.match(s, new RegExp('>' + SPRUNG_AB + '<'));
-    assert.match(s, new RegExp('ersten ' + SPRUNG_PLATZ));
+    const z = zahlen(seite());
+    assert.equal(z.sprungAb, SPRUNG_AB);
+    assert.equal(z.sprungPlatz, SPRUNG_PLATZ);
   });
 
   test('nennt die Namenssperre', () => {
-    assert.match(seite(), new RegExp('>' + NAMENSSPERRE_TAGE + '<'));
+    assert.equal(zahlen(seite()).namensTage, NAMENSSPERRE_TAGE);
   });
 
   test('nennt beide Abstaende, in lesbarer Form', () => {
     const s = seite();
-    const min = Math.round(ABSTAND_ANGENOMMEN_MS / 60000);
-    const sek = Math.round(ABSTAND_FEHLSCHLAG_MS / 1000);
-    assert.match(s, new RegExp(min + ' Minuten'), 'der lange Abstand in Minuten');
-    assert.match(s, new RegExp(sek + ' Sekunden'), 'der kurze in Sekunden');
-  });
-
-  test('rechnet Stunden in Tage um, wenn es sich besser liest', () => {
-    assert.match(seite(6, 72), /3 Tage/);
-    assert.match(seite(6, 24), /24 Stunden/, 'unter zwei Tagen bleiben es Stunden');
+    assert.equal(zahlen(s).pause, Math.round(ABSTAND_ANGENOMMEN_MS / 60000));
+    assert.equal(zahlen(s).kurz, Math.round(ABSTAND_FEHLSCHLAG_MS / 1000));
+    assert.match(s, /Minuten/);
+    assert.match(s, /Sekunden/);
   });
 });
 
@@ -91,14 +99,14 @@ describe('Regelseite - was drinstehen muss', () => {
     assert.match(s, /Hintergrund|Himmel/);
   });
 
-  test('nennt die Gruende fuer eine Ablehnung', () => {
-    assert.match(s, /bearbeitet/);
-    assert.match(s, /schon gewertet/);
-  });
-
-  test('sagt, was mit den Bildern passiert', () => {
-    assert.match(s, /Ausschnitt/);
-    assert.match(s, /gelöscht/);
+  test('sagt, was bei einer Ablehnung passiert - ohne die Pruefmechanik', () => {
+    /* Wer wissen will, ob seine Runde zaehlt, braucht die Regel, nicht
+       eine Erklaerung der Betrugspruefung. Die half vor allem dem, der
+       sie umgehen wollte - und las sich fuer alle anderen wie ein
+       Generalverdacht. */
+    assert.match(s, /Grund/);
+    assert.match(s, /Discord/);
+    assert.doesNotMatch(s, /Bild-Hash|Partie-Kennung/);
   });
 
   test('verlinkt zurueck zur Rangliste und zum Konto', () => {
@@ -108,7 +116,7 @@ describe('Regelseite - was drinstehen muss', () => {
 
   test('ist gueltiges HTML mit einer Ueberschrift', () => {
     assert.match(s, /^<!doctype html>/);
-    assert.match(s, /<h1>Regeln<\/h1>/);
+    assert.match(s, /<h1 data-t="Regeln">Regeln<\/h1>/);
     assert.equal((s.match(/<html/g) ?? []).length, 1);
   });
 });
@@ -125,8 +133,7 @@ before(async () => {
     bilderDir: path.join(ORDNER, 'bilder'),
     holeStand: () => standMit([]),
     eintragen: () => { /* nichts */ },
-    minSpieler: 7,
-    bildStunden: 48
+    minSpieler: 7
   });
   await new Promise<void>((f) => server.listen(0, '127.0.0.1', f));
   basis = 'http://127.0.0.1:' + (server.address() as AddressInfo).port;
@@ -145,8 +152,10 @@ describe('Regelseite - ausgeliefert', () => {
 
   test('uebernimmt die Zahlen des laufenden Servers', async () => {
     const text = await (await fetch(basis + '/regeln')).text();
-    assert.match(text, />7</, 'die minSpieler dieses Servers, nicht die Vorgabe');
-    assert.match(text, /2 Tage/, 'bildStunden 48 werden zu 2 Tagen');
+    const t = /var ZAHLEN = (\{.*?\});/.exec(text);
+    assert.ok(t);
+    assert.equal((JSON.parse(t[1]!) as { min: number }).min, 7,
+      'die minSpieler dieses Servers, nicht die Vorgabe');
   });
 
   test('darf zwischengespeichert werden', () => {

@@ -123,7 +123,6 @@ async function main(): Promise<void> {
     listen,
     oeffentlicheUrl: OEFFENTLICHE_URL,
     holeStand: () => wertung.stand(),
-    bildStunden: BILD_STUNDEN,
     eintragen: (kontoId, punkte) => { wertung.eintragen(kontoId, punkte); }
   });
 

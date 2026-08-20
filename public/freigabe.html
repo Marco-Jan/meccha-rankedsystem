@@ -139,6 +139,20 @@
   }
   .reiter button.aktiv .zahl { background:var(--kante); color:var(--text); }
   .reiter .zahl.warn { background:var(--zahl); color:#12141a; }
+  /* ---- Ranglisten ---- */
+  #listen td { vertical-align:middle; }
+  #listen .name { font-weight:600; }
+  #listen .aus { color:var(--leise); }
+  /* Eine abgeschaltete Liste ist nicht weg, nur still - deshalb gedämpft
+     statt durchgestrichen. Durchgestrichen läse sich wie gelöscht. */
+  #listen tr.still td { opacity:.55; }
+  #listen .knoepfe { display:flex; gap:6px; justify-content:flex-end; }
+  #listen .knoepfe button, #listen .knoepfe a {
+    background:var(--kante); color:var(--text); border:0; border-radius:6px;
+    padding:5px 10px; font-size:12px; cursor:pointer; text-decoration:none;
+  }
+  .klein { font-size:12px; }
+
   /* ---- Bildergalerie ---- */
   .reihe {
     display:flex; gap:9px; flex-wrap:wrap; align-items:center;
@@ -421,6 +435,7 @@
     <button data-tafel="t-liste" data-t="Punkteliste">Punkteliste</button>
     <button data-tafel="t-zuschauer" data-t="Zuschauer">Zuschauer</button>
     <button data-tafel="t-zugaenge" data-t="Zugänge">Zugänge</button>
+    <button data-tafel="t-listen" data-t="Ranglisten">Ranglisten</button>
     <button data-tafel="t-bilder" data-t="Bilder">Bilder</button>
     <button data-tafel="t-verlauf" data-t="Entschieden">Entschieden</button>
   </div>
@@ -487,6 +502,31 @@
       seine eigene Zeile einreichen. „ohne Freigabe" heißt: geht direkt in
       die Punkteliste, ohne dass du klickst.
     </p>
+  </div>
+  </div>
+
+  <div class="tafel" id="t-listen">
+  <h2 data-t="Ranglisten">Ranglisten</h2>
+
+  <!-- Eine freigegebene Runde landet in JEDER aktiven Liste. So laufen
+       Jahres- und Monatswertung nebeneinander: ein F9, zwei Einträge. -->
+  <p class="leise" data-t="Eine freigegebene Runde landet in jeder aktiven Liste. Abgeschaltete verschwinden von der öffentlichen Seite, bleiben aber hier.">Eine freigegebene Runde landet in jeder aktiven Liste. Abgeschaltete verschwinden von der öffentlichen Seite, bleiben aber hier.</p>
+
+  <div class="block">
+    <div class="rollen"><table id="listen"><thead><tr>
+      <th data-t="Name">Name</th>
+      <th data-t="Einträge">Einträge</th>
+      <th data-t="in der Wertung">in der Wertung</th>
+      <th data-t="Anwärter">Anwärter</th>
+      <th data-t="aktiv">aktiv</th>
+      <th></th>
+    </tr></thead><tbody></tbody></table></div>
+
+    <div class="neuer-token">
+      <input id="l-name" data-tp="Name der neuen Liste" placeholder="Name der neuen Liste" style="width:220px">
+      <button class="haupt" id="l-neu" data-t="Liste anlegen">Liste anlegen</button>
+      <span class="leise klein" data-t="Sie fängt bei null an und ist sofort aktiv.">Sie fängt bei null an und ist sofort aktiv.</span>
+    </div>
   </div>
   </div>
 

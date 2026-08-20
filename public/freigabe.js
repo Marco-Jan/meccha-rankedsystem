@@ -67,6 +67,33 @@
       '{0} Zeilen': '{0} rows',
       'Zeilen': 'rows',
       'durch': 'by',
+      'Ranglisten': 'Leaderboards',
+      'Eine freigegebene Runde landet in jeder aktiven Liste. Abgeschaltete verschwinden von der öffentlichen Seite, bleiben aber hier.':
+        'An approved round is added to every active list. Deactivated ones disappear from the public page but stay here.',
+      'Einträge': 'Entries',
+      'Anwärter': 'Contenders',
+      'aktiv': 'active',
+      'Name der neuen Liste': 'Name of the new list',
+      'Liste anlegen': 'Create list',
+      'Sie fängt bei null an und ist sofort aktiv.': 'It starts from zero and is active right away.',
+      'CSV': 'CSV',
+      'Als Tabelle herunterladen': 'Download as a spreadsheet',
+      'Umbenennen': 'Rename',
+      'Abschalten': 'Deactivate',
+      'Einschalten': 'Activate',
+      'Liste „{0}" umbenennen': 'Rename list \u201c{0}\u201d',
+      'Der neue Name muss eindeutig sein.': 'The new name must be unique.',
+      'Heißt jetzt {0}.': 'Now called {0}.',
+      '„{0}" abschalten?': 'Deactivate \u201c{0}\u201d?',
+      'Neue Runden zählen dann nicht mehr für diese Liste, und sie verschwindet von der öffentlichen Rangliste. Die bisherigen Einträge bleiben erhalten, und du kannst sie jederzeit wieder einschalten.':
+        'New rounds will no longer count for this list, and it disappears from the public leaderboard. Existing entries remain, and you can reactivate it at any time.',
+      '{0} ist abgeschaltet.': '{0} is deactivated.',
+      '{0} zählt wieder mit.': '{0} counts again.',
+      '{0} angelegt – ab jetzt zählen Runden auch dort.':
+        '{0} created \u2013 rounds now count there as well.',
+      'Bitte einen Namen eingeben.': 'Please enter a name.',
+      'keine': 'none',
+      'aktive Rangliste': 'active leaderboard',
       'nicht erreichbar': 'unreachable',
       'offen': 'open',
       'freigegeben': 'approved',
@@ -214,6 +241,33 @@
       '{0} Zeilen': '{0} 行',
       'Zeilen': '行',
       'durch': '由',
+      'Ranglisten': '\u6392\u884c\u699c',
+      'Eine freigegebene Runde landet in jeder aktiven Liste. Abgeschaltete verschwinden von der öffentlichen Seite, bleiben aber hier.':
+        '\u5df2\u901a\u8fc7\u7684\u5bf9\u5c40\u4f1a\u8ba1\u5165\u6bcf\u4e2a\u542f\u7528\u7684\u699c\u5355\u3002\u5df2\u505c\u7528\u7684\u4e0d\u518d\u516c\u5f00\u663e\u793a\uff0c\u4f46\u4ecd\u4fdd\u7559\u5728\u8fd9\u91cc\u3002',
+      'Einträge': '\u6761\u76ee',
+      'Anwärter': '\u5019\u8865',
+      'aktiv': '\u542f\u7528',
+      'Name der neuen Liste': '\u65b0\u699c\u5355\u540d\u79f0',
+      'Liste anlegen': '\u521b\u5efa\u699c\u5355',
+      'Sie fängt bei null an und ist sofort aktiv.': '\u4ece\u96f6\u5f00\u59cb\uff0c\u5e76\u7acb\u5373\u542f\u7528\u3002',
+      'CSV': 'CSV',
+      'Als Tabelle herunterladen': '\u4e0b\u8f7d\u4e3a\u8868\u683c',
+      'Umbenennen': '\u91cd\u547d\u540d',
+      'Abschalten': '\u505c\u7528',
+      'Einschalten': '\u542f\u7528',
+      'Liste „{0}" umbenennen': '\u91cd\u547d\u540d\u699c\u5355\u201c{0}\u201d',
+      'Der neue Name muss eindeutig sein.': '\u65b0\u540d\u79f0\u5fc5\u987b\u552f\u4e00\u3002',
+      'Heißt jetzt {0}.': '\u73b0\u5df2\u6539\u4e3a {0}\u3002',
+      '„{0}" abschalten?': '\u505c\u7528\u201c{0}\u201d\uff1f',
+      'Neue Runden zählen dann nicht mehr für diese Liste, und sie verschwindet von der öffentlichen Rangliste. Die bisherigen Einträge bleiben erhalten, und du kannst sie jederzeit wieder einschalten.':
+        '\u65b0\u5bf9\u5c40\u5c06\u4e0d\u518d\u8ba1\u5165\u6b64\u699c\u5355\uff0c\u4e14\u5b83\u4f1a\u4ece\u516c\u5f00\u6392\u884c\u699c\u4e2d\u6d88\u5931\u3002\u73b0\u6709\u6761\u76ee\u4fdd\u7559\uff0c\u4f60\u53ef\u4ee5\u968f\u65f6\u91cd\u65b0\u542f\u7528\u3002',
+      '{0} ist abgeschaltet.': '{0} \u5df2\u505c\u7528\u3002',
+      '{0} zählt wieder mit.': '{0} \u91cd\u65b0\u8ba1\u5165\u3002',
+      '{0} angelegt – ab jetzt zählen Runden auch dort.':
+        '\u5df2\u521b\u5efa {0} \u2013 \u4eca\u540e\u5bf9\u5c40\u4e5f\u4f1a\u8ba1\u5165\u5176\u4e2d\u3002',
+      'Bitte einen Namen eingeben.': '\u8bf7\u8f93\u5165\u540d\u79f0\u3002',
+      'keine': '\u65e0',
+      'aktive Rangliste': '\u542f\u7528\u7684\u6392\u884c\u699c',
       'nicht erreichbar': '无法连接',
       'offen': '待处理',
       'freigegeben': '已批准',
@@ -549,6 +603,7 @@
     /* Beim Oeffnen des Bilder-Reiters die Kacheln holen. Nicht beim
        Seitenaufbau: wer nie hinsieht, soll auch nie Bilder laden. */
     if (id === 't-bilder') ladeGalerie();
+    if (id === 't-listen') ladeListen();
 
     // In der Adresse merken, damit ein Neuladen nicht zurueckspringt.
     try {
@@ -598,8 +653,14 @@
       document.getElementById('reiter').style.display = '';
       Array.prototype.forEach.call(
         document.querySelectorAll('#reiter button[data-tafel]'), function (b) {
+          /* Listen anlegen und abschalten aendert, WO gewertet wird -
+             eine zweite Liste verdoppelt ab dann jede Runde. Das ist
+             kein Alltagsgeschaeft eines Mods, und der Server lehnt es
+             fuer ihn ohnehin ab. Dann soll der Reiter auch nicht da
+             stehen und ins Leere fuehren. */
           var nurAdmin = b.getAttribute('data-tafel') === 't-zuschauer' ||
-                         b.getAttribute('data-tafel') === 't-zugaenge';
+                         b.getAttribute('data-tafel') === 't-zugaenge' ||
+                         b.getAttribute('data-tafel') === 't-listen';
           b.style.display = (nurAdmin && stufe !== 'admin') ? 'none' : '';
         });
 
@@ -614,9 +675,18 @@
       ziel.appendChild(kachel(String(w.spieler), t('Spieler mit Ingame-Name'),
         w.spieler === 0));
 
-      ziel.appendChild(kachel(String(w.eintraege), t('Einträge in der Wertung')));
-      ziel.appendChild(kachel(String(w.gewertet), t('in der Wertung')));
-      ziel.appendChild(kachel(String(w.anwaerter), t('Anwärter')));
+      /* Je aktiver Liste eine Kachel. Eine Summe waere irrefuehrend:
+         bei zwei aktiven Listen haette jeder doppelt so viele Eintraege,
+         ohne oefter gespielt zu haben. */
+      var aktiveListen = (w.listen || []).filter(function (l) { return l.aktiv; });
+
+      if (aktiveListen.length === 0) {
+        ziel.appendChild(kachel(t('keine'), t('aktive Rangliste'), true));
+      } else {
+        aktiveListen.forEach(function (l) {
+          ziel.appendChild(kachel(String(l.gewertet) + ' / ' + String(l.eintraege), l.name));
+        });
+      }
       /* Der Zaehler im Reiter, damit man offene Runden auch dann sieht,
          wenn gerade ein anderer Reiter offen ist. */
       var offenZahl = $('r-offen');
@@ -1356,6 +1426,151 @@
     });
   }
 
+
+  /* =======================================================================
+     RANGLISTEN
+
+     Eine freigegebene Runde landet in JEDER aktiven Liste. Damit laufen
+     Jahres- und Monatswertung nebeneinander.
+
+     Zwei Dinge sind hier bewusst unbequem gemacht:
+
+       Abschalten fragt nach. Eine Liste stillzulegen heißt, dass ab
+       sofort nichts mehr hineinläuft — das merkt man sonst erst, wenn
+       jemand fragt, wo seine Runde geblieben ist.
+
+       Anlegen ist nur für Admins. Eine zweite Liste verdoppelt ab dann
+       jede Runde, und das fällt erst auf, wenn die Wertung schon schief
+       ist. Der Server lehnt es für Mods ohnehin ab; der Reiter wird für
+       sie gar nicht erst gezeigt.
+     ======================================================================= */
+
+  function ladeListen() {
+    anfrage('/api/listen').then(function (a) {
+      if (!a.body || !a.body.ok) return;
+      zeichneListen(a.body.listen || []);
+    });
+  }
+
+  function zeichneListen(listen) {
+    var koerper = $('listen').tBodies[0];
+    koerper.innerHTML = '';
+
+    listen.forEach(function (l) {
+      var tr = document.createElement('tr');
+      if (!l.aktiv) tr.className = 'still';
+
+      tr.appendChild(el('td', 'name', l.name));
+      tr.appendChild(el('td', null, String(l.eintraege)));
+      tr.appendChild(el('td', null, String(l.gewertet)));
+      tr.appendChild(el('td', null, String(l.anwaerter)));
+      tr.appendChild(el('td', l.aktiv ? null : 'aus',
+        l.aktiv ? t('ja') : t('nein')));
+
+      var knoepfe = el('div', 'knoepfe');
+
+      /* Der Export zuerst — er ist harmlos und wird am häufigsten
+         gebraucht. Ein direkter Link statt eines Knopfes, damit der
+         Browser die Datei selbst entgegennimmt. */
+      var ex = document.createElement('a');
+      ex.href = '/api/liste-export?liste=' + encodeURIComponent(l.id) +
+                '&key=' + encodeURIComponent(schluessel);
+      ex.textContent = t('CSV');
+      ex.title = t('Als Tabelle herunterladen');
+      knoepfe.appendChild(ex);
+
+      var um = document.createElement('button');
+      um.textContent = t('Umbenennen');
+      um.addEventListener('click', function () { benenneUm(l); });
+      knoepfe.appendChild(um);
+
+      var schalt = document.createElement('button');
+      schalt.textContent = l.aktiv ? t('Abschalten') : t('Einschalten');
+      schalt.addEventListener('click', function () { schalteListe(l); });
+      knoepfe.appendChild(schalt);
+
+      var td = el('td');
+      td.appendChild(knoepfe);
+      tr.appendChild(td);
+      koerper.appendChild(tr);
+    });
+  }
+
+  function benenneUm(l) {
+    hole(tv('Liste „{0}" umbenennen', [l.name]),
+      t('Der neue Name muss eindeutig sein.'), l.name).then(function (neu) {
+        if (!neu || neu === l.name) return;
+        anfrage('/api/liste-aendern', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: l.id, name: neu })
+        }).then(function (a) {
+          melde(a.body.ok ? tv('Heißt jetzt {0}.', [neu]) : a.body.fehler, 7000,
+            a.body.ok ? '' : 'schlecht');
+          ladeListen();
+          ladeStatus();
+        });
+      });
+  }
+
+  function schalteListe(l) {
+    var schicke = function () {
+      anfrage('/api/liste-aendern', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: l.id, aktiv: !l.aktiv })
+      }).then(function (a) {
+        melde(a.body.ok
+          ? (l.aktiv ? tv('{0} ist abgeschaltet.', [l.name])
+                     : tv('{0} zählt wieder mit.', [l.name]))
+          : a.body.fehler, 8000, a.body.ok ? '' : 'schlecht');
+        ladeListen();
+        ladeStatus();
+      });
+    };
+
+    /* Einschalten ist harmlos, Abschalten nicht: ab dann läuft nichts
+       mehr hinein, und die Liste verschwindet von der öffentlichen
+       Seite. Das gehört gefragt, nicht nebenbei geklickt. */
+    if (!l.aktiv) { schicke(); return; }
+
+    frage(tv('„{0}" abschalten?', [l.name]),
+      t('Neue Runden zählen dann nicht mehr für diese Liste, und sie ' +
+        'verschwindet von der öffentlichen Rangliste. Die bisherigen ' +
+        'Einträge bleiben erhalten, und du kannst sie jederzeit wieder ' +
+        'einschalten.'),
+      t('Abschalten'), 'schlecht').then(function (ok) {
+        if (ok) schicke();
+      });
+  }
+
+  function verbindeListen() {
+    $('l-neu').addEventListener('click', function () {
+      var name = $('l-name').value.trim();
+      if (!name) { melde(t('Bitte einen Namen eingeben.'), 5000, 'schlecht'); return; }
+
+      anfrage('/api/liste-neu', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: name })
+      }).then(function (a) {
+        if (a.body.ok) {
+          $('l-name').value = '';
+          melde(tv('{0} angelegt – ab jetzt zählen Runden auch dort.', [name]), 8000);
+        } else {
+          melde(a.body.fehler, 8000, 'schlecht');
+        }
+        ladeListen();
+        ladeStatus();
+      });
+    });
+
+    // Enter im Namensfeld legt an - sonst sucht man den Knopf.
+    $('l-name').addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') $('l-neu').click();
+    });
+  }
+
   $('sprachen').addEventListener('click', function (e) {
     var b = e.target.closest('button');
     if (b) setzeSprache(b.getAttribute('data-sprache'));
@@ -1368,6 +1583,7 @@
   if (gemerkt && document.getElementById(gemerkt)) zeigeTafel(gemerkt);
 
   verbindeGalerie();
+  verbindeListen();
 
   lade();
   /* Die Galerie holt ihre Kacheln getrennt und NICHT im 15-Sekunden-Takt:

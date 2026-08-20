@@ -234,6 +234,44 @@ export function kontoSeite(): string {
 
   #rangliste { margin-bottom:16px; }
 
+  /* Zwei Wege am Seitenende: Regeln und Programm. Als Kacheln statt als
+     Textlinks - beides sind Dinge, die man SUCHT, und ein unterstrichenes
+     Wort in einer Fusszeile findet niemand. */
+  .wege {
+    display:flex; gap:10px; flex-wrap:wrap;
+    justify-content:center; margin:0 0 14px;
+  }
+  .weg {
+    display:flex; flex-direction:column; gap:2px;
+    background:var(--flaeche2); border:1px solid var(--kante);
+    border-radius:9px; padding:10px 16px; min-width:150px;
+    text-decoration:none; color:var(--text);
+  }
+  .weg:hover { border-color:var(--akzent); }
+  .weg-gross { font-weight:600; font-size:14px; }
+  .weg-klein { font-size:12px; color:var(--leise); }
+
+  /* Der Verweis direkt am Regelstreifen - dort sucht man die Regel
+     zuerst, also gehoert er dorthin und nicht nur nach unten. */
+  .regel-mehr { white-space:nowrap; font-weight:600; text-decoration:none; }
+  .regel-mehr:hover { text-decoration:underline; }
+
+  /* Umschalter zwischen mehreren Ranglisten. Sieht aus wie die Reiter
+     darunter, damit klar ist, dass beides dasselbe tut. */
+  .umschalter {
+    display:flex; gap:6px; flex-wrap:wrap; margin:0 0 12px;
+  }
+  .umschalter button {
+    background:var(--flaeche2); color:var(--leise);
+    border:1px solid var(--kante); border-radius:8px;
+    padding:7px 14px; font-size:14px; cursor:pointer;
+    font-family:inherit;
+  }
+  .umschalter button.aktiv {
+    background:var(--flaeche); color:var(--text);
+    border-color:var(--akzent);
+  }
+
   /* Die Pruefsumme: umbrechbar, mit Luft zwischen den Zeichen - sie soll
      sich von Auge mit dem vergleichen lassen, was Get-FileHash ausgibt. */
   code.summe {
@@ -583,12 +621,21 @@ export function kontoSeite(): string {
     <span class="regel-schild" data-t="REGEL">REGEL</span>
     <span data-tp="Eine Runde zählt nur, wenn mindestens {0} Verstecker im Scoreboard stehen."
       >Eine Runde zählt nur, wenn mindestens 6 Verstecker im Scoreboard stehen.</span>
-    <a href="/regeln" data-t="mehr">mehr</a>
+    <a class="regel-mehr" href="/regeln" data-t="Alle Regeln">Alle Regeln →</a>
   </div>
   <div class="tafel aktiv" id="t-rang"><div id="rangliste"></div></div>
   <div class="tafel" id="t-konto"><div id="inhalt"></div></div>
   <div class="fuss">
-    <p><a href="/regeln" data-t="Alle Regeln nachlesen">Alle Regeln nachlesen</a></p>
+    <div class="wege">
+      <a class="weg" href="/regeln">
+        <span class="weg-gross" data-t="Regeln">Regeln</span>
+        <span class="weg-klein" data-t="Wann eine Runde zählt">Wann eine Runde zählt</span>
+      </a>
+      <a class="weg" href="/download">
+        <span class="weg-gross" data-t="Programm">Programm</span>
+        <span class="weg-klein" data-t="Herunterladen und einrichten">Herunterladen und einrichten</span>
+      </a>
+    </div>
     <span data-t="Fragen oder Probleme? Melde dich im Discord bei einem">Fragen oder Probleme? Melde dich im Discord bei einem</span> <b data-t="Admin oder Mod">Admin oder Mod</b>.
     ${discord ? `<a class="discord" href="${discord}" target="_blank" rel="noopener">
       <svg viewBox="0 0 24 18" width="19" height="15" aria-hidden="true"><path fill="currentColor"
@@ -639,6 +686,11 @@ export function kontoSeite(): string {
       'Findet VirusTotal nichts, hat die Datei noch niemand hochgeladen \u2013 das kannst du selbst tun, kostenlos.':
         'If VirusTotal finds nothing, nobody has uploaded the file yet \u2013 you can do that yourself, for free.',
       'Ausf\u00fchrlich mit Bildern': 'In detail, with screenshots',
+      'Zurzeit läuft keine Wertung.': 'No leaderboard is running right now.',
+      'Wann eine Runde zählt': 'When a round counts',
+      'Herunterladen und einrichten': 'Download and set up',
+      'Alle Regeln': 'All rules →',
+      'Regeln': 'Rules',
       'in der Rangliste': 'on the leaderboard',
       'Fragen oder Probleme? Melde dich im Discord bei einem':
         'Questions or trouble? Ask an',
@@ -800,6 +852,11 @@ export function kontoSeite(): string {
       'Findet VirusTotal nichts, hat die Datei noch niemand hochgeladen \u2013 das kannst du selbst tun, kostenlos.':
         '\u5982\u679c VirusTotal \u6ca1\u6709\u7ed3\u679c\uff0c\u8bf4\u660e\u8fd8\u6ca1\u6709\u4eba\u4e0a\u4f20\u8fc7 \u2013 \u4f60\u53ef\u4ee5\u81ea\u5df1\u4e0a\u4f20\uff0c\u514d\u8d39\u3002',
       'Ausf\u00fchrlich mit Bildern': '\u8be6\u7ec6\u8bf4\u660e\uff08\u5e26\u622a\u56fe\uff09',
+      'Zurzeit läuft keine Wertung.': '目前没有进行中的排行榜。',
+      'Wann eine Runde zählt': '什么时候计分',
+      'Herunterladen und einrichten': '下载并设置',
+      'Alle Regeln': '全部规则 →',
+      'Regeln': '规则',
       'in der Rangliste': '进入排行榜',
       'Fragen oder Probleme? Melde dich im Discord bei einem':
         '有疑问或遇到问题？请在 Discord 联系',
@@ -1566,13 +1623,52 @@ export function kontoSeite(): string {
       { maximumFractionDigits: 0 });
   }
 
-  function baueRangliste(d) {
+  /* Welche Listen es gibt und welche gerade gezeigt wird. Als Zustand
+     nebenan, damit der Umschalter nur den Inhalt neu zeichnet und nicht
+     die ganze Seite - sonst spraenge man beim Klicken nach oben. */
+  var ranglisten = [];
+  var ranglistenKopf = { fenster: 10, voll: 10 };
+  var gewaehlteListe = 0;
+
+  /* Der Kasten, in dem die gewaehlte Liste steht.
+     Als Variable und nicht ueber eine id: er entsteht erst beim Laden,
+     und ein Zugriff per id auf ein Element, das im HTML gar nicht steht,
+     waere genau die Art Fehler, die erst im Browser des Zuschauers
+     auffaellt - als leere Seite ohne Meldung. */
+  var rangInhalt = null;
+
+  function baueUmschalter() {
+    var leiste = el('div', 'umschalter');
+    ranglisten.forEach(function (l, i) {
+      var b = document.createElement('button');
+      b.textContent = l.name;
+      b.className = i === gewaehlteListe ? 'aktiv' : '';
+      b.addEventListener('click', function () {
+        gewaehlteListe = i;
+        Array.prototype.forEach.call(leiste.children, function (x, j) {
+          x.className = j === i ? 'aktiv' : '';
+        });
+        zeigeRangliste(i);
+      });
+      leiste.appendChild(b);
+    });
+    return leiste;
+  }
+
+  function zeigeRangliste(i) {
+    if (!rangInhalt || !ranglisten[i]) return;
+    rangInhalt.innerHTML = '';
+    rangInhalt.appendChild(baueRangliste(ranglisten[i], ranglistenKopf));
+  }
+
+  function baueRangliste(d, kopfDaten) {
     var k = el('div', 'karte');
 
     var kopf = el('div', 'rang-titel');
-    kopf.appendChild(el('h2', null, t('Rangliste')));
+    kopf.appendChild(el('h2', null, d.name || t('Rangliste')));
     kopf.style.margin = '0 0 12px';
-    kopf.appendChild(el('span', 'leise', tv('Schnitt der letzten {0}', [d.fenster])));
+    kopf.appendChild(el('span', 'leise',
+      tv('Schnitt der letzten {0}', [kopfDaten.fenster])));
     k.appendChild(kopf);
 
     if (!d.gewertet.length && !d.anwaerter.length) {
@@ -1603,7 +1699,7 @@ export function kontoSeite(): string {
         zeile.appendChild(el('span', 'wer', z.name));
         zeile.appendChild(el('span', 'schnitt', zahl(z.schnitt)));
         zeile.appendChild(el('span', 'leise',
-          tv('noch {0} Runden', [Math.max(0, d.voll - z.imFenster)])));
+          tv('noch {0} Runden', [Math.max(0, kopfDaten.voll - z.imFenster)])));
         kasten.appendChild(zeile);
       });
 
@@ -1646,7 +1742,7 @@ export function kontoSeite(): string {
         tr.appendChild(el('td', 'platz', '–'));
         tr.appendChild(el('td', 'wer', z.name));
         tr.appendChild(el('td', 'schnitt', zahl(z.schnitt)));
-        tr.appendChild(el('td', 'aus', tv('{0} von {1}', [z.imFenster, d.voll])));
+        tr.appendChild(el('td', 'aus', tv('{0} von {1}', [z.imFenster, kopfDaten.voll])));
         an.appendChild(tr);
       });
       tab.appendChild(an);
@@ -1656,7 +1752,7 @@ export function kontoSeite(): string {
 
     if (d.anwaerter.length) {
       k.appendChild(el('p', 'leise', tv(
-        'Grau: noch Anwärter – ab {0} gewerteten Runden zählt der Schnitt.', [d.voll])));
+        'Grau: noch Anwärter – ab {0} gewerteten Runden zählt der Schnitt.', [kopfDaten.voll])));
     }
     return k;
   }
@@ -1665,7 +1761,27 @@ export function kontoSeite(): string {
     fetch('/api/rangliste').then(function (r) { return r.json(); }).then(function (d) {
       var ziel = $('rangliste');
       ziel.innerHTML = '';
-      if (d && d.ok) ziel.appendChild(baueRangliste(d));
+      if (!d || !d.ok) return;
+
+      /* Seit es mehrere Ranglisten geben kann, liefert der Server sie
+         alle - aber nur die AKTIVEN. Eine abgeschlossene Saison gehoert
+         ins Dashboard, nicht auf die Startseite. */
+      ranglisten = d.listen || [];
+      ranglistenKopf = { fenster: d.fenster, voll: kopfDaten.voll };
+
+      if (ranglisten.length === 0) {
+        ziel.appendChild(el('p', 'leise', t('Zurzeit läuft keine Wertung.')));
+        return;
+      }
+
+      /* Bei genau einer Liste keinen Umschalter zeigen. Eine einzelne
+         Schaltflaeche, die nichts umschaltet, ist nur eine Frage, die
+         sich niemand stellt. */
+      if (ranglisten.length > 1) ziel.appendChild(baueUmschalter());
+
+      rangInhalt = el('div');
+      ziel.appendChild(rangInhalt);
+      zeigeRangliste(gewaehlteListe);
     }).catch(function (e) {
       /* Die Seite laedt auch ohne Rangliste weiter - aber der Grund
          gehoert in die Konsole. Ein stiller catch hat hier einmal einen
