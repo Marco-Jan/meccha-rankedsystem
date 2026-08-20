@@ -7,8 +7,6 @@ REM nur an, was passieren wuerde. Zum Einrichten und Ausprobieren.
 
 set BILDSCHIRM=2
 set TASTE=F9
-if "%TURNIER_URL%"=="" set TURNIER_URL=http://localhost:8777
-
 call npm run wache --silent -- --bildschirm %BILDSCHIRM% --taste %TASTE%
 
 echo.

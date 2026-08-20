@@ -10,7 +10,7 @@
      MC_PORT        Port (Standard 8790)
      MC_ADMIN_KEY   Schluessel fuer die Freigabeseite - OHNE ihn ist sie
                     gesperrt, nicht offen.
-     TURNIER_URL    wohin die freigegebenen Runden gehen
+     MC_DATEN       wo Rangliste, Konten und Zugaenge liegen
 
    Ausgaben ohne Umlaute - cmd-Konsole.
    ========================================================================= */
@@ -23,10 +23,8 @@ import { baueServer } from '../server.js';
 import { ladeFreigabeliste } from '../freigabe.js';
 import { ladeTokens } from '../tokens.js';
 import { ladeKonten } from '../konten.js';
-import { ladeZustand, findeSpiel, trageEin } from '../turnier-client.js';
-import { ladeSpiegel } from '../spiegel.js';
-import { ladeNachtrag } from '../nachtrag.js';
-import { TURNIER_URL, SPIEL_NAME } from '../config.js';
+import { ladeRangliste } from '../rangliste.js';
+import { ladeWertung } from '../wertung.js';
 import { leserBeschreibung } from '../leser-wahl.js';
 
 const HIER = path.dirname(fileURLToPath(import.meta.url));
@@ -49,15 +47,6 @@ const OEFFENTLICHE_URL = process.env.MC_OEFFENTLICHE_URL ||
 /** Wie lange hochgeladene Bilder aufgehoben werden. */
 const BILD_STUNDEN = Number(process.env.MC_BILD_STUNDEN || 24);
 
-/**
- * Wie oft versucht wird, wartende Eintraege nachzutragen.
- *
- * Eine Minute ist ein Kompromiss: haeufiger belastet einen Server, der
- * ohnehin nicht antwortet; seltener laesst Punkte laenger haengen, als
- * noetig waere. Wer nicht warten will, klickt im Dashboard auf "Jetzt
- * nachtragen".
- */
-const NACHTRAG_TAKT_S = Number(process.env.MC_NACHTRAG_TAKT || 60);
 
 /** Zeitpunkt ohne Umlaute und ohne Abhaengigkeit von der Systemsprache. */
 function zeitpunkt(t: number | null): string {
@@ -88,26 +77,15 @@ async function main(): Promise<void> {
   const konten = ladeKonten(path.join(DATEN_DIR, 'konten.json'), tokens);
 
   /*
-     Die beiden Stuecke, mit denen der Server ohne turnier weiterarbeitet.
+     Die Wertung: Rangliste (die Punkte) und Konten (wer dahintersteckt),
+     zusammengefuehrt in wertung.ts.
 
-       spiegel   haelt die letzte bekannte Kartei - sonst koennte ohne
-                 turnier kein Name zugeordnet werden und jeder Upload
-                 endete mit 502, ohne dass die Runde ueberhaupt in der
-                 Warteschlange landet.
-
-       nachtrag  faengt Eintraege auf, die gerade nicht durchkommen, und
-                 traegt sie in der urspruenglichen Reihenfolge nach.
-
-     Beide sind bewusst hier verdrahtet und nicht im Server: server.ts
-     kennt weiterhin nur "hole den Zustand" und "trag das ein", und die
-     Tests koennen wie bisher etwas anderes einsetzen.
+     Bewusst hier verdrahtet und nicht im Server: server.ts kennt nur
+     "hole den Stand" und "trag das ein", und die Tests setzen dafuer
+     etwas anderes ein.
   */
-  const spiegel = ladeSpiegel(path.join(DATEN_DIR, 'kartei-spiegel.json'), async () => {
-    const zustand = await ladeZustand();
-    return { zustand, spiel: findeSpiel(zustand) };
-  });
-
-  const nachtrag = ladeNachtrag(path.join(DATEN_DIR, 'nachtrag.json'), trageEin);
+  const rangliste = ladeRangliste(path.join(DATEN_DIR, 'rangliste.json'));
+  const wertung = ladeWertung(rangliste, konten);
 
   /* Bevorzugt die ZIP, faellt auf die .exe zurueck.
 
@@ -128,13 +106,12 @@ async function main(): Promise<void> {
     clientDatei,
     konten,
     oeffentlicheUrl: OEFFENTLICHE_URL,
-    holeZustand: () => spiegel.holen(),
-    eintragen: (gameId, e) => nachtrag.trageEinOderMerke(gameId, e),
-    spiegel,
-    nachtrag
+    holeStand: () => wertung.stand(),
+    eintragen: (kontoId, punkte) => { wertung.eintragen(kontoId, punkte); }
   });
 
   server.listen(port, host, () => {
+    const stand = wertung.stand();
     console.log('');
     console.log('  ############################################');
     console.log('  #   M C - R A N K E D   S E R V E R        #');
@@ -147,7 +124,7 @@ async function main(): Promise<void> {
       console.log('  Freigabe  ->  GESPERRT (MC_ADMIN_KEY nicht gesetzt)');
     }
     console.log('');
-    console.log('  Turnier   :  ' + TURNIER_URL + '  -> ' + SPIEL_NAME);
+    console.log('  Rangliste ->  ' + OEFFENTLICHE_URL + '/');
     console.log('  Leser     :  ' + leserBeschreibung());
     console.log('  Konto     ->  ' + OEFFENTLICHE_URL + '/konto');
     console.log('');
@@ -155,9 +132,11 @@ async function main(): Promise<void> {
       ' (' + tokens.alle().filter((t) => t.vertraut).length + ' vertraut)');
     console.log('  Konten    :  ' + konten.alle().length + ' angemeldet');
     console.log('  Offen     :  ' + freigabe.offene().length + ' Runden');
-    if (nachtrag.anzahl() > 0) {
-      console.log('  Nachtrag  :  ' + nachtrag.anzahl() + ' Eintrag/Eintraege warten auf turnier');
-    }
+    console.log('  Wertung   :  ' + stand.eintraege + ' Eintraege, ' +
+      stand.gewertet.length + ' in der Wertung, ' + stand.anwaerter.length + ' Anwaerter');
+    console.log('  Spieler   :  ' + stand.spieler.length + ' mit Ingame-Namen' +
+      (stand.spieler.length === 0
+        ? '  <- ohne die kann nichts zugeordnet werden!' : ''));
     console.log('  Bilder    :  ' + BILDER_DIR + '  (Loeschung nach ' + BILD_STUNDEN + ' h)');
     console.log('');
     if (!adminKey) {
@@ -179,49 +158,7 @@ async function main(): Promise<void> {
   aufraeumen();
   setInterval(aufraeumen, 60 * 60 * 1000);
 
-  /*
-     Wartende Eintraege nachtragen. Laeuft still, solange nichts wartet -
-     eine Zeile pro Takt in einer Konsole, die den ganzen Stream offen
-     ist, waere nur Rauschen.
-  */
-  const nachtragen = (): void => {
-    if (nachtrag.anzahl() === 0) return;
-    void nachtrag.arbeiteAb().then((a) => {
-      if (a.erledigt > 0) {
-        console.log('  ' + a.erledigt + ' wartende(r) Eintrag nachgetragen, ' +
-          a.offen + ' noch offen');
-      }
-    });
-  };
-  setInterval(nachtragen, NACHTRAG_TAKT_S * 1000);
 
-  // Fruehe Warnung, wenn der Turnier-Server nicht erreichbar ist - besser
-  // jetzt als beim ersten Freigabeklick.
-  try {
-    const { zustand, spiel } = await spiegel.holen();
-    const lage = spiegel.lage();
-
-    if (lage.erreichbar) {
-      console.log('  Turnier erreichbar: ' + spiel.name + ' (' + spiel.eintraege + ' Eintraege), ' +
-        zustand.kartei.length + ' Personen in der Kartei');
-    } else {
-      console.log('  WARNUNG: Turnier-Server nicht erreichbar - ' + lage.letzterFehler);
-      console.log('  Es wird mit dem gespiegelten Stand vom ' + zeitpunkt(lage.gespiegeltAm) +
-        ' gearbeitet:');
-      console.log('  ' + spiel.name + ', ' + zustand.kartei.length + ' Personen. Neue Eintraege');
-      console.log('  werden gesammelt und nachgetragen, sobald turnier wieder da ist.');
-    }
-    console.log('');
-  } catch (err) {
-    console.log('  WARNUNG: Turnier-Server nicht erreichbar - ' + (err as Error).message);
-    console.log('  Und es gibt noch keinen gespiegelten Stand. Solange turnier nicht');
-    console.log('  wenigstens einmal geantwortet hat, werden Uploads abgewiesen - ohne');
-    console.log('  Kartei liesse sich kein Name zuordnen.');
-    console.log('');
-  }
-
-  // Beim Start gleich nachtragen, falls beim letzten Mal etwas liegenblieb.
-  nachtragen();
 
   process.on('SIGINT', () => {
     freigabe.jetztSpeichern();

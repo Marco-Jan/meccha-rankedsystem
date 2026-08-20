@@ -3,10 +3,9 @@
 
    Zwei Sorten Einstellungen, absichtlich getrennt:
 
-   - Umgebung (wo steht der Turnier-Server, welches Spiel) kommt aus
-     Env-Variablen, gesetzt in der START.bat. Genau wie im Turnier-Projekt
-     (server.js: process.env.PORT || 8777), damit du es kennst und kein
-     dotenv dazukommt.
+   - Umgebung (wo liegen die Daten, welcher Port, welcher Schluessel)
+     kommt aus Env-Variablen, gesetzt in EINSTELLUNGEN.bat. Bewusst ohne
+     dotenv - eine Abhaengigkeit weniger, und die .bat sieht man an.
 
    - Crop-Koordinaten kommen aus einer JSON-Datei, die das Kalibrier-CLI
      schreibt. Die aendern sich beim Einrichten dauernd und gehoeren
@@ -46,39 +45,18 @@ export function verteilung(): { server: string; clientVersion: string; discord: 
 }
 export const WARTESCHLANGE_DIR = path.join(PROJEKT_DIR, 'warteschlange');
 
-/* ------------------------------------------------------------- Turnier-Server */
-
-/*
-   WARNUNG: 8777 ist der LIVE-Server mit echten Turnierdaten. Beim
-   Entwickeln und Testen nie dagegen laufen - stattdessen den Turnier-
-   Server mit  set PORT=8778  auf einem eigenen Port starten und hier
-   TURNIER_URL entsprechend setzen. Die Tests in test/ starten sich
-   grundsaetzlich einen eigenen Server auf einem freien Port.
-*/
-export const TURNIER_URL = process.env.TURNIER_URL || 'http://localhost:8777';
-
-/** Nur noetig, wenn der Turnier-Server mit TURNIER_KEY gestartet wurde. */
-export const TURNIER_KEY = process.env.TURNIER_KEY || '';
+/* ------------------------------------------------------------------- Daten */
 
 /**
- * Wie lange auf den Turnier-Server gewartet wird, bevor er als nicht
- * erreichbar gilt.
+ * Wo die Laufzeitdaten liegen: Rangliste, Konten, Tokens, Freigabeliste
+ * und die hochgeladenen Bilder.
  *
- * Wichtig, seit mc-ranked auch ohne ihn weiterarbeitet: laeuft turnier
- * auf demselben Rechner, kommt die Absage sofort (ECONNREFUSED). Steht
- * er im Netz und antwortet gar nicht - Leitung weg, Rechner aus,
- * Firewall verschluckt die Pakete - wartet ein fetch ohne Zeitlimit
- * minutenlang. Jeder Upload eines Zuschauers wuerde so lange haengen,
- * obwohl der Kartei-Spiegel die Antwort danach ohnehin liefert.
+ * Hier stand frueher stattdessen die Adresse des Turnier-Servers, aus
+ * dem die Namensliste kam und in den die Punkte gingen. Seit dem
+ * 20.08.2026 ist mc-ranked eigenstaendig - es gibt nichts mehr
+ * anzuschliessen, nur noch einen Ordner. Siehe UMBAU.md.
  */
-export const TURNIER_TIMEOUT_MS = Number(process.env.MC_TURNIER_TIMEOUT || 8000);
-
-/**
- * Name der Punkteliste, in die eingetragen wird - so wie er im Admin steht.
- * Die gameId wird daraus zur Laufzeit aufgeloest, damit ein Umbenennen im
- * Admin nicht hier nachgezogen werden muss.
- */
-export const SPIEL_NAME = process.env.MC_SPIEL || 'Meccha 2026';
+export const DATEN_DIR = process.env.MC_DATEN || path.join(PROJEKT_DIR, 'daten');
 
 /* ------------------------------------------------------------------ Schwellen */
 

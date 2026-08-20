@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 
 import {
   nameKey, hartNormalisiert, levenshtein, ordneZu, istSicher,
-  type KarteiPerson
+  type Spieler
 } from '../src/namen.js';
 
 /*
@@ -11,7 +11,7 @@ import {
    keine erfundenen: der Abgleich muss gegen die Kartei funktionieren, die
    wirklich da ist.
 */
-const KARTEI: readonly KarteiPerson[] = [
+const SPIELER: readonly Spieler[] = [
   { id: 'r_qjfcfog', name: 'NorikoTv' },
   { id: 'r_zbpxa3z', name: 'Polosios' },
   { id: 'r_cp141h1', name: 'theRealBaloou' }
@@ -86,21 +86,21 @@ describe('levenshtein', () => {
 
 describe('ordneZu - Stufe 1: exakt', () => {
   test('trifft bei identischem Namen', () => {
-    const z = ordneZu('NorikoTv', KARTEI);
+    const z = ordneZu('NorikoTv', SPIELER);
     assert.equal(z.art, 'exakt');
     assert.ok(istSicher(z));
     if (z.art === 'exakt') assert.equal(z.person.id, 'r_qjfcfog');
   });
 
   test('trifft trotz anderer Gross-/Kleinschreibung', () => {
-    const z = ordneZu('NORIKOTV', KARTEI);
+    const z = ordneZu('NORIKOTV', SPIELER);
     assert.equal(z.art, 'exakt');
   });
 });
 
 describe('ordneZu - Stufe 2: normalisiert', () => {
   test('findet den Namen hinter der Deko', () => {
-    const z = ordneZu('theRealBaloou!', KARTEI);
+    const z = ordneZu('theRealBaloou!', SPIELER);
     assert.equal(z.art, 'normalisiert');
     assert.ok(istSicher(z));
     if (z.art === 'normalisiert') {
@@ -111,7 +111,7 @@ describe('ordneZu - Stufe 2: normalisiert', () => {
   });
 
   test('meldet mehrdeutig, wenn zwei Karteinamen sich nur in Deko unterscheiden', () => {
-    const zwei: KarteiPerson[] = [
+    const zwei: Spieler[] = [
       { id: 'a', name: 'Baloou' },
       { id: 'b', name: 'B_a_l_o_o_u' }
     ];
@@ -127,7 +127,7 @@ describe('ordneZu - Stufe 2: normalisiert', () => {
 
 describe('ordneZu - Stufe 3: fuzzy', () => {
   test('faengt den klassischen OCR-Fehler O statt 0 ab', () => {
-    const z = ordneZu('N0rikoTv', KARTEI);   // 8 Zeichen -> Distanz 1 erlaubt
+    const z = ordneZu('N0rikoTv', SPIELER);   // 8 Zeichen -> Distanz 1 erlaubt
     assert.equal(z.art, 'fuzzy');
     assert.ok(istSicher(z));
     if (z.art === 'fuzzy') {
@@ -139,7 +139,7 @@ describe('ordneZu - Stufe 3: fuzzy', () => {
 
   test('erlaubt bei langen Namen zwei Fehler', () => {
     // theRealBaloou hart = 13 Zeichen -> Distanz 2 erlaubt
-    const z = ordneZu('theRea1Ba1oou', KARTEI);
+    const z = ordneZu('theRea1Ba1oou', SPIELER);
     assert.equal(z.art, 'fuzzy');
     if (z.art === 'fuzzy') assert.equal(z.person.name, 'theRealBaloou');
   });
@@ -147,14 +147,14 @@ describe('ordneZu - Stufe 3: fuzzy', () => {
   test('verweigert bei kurzen Namen jede Abweichung', () => {
     // Der wichtigste Test hier: Tom und Tim sind verschiedene Leute, auch
     // wenn sie nur 1 auseinanderliegen.
-    const kurz: KarteiPerson[] = [{ id: 'a', name: 'Tom' }];
+    const kurz: Spieler[] = [{ id: 'a', name: 'Tom' }];
     const z = ordneZu('Tim', kurz);
     assert.equal(z.art, 'unbekannt');
     assert.equal(istSicher(z), false);
   });
 
   test('raet nicht, wenn zwei Kandidaten gleich nah sind', () => {
-    const aehnlich: KarteiPerson[] = [
+    const aehnlich: Spieler[] = [
       { id: 'a', name: 'Spielerin' },
       { id: 'b', name: 'Spielerix' }
     ];
@@ -167,13 +167,13 @@ describe('ordneZu - Stufe 3: fuzzy', () => {
 
 describe('ordneZu - unbekannt', () => {
   test('meldet unbekannt bei echtem Fremdnamen', () => {
-    const z = ordneZu('Qw3rty', KARTEI);
+    const z = ordneZu('Qw3rty', SPIELER);
     assert.equal(z.art, 'unbekannt');
     assert.equal(istSicher(z), false);
   });
 
   test('meldet unbekannt bei reiner Deko', () => {
-    const z = ordneZu('★☆★', KARTEI);
+    const z = ordneZu('★☆★', SPIELER);
     assert.equal(z.art, 'unbekannt');
   });
 
@@ -191,7 +191,7 @@ describe('ordneZu - Aliase', () => {
      Die Aliase stehen im Server schon in nameKey-Form - siehe
      turnier/kartei.js:99 und :120.
   */
-  const MIT_ALIAS: readonly KarteiPerson[] = [
+  const MIT_ALIAS: readonly Spieler[] = [
     { id: 'r_cp141h1', name: 'theRealBaloou', aliases: ['baloou'] },
     { id: 'r_qjfcfog', name: 'NorikoTv', aliases: [] }
   ];
@@ -228,13 +228,13 @@ describe('ordneZu - Aliase', () => {
 
   test('funktioniert ohne aliases-Feld weiter (aeltere Serverfassung)', () => {
     // Faellt das Feld weg, ist das die alte Lage - kein Absturz.
-    const ohne: KarteiPerson[] = [{ id: 'a', name: 'theRealBaloou' }];
+    const ohne: Spieler[] = [{ id: 'a', name: 'theRealBaloou' }];
     assert.equal(ordneZu('theRealBaloou', ohne).art, 'exakt');
     assert.equal(ordneZu('Baloou', ohne).art, 'unbekannt');
   });
 
   test('gibt der Person mit passendem Alias den Vorzug vor einem Fuzzy-Treffer', () => {
-    const beide: KarteiPerson[] = [
+    const beide: Spieler[] = [
       { id: 'a', name: 'Skylit', aliases: [] },
       { id: 'b', name: 'Zweiter', aliases: ['skylitt'] }
     ];

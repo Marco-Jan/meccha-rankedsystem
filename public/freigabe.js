@@ -47,16 +47,15 @@
       'Zuletzt entschieden': 'Recently decided',
       'Noch nichts entschieden.': 'Nothing decided yet.',
 
-      'Turnier erreichbar': 'Tournament reachable',
+      'Spieler mit Ingame-Name': 'Players with in-game name',
+      'Einträge in der Wertung': 'Entries in the ranking',
+      'in der Wertung': 'ranked',
+      'Anwärter': 'Contenders',
+      '{0} Einträge insgesamt': '{0} entries in total',
       'nicht erreichbar': 'unreachable',
-      'Turnier-Server': 'Tournament server',
-      'Kartei gespiegelt': 'Roster mirrored',
-      'Einträge in der Liste': 'entries in the list',
-      'Personen in der Kartei': 'people in the roster',
       'offen': 'open',
       'freigegeben': 'approved',
       'Leser': 'Reader',
-      'warten auf Eintrag – klicken': 'waiting to be entered – click',
       'gesperrt': 'locked',
 
       'Anmeldung nötig': 'Sign-in required',
@@ -96,7 +95,6 @@
       'Warum abgelehnt?': 'Why rejected?',
       'Der Zuschauer bekommt diesen Text zu lesen.': 'The viewer will read this text.',
       '{0} Einträge geschrieben': '{0} entries written',
-      ', {0} warten auf den Turnier-Server': ', {0} waiting for the tournament server',
       ', {0} nicht zugeordnet': ', {0} unmatched',
       'Abgelehnt.': 'Rejected.',
       'Fehler: {0}': 'Error: {0}',
@@ -153,11 +151,8 @@
       'bearbeitete Screenshots': 'edited screenshots',
       'Gesperrt.': 'Blocked.',
 
-      '{0} nachgetragen, {1} noch offen': '{0} entered, {1} still open',
       'Geht noch nicht: {0}': 'Not yet: {0}',
       'Server nicht erreichbar: {0}': 'Server unreachable: {0}',
-      'Stand vom letzten Kontakt – turnier ist gerade weg':
-        'State from last contact – tournament server is away',
 
       'gerade eben': 'just now',
       'vor {0} min': '{0} min ago',
@@ -184,16 +179,15 @@
       'Zuletzt entschieden': '最近处理',
       'Noch nichts entschieden.': '尚未处理任何对局。',
 
-      'Turnier erreichbar': '比赛服务器正常',
+      'Spieler mit Ingame-Name': '已填游戏内名称的玩家',
+      'Einträge in der Wertung': '排名条目',
+      'in der Wertung': '已计入排名',
+      'Anwärter': '候补',
+      '{0} Einträge insgesamt': '共 {0} 条',
       'nicht erreichbar': '无法连接',
-      'Turnier-Server': '比赛服务器',
-      'Kartei gespiegelt': '名册镜像',
-      'Einträge in der Liste': '列表中的记录',
-      'Personen in der Kartei': '名册中的人数',
       'offen': '待处理',
       'freigegeben': '已批准',
       'Leser': '识别方式',
-      'warten auf Eintrag – klicken': '等待写入 — 点击处理',
       'gesperrt': '已锁定',
 
       'Anmeldung nötig': '需要登录',
@@ -233,7 +227,6 @@
       'Warum abgelehnt?': '拒绝原因？',
       'Der Zuschauer bekommt diesen Text zu lesen.': '观众会看到这段文字。',
       '{0} Einträge geschrieben': '已写入 {0} 条记录',
-      ', {0} warten auf den Turnier-Server': '，{0} 条等待比赛服务器',
       ', {0} nicht zugeordnet': '，{0} 条未匹配',
       'Abgelehnt.': '已拒绝。',
       'Fehler: {0}': '错误：{0}',
@@ -289,11 +282,8 @@
       'bearbeitete Screenshots': '修改过的截图',
       'Gesperrt.': '已封禁。',
 
-      '{0} nachgetragen, {1} noch offen': '已补录 {0} 条，{1} 条待处理',
       'Geht noch nicht: {0}': '暂时不行：{0}',
       'Server nicht erreichbar: {0}': '无法连接服务器：{0}',
-      'Stand vom letzten Kontakt – turnier ist gerade weg':
-        '上次连接时的状态 — 比赛服务器当前离线',
 
       'gerade eben': '刚刚',
       'vor {0} min': '{0} 分钟前',
@@ -579,43 +569,20 @@
           b.style.display = (nurAdmin && stufe !== 'admin') ? 'none' : '';
         });
 
-      var tn = a.body.turnier;
+      var w = a.body.wertung;
 
-      /* Der Turnier-Status zuerst und notfalls rot: dass der Server nicht
-         erreichbar ist, war beim Testen die haeufigste Ursache dafuer,
-         dass scheinbar nichts passiert. */
-      ziel.appendChild(tn.erreichbar
-        ? kachel(tn.spiel, t('Turnier erreichbar'))
-        : kachel(t('nicht erreichbar'), tn.fehler || t('Turnier-Server'), true));
+      /* Hier stand frueher der Turnier-Status - "erreichbar ja/nein" war
+         beim Testen die haeufigste Ursache dafuer, dass scheinbar nichts
+         passiert. Seit die Wertung im eigenen Haus liegt, kann das nicht
+         mehr schiefgehen; an seine Stelle tritt die Frage, die jetzt die
+         haeufigste Ursache ist: steht ueberhaupt jemand mit Ingame-Namen
+         da, dem sich eine Zeile zuordnen laesst? */
+      ziel.appendChild(kachel(String(w.spieler), t('Spieler mit Ingame-Name'),
+        w.spieler === 0));
 
-      /* Ist turnier weg, arbeitet der Server mit der zuletzt gespiegelten
-         Kartei weiter. Das muss dastehen - sonst sieht die Zuordnung aus
-         wie immer, obwohl sie auf einem alten Stand beruht und ein neu
-         angelegter Spieler darin fehlt. */
-      if (tn.ausSpiegel) {
-        ziel.appendChild(kachel(alter(tn.gespiegeltAm), t('Kartei gespiegelt'), true));
-      }
-
-      ziel.appendChild(kachel(String(tn.eintraege), t('Einträge in der Liste')));
-      ziel.appendChild(kachel(String(tn.kartei), t('Personen in der Kartei')));
-
-      /* Was noch auf turnier wartet. Anklickbar, damit man nicht auf den
-         Minutentakt warten muss, wenn turnier gerade zurückkommt. */
-      var n = a.body.nachtrag || { wartend: 0 };
-      if (n.wartend > 0) {
-        var k = kachel(String(n.wartend), t('warten auf Eintrag – klicken'), true);
-        k.style.cursor = 'pointer';
-        k.title = n.letzterFehler || '';
-        k.addEventListener('click', function () {
-          anfrage('/api/nachtrag-jetzt', { method: 'POST' }).then(function (b) {
-            melde(b.body.erledigt > 0
-              ? tv('{0} nachgetragen, {1} noch offen', [b.body.erledigt, b.body.offen])
-              : tv('Geht noch nicht: {0}', [b.body.fehler || '?']), 8000);
-            ladeStatus();
-          });
-        });
-        ziel.appendChild(k);
-      }
+      ziel.appendChild(kachel(String(w.eintraege), t('Einträge in der Wertung')));
+      ziel.appendChild(kachel(String(w.gewertet), t('in der Wertung')));
+      ziel.appendChild(kachel(String(w.anwaerter), t('Anwärter')));
       /* Der Zaehler im Reiter, damit man offene Runden auch dann sieht,
          wenn gerade ein anderer Reiter offen ist. */
       var offenZahl = $('r-offen');
@@ -631,28 +598,26 @@
       l.title = a.body.leser;
       ziel.appendChild(l);
 
-      zeigeLetzte(tn);
+      zeigeLetzte(w);
     }).catch(function (e) {
       $('status').textContent = tv('Server nicht erreichbar: {0}', [e.message]);
     });
   }
 
   /**
-   * Was tatsächlich in der Punkteliste steht.
+   * Was tatsächlich in der Rangliste steht.
    *
-   * Die Gegenprobe zu „freigegeben": zwischen deinem Klick und der Zeile
-   * dort liegt der Turnier-Server, und wenn der gerade weg ist, wartet
-   * der Eintrag nur. Hier siehst du, was wirklich angekommen ist, ohne
-   * ins Turnier-Admin wechseln zu müssen.
+   * Die Gegenprobe zu „freigegeben": hier siehst du, was wirklich
+   * angekommen ist, statt nur zu wissen, dass du geklickt hast.
    */
-  function zeigeLetzte(tn) {
+  function zeigeLetzte(w) {
     var koerper = $('letzte').tBodies[0];
-    var eintraege = tn.letzte || [];
+    var eintraege = w.letzte || [];
     koerper.innerHTML = '';
 
     $('letzte-leer').style.display = eintraege.length ? 'none' : 'block';
     $('letzte-zaehler').textContent = eintraege.length
-      ? (tn.ausSpiegel ? t('Stand vom letzten Kontakt – turnier ist gerade weg') : tn.spiel)
+      ? tv('{0} Einträge insgesamt', [w.eintraege])
       : '';
 
     eintraege.forEach(function (e) {
@@ -910,10 +875,9 @@
       }
       melde(status === 'freigegeben'
         ? tv('{0} Einträge geschrieben', [a.body.geschrieben]) +
-          /* Ist turnier gerade weg, sind sie nicht verloren, sondern
-             vorgemerkt. Das muss hier stehen, sonst liest sich
-             "0 Einträge geschrieben" wie ein Fehlschlag. */
-          (a.body.gemerkt ? tv(', {0} warten auf den Turnier-Server', [a.body.gemerkt]) : '') +
+          /* Was nicht zugeordnet werden konnte, gehört dazu - sonst liest
+             sich "0 Einträge geschrieben" wie ein Fehlschlag, obwohl in
+             Wahrheit nur niemand aus der Zeile bekannt war. */
           (a.body.offen ? tv(', {0} nicht zugeordnet', [a.body.offen]) : '')
         : t('Abgelehnt.'));
       lade();

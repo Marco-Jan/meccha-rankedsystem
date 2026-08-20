@@ -11,8 +11,8 @@ import { bearbeiteKonto, SITZUNG_COOKIE } from '../src/konto-api.js';
 import { ladeKonten, ADMIN_STEAM, type Kontenliste } from '../src/konten.js';
 import { ladeTokens, type Tokenliste } from '../src/tokens.js';
 import { ladeFreigabeliste, type Freigabeliste } from '../src/freigabe.js';
-import type { KarteiPerson } from '../src/namen.js';
-import type { Spiel } from '../src/turnier-client.js';
+import type { Spieler } from '../src/namen.js';
+import { standMit } from './hilfe-stand.js';
 
 /* =========================================================================
    WER DARF WAS
@@ -30,8 +30,7 @@ import type { Spiel } from '../src/turnier-client.js';
 const ORDNER = mkdtempSync(path.join(tmpdir(), 'mc-rollen-'));
 after(() => rmSync(ORDNER, { recursive: true, force: true }));
 
-const KARTEI: readonly KarteiPerson[] = [{ id: 'p1', name: 'Jones', aliases: [] }];
-const SPIEL: Spiel = { id: 'sp_test', name: 'Meccha', eintraege: 0 };
+const SPIELER: readonly Spieler[] = [{ id: 'p1', name: 'Jones', aliases: [] }];
 const SCHLUESSEL = 'notausgang-schluessel';
 
 const STEAM_A = '76561198000000001';
@@ -51,11 +50,8 @@ before(async () => {
       adminKey: SCHLUESSEL,
       konten,
       tokens,
-      holeZustand: async () => ({
-        zustand: { kartei: KARTEI, spiele: [SPIEL], fenster: 10, voll: 10 },
-        spiel: SPIEL
-      }),
-      eintragen: async () => { /* nichts */ }
+      holeStand: () => standMit(SPIELER),
+      eintragen: () => { /* nichts */ }
     });
     if (behandelt) return;
 

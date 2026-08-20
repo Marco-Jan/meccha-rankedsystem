@@ -27,10 +27,6 @@ import { leseListe, ModellAntwortUnbrauchbar, type ModellFrage } from './leser.j
 import { waehleLeser } from './leser-wahl.js';
 import { bewerteRunde, teileAuf, personVon } from './runde.js';
 import { ordneZu, istSicher, nameKey } from './namen.js';
-import {
-  ladeZustand, findeSpiel, trageEin,
-  type TurnierZustand, type Spiel
-} from './turnier-client.js';
 import { pruefeBild, type Bildbefund } from './bildpruefung.js';
 import { pruefeVerdacht } from './verdacht.js';
 import { verteilung } from './config.js';
@@ -38,8 +34,7 @@ import { bearbeiteFreigabe } from './freigabe-api.js';
 import { bearbeiteKonto } from './konto-api.js';
 import { kontoSeite } from './konto-seite.js';
 import type { Kontenliste } from './konten.js';
-import type { Karteispiegel } from './spiegel.js';
-import type { Nachtragliste, Eintragsergebnis } from './nachtrag.js';
+import type { Wertungsstand } from './wertung.js';
 import type { RohZeile } from './parse.js';
 
 /** Groesste erlaubte Bildgroesse. Ein 1920x1080-PNG liegt bei rund 2 MB. */
@@ -75,10 +70,11 @@ export interface ServerOptionen {
   readonly tokens: Tokenliste;
   readonly bilderDir: string;
   /**
-   * Zustand und Spiel werden je Anfrage frisch geholt, damit ein neu
-   * verknuepfter Name sofort wirkt. In Tests einsetzbar.
+   * Der Stand der Wertung, je Anfrage frisch geholt - damit ein Konto,
+   * das sich gerade angemeldet hat, sofort zugeordnet werden kann.
+   * In Tests einsetzbar.
    */
-  readonly holeZustand?: () => Promise<{ zustand: TurnierZustand; spiel: Spiel }>;
+  readonly holeStand: () => Wertungsstand;
   /**
    * Womit gelesen wird. Standard ist die Wahl aus leser-wahl.ts.
    *
@@ -97,15 +93,16 @@ export interface ServerOptionen {
    */
   readonly bildpruefer?: (bild: Buffer, typ: string) => Bildbefund;
   /**
-   * Wie ein Eintrag in die Punkteliste kommt. Standard ist trageEin aus
-   * turnier-client.ts. Ebenfalls herausgezogen, damit Tests laufen,
-   * ohne einen Turnier-Server zu brauchen - und ohne dabei versehentlich
-   * in echte Daten zu schreiben.
+   * Wie eine Punktzahl in die Rangliste kommt.
+   *
+   * Erwartet die KONTO-KENNUNG, nicht den gelesenen Namen: die Zuordnung
+   * hat namen.ts vorher gemacht, und hier noch einmal nach einem Namen
+   * zu suchen wuerde genau die Pruefung umgehen, die davor sitzt.
+   *
+   * Herausgezogen, damit Tests beobachten koennen, was eingetragen
+   * wuerde, ohne eine echte Rangliste anzulegen.
    */
-  readonly eintragen?: (
-    gameId: string,
-    e: { name: string; punkte: number }
-  ) => Promise<void | Eintragsergebnis>;
+  readonly eintragen: (kontoId: string, punkte: number) => void;
   /**
    * Schluessel fuer die Freigabe-Endpunkte. LEER heisst gesperrt, nicht
    * offen - wer die Einrichtung vergisst, soll keine Freigabe haben,
@@ -122,16 +119,6 @@ export interface ServerOptionen {
    * Serverumzug keine Codeaenderung braucht.
    */
   readonly oeffentlicheUrl?: string;
-  /**
-   * Kartei-Spiegel, falls der Server eigenstaendig laufen soll.
-   *
-   * Wird er mitgegeben, meldet das Dashboard, ob turnier gerade
-   * erreichbar ist und wie alt der gespiegelte Stand ist. Ohne ihn
-   * verhaelt sich alles wie vorher.
-   */
-  readonly spiegel?: Karteispiegel;
-  /** Warteschlange der Eintraege, die auf turnier warten. */
-  readonly nachtrag?: Nachtragliste;
   /**
    * Die ausgelieferte Client-Datei.
    *
@@ -192,16 +179,19 @@ function leseKoerper(req: http.IncomingMessage, max: number): Promise<Buffer> {
   });
 }
 
-async function standardZustand(): Promise<{ zustand: TurnierZustand; spiel: Spiel }> {
-  const zustand = await ladeZustand();
-  return { zustand, spiel: findeSpiel(zustand) };
-}
-
+/*
+   Frueher stand hier ein Standardweg, der den Turnier-Server anrief.
+   Den gibt es nicht mehr, und einen Ersatz soll es auch nicht geben:
+   die Wertung haengt an einer bestimmten Datei, und die kennt nur, wer
+   den Server startet. Ein stiller Standard wuerde bedeuten, dass ein
+   falsch verdrahteter Server trotzdem laeuft - und in eine Rangliste
+   schreibt, die niemand ansieht.
+*/
 export function baueServer(o: ServerOptionen): http.Server {
-  const holeZustand = o.holeZustand ?? standardZustand;
+  const holeStand = o.holeStand;
 
   return http.createServer((req, res) => {
-    void bearbeite(req, res, o, holeZustand).catch((err: unknown) => {
+    void bearbeite(req, res, o, holeStand).catch((err: unknown) => {
       // Ein unerwarteter Fehler darf den Server nicht mitnehmen.
       console.log('  Unerwarteter Fehler: ' + (err as Error).message);
       try {
@@ -217,7 +207,7 @@ async function bearbeite(
   req: http.IncomingMessage,
   res: http.ServerResponse,
   o: ServerOptionen,
-  holeZustand: () => Promise<{ zustand: TurnierZustand; spiel: Spiel }>
+  holeStand: () => Wertungsstand
 ): Promise<void> {
   const pfad = (req.url ?? '').split('?')[0]?.replace(/\/+$/, '') || '/';
 
@@ -225,12 +215,10 @@ async function bearbeite(
   const behandelt = await bearbeiteFreigabe(req, res, {
     freigabe: o.freigabe,
     adminKey: o.adminKey ?? '',
-    holeZustand,
-    eintragen: o.eintragen ?? trageEin,
+    holeStand,
+    eintragen: o.eintragen,
     tokens: o.tokens,
-    konten: o.konten,
-    spiegel: o.spiegel,
-    nachtrag: o.nachtrag
+    konten: o.konten
   });
   if (behandelt) return;
 
@@ -333,24 +321,15 @@ async function bearbeite(
     /*
        Zaehlt die Runde noch?
 
-       turnier wertet je Person die LETZTEN ZEHN Eintraege
+       Gewertet werden je Person die LETZTEN ZEHN Eintraege
        (listen.js:182). Aeltere sind nicht geloescht, sie fallen nur aus
        dem Fenster - fuer den Zuschauer sieht das aber genauso aus wie
        "nie angekommen", wenn niemand es ihm sagt.
 
        Gezaehlt wird ueber die eigenen freigegebenen Runden. Das ist eine
-       Naeherung: was du im Turnier-Admin von Hand eintraegst, weiss
-       dieser Server nicht. Fuer die Anzeige im Client reicht es.
+       Naeherung, solange nur ueber die Freigabe gezaehlt wird. Fuer die Anzeige im Client reicht es.
     */
-    let fenster = 10;
-    let voll = 10;
-    try {
-      const z = (await holeZustand()).zustand;
-      fenster = z.fenster || 10;
-      voll = z.voll || 10;
-    } catch {
-      /* Turnier weg - dann eben mit dem ueblichen Fenster rechnen. */
-    }
+    const { fenster, voll } = holeStand();
 
     /* Ab wann jemand ueberhaupt in der Wertung steht (listen.js:30).
        Der Client zeigt es an - sonst wundert sich ein Neuer, warum seine
@@ -391,31 +370,19 @@ async function bearbeite(
      DIE RANGLISTE - oeffentlich, ohne Anmeldung.
 
      Sie ist der Grund, warum jemand die Seite ueberhaupt aufruft.
-     turnier rechnet sie fertig (listen.js:168): Schnitt der letzten
-     zehn, Platzierung, Trennung Wertung/Anwaerter. Hier wird sie nur
+     Gerechnet wird sie in rangliste.ts: Schnitt der letzten zehn,
+     Platzierung, Trennung Wertung/Anwaerter. Hier wird sie nur
      durchgereicht.
-
-     Ueber den Kartei-Spiegel funktioniert das auch, waehrend turnier
-     gerade nicht antwortet - dann eben mit dem letzten bekannten Stand.
   */
   if (pfad === '/api/rangliste') {
-    try {
-      const { zustand, spiel } = await holeZustand();
-      return sendeJson(res, 200, {
-        ok: true,
-        liste: spiel.name,
-        fenster: zustand.fenster,
-        voll: zustand.voll,
-        gewertet: spiel.gewertet ?? [],
-        anwaerter: spiel.anwaerter ?? []
-      });
-    } catch {
-      /* Kein Spiegel, kein turnier - dann eben leer. Ein Fehler waere
-         hier uebertrieben: die Seite soll trotzdem laden. */
-      return sendeJson(res, 200, {
-        ok: true, liste: '', fenster: 10, voll: 10, gewertet: [], anwaerter: []
-      });
-    }
+    const stand = holeStand();
+    return sendeJson(res, 200, {
+      ok: true,
+      fenster: stand.fenster,
+      voll: stand.voll,
+      gewertet: stand.gewertet,
+      anwaerter: stand.anwaerter
+    });
   }
 
   /* Die Client-Datei zum Herunterladen - verlinkt von der Kontoseite.
@@ -614,6 +581,22 @@ async function bearbeite(
        "Abgelehnt" (rot, klingt nach Betrug) anzeigt, sondern neutral als
        "zaehlt nicht". Der Spieler hat nichts falsch gemacht - es waren
        nur zu wenige Verstecker in der Runde. */
+    /*
+       Der Hinweis richtet sich nach der Zahl, und das ist wichtiger als
+       es aussieht.
+
+       Bei 4 oder 5 Zeilen war die Lobby wirklich zu klein - da ist
+       nichts zu machen, und ein Ratschlag waere nur Hohn.
+
+       Bei 0 bis 2 Zeilen war es fast nie eine Mini-Lobby, sondern ein
+       Lesefehler. An 13 echten Screenshots gemessen (siehe UMBAU.md)
+       liefern die schlechten 0, 1, 2 und 5 Zeilen, die guten 7 bis 13 -
+       und was sie unterscheidet, ist der UNTERGRUND: die Schrift liegt
+       halbtransparent ueber der Spielwelt, und ueber buntem Boden
+       verschwindet sie. Genau dann braucht der Spieler den Rat, nicht
+       die Regel.
+    */
+    const wohlLesefehler = zeilen.length <= 2;
     return sendeJson(res, 422, {
       ok: false,
       art: 'zu-wenige-spieler',
@@ -621,6 +604,13 @@ async function bearbeite(
       erkannt: zeilen.length,
       fehler: 'Zaehlt nicht: nur ' + zeilen.length + ' Verstecker im Scoreboard, ' +
         'noetig sind ' + minAktiv,
+      hinweis: wohlLesefehler
+        ? 'So wenige Zeilen deuten eher auf ein schwer lesbares Bild als auf eine ' +
+          'kleine Runde. Druecke am ENDE der Runde, wenn die Rangliste vollstaendig ' +
+          'steht, und schau dabei auf einen ruhigen Hintergrund - Himmel oder eine ' +
+          'Wand statt buntem Boden. Die Schrift ist durchsichtig; ueber Bonbons und ' +
+          'Wiese verschwindet sie.'
+        : 'Die Runde war einfach zu klein. Ab ' + minAktiv + ' Versteckern zaehlt es.',
       zeilen: zeilen.map((z) => ({ rohName: z.rohName, rohPunkte: z.rohPunkte }))
     });
   }
@@ -716,20 +706,11 @@ async function bearbeite(
     });
   }
 
-  let zustand: TurnierZustand;
-  let spiel: Spiel;
-  try {
-    ({ zustand, spiel } = await holeZustand());
-  } catch (err) {
-    return sendeJson(res, 502, {
-      ok: false,
-      fehler: 'Turnier-Server nicht erreichbar: ' + (err as Error).message
-    });
-  }
+  const stand = holeStand();
 
   // Gewertet wird nur, was zuWerten enthaelt - bei Zuschauern die eine
   // eigene Zeile, bei eigenen Rechnern die ganze Lobby.
-  const bericht = teileAuf(bewerteRunde(zuWerten, zustand.kartei));
+  const bericht = teileAuf(bewerteRunde(zuWerten, stand.spieler));
 
   /*
      Dieselbe Punktzahl schon wieder?
@@ -808,27 +789,20 @@ async function bearbeite(
     o.freigabe.entscheiden(eigene.runde.id, 'freigegeben', token.name);
 
     let geschrieben = 0;
-    let gemerkt = 0;
-    const schreibe = o.eintragen ?? trageEin;
     for (const e of bericht.einzutragen) {
-      const wie = await schreibe(spiel.id, {
-        name: personVon(e)!.name,
-        punkte: e.zeile.punkte!.punkte
-      });
-      // 'gemerkt' heisst: turnier war nicht da, der Eintrag wartet. Nur
-      // die Nachtragsliste meldet das - ohne sie kommt undefined zurueck.
-      if (wie === 'gemerkt') gemerkt++; else geschrieben++;
+      // Konto-Kennung, nicht der gelesene Name - die Zuordnung ist oben
+      // schon passiert und soll hier nicht wieder aufgemacht werden.
+      o.eintragen(personVon(e)!.id, e.zeile.punkte!.punkte);
+      geschrieben++;
     }
     console.log('  ' + token.name + ' (' + (token.vertraut ? 'vertraut' : 'ohne Freigabe') +
-      '): ' + geschrieben + ' eingetragen, ' +
-      (gemerkt > 0 ? gemerkt + ' wartend, ' : '') + bericht.rueckfragen.length + ' offen');
+      '): ' + geschrieben + ' eingetragen, ' + bericht.rueckfragen.length + ' offen');
 
     return sendeJson(res, 200, {
       ok: true,
       neu: true,
       direkt: true,
       geschrieben,
-      gemerkt,
       eingetragen: bericht.einzutragen.map((e) => ({
         name: personVon(e)!.name,
         punkte: e.zeile.punkte!.punkte

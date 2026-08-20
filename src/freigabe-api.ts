@@ -10,9 +10,9 @@
      POST /api/entscheiden  freigeben oder ablehnen
      GET  /api/bild         das Bild zu einer Runde
 
-   Beim Freigeben wandert die Runde in die bestehende Punkteliste im
-   Turnier-Server - erst dann zaehlt sie. Das ist der Punkt, an dem aus
-   einer Einreichung ein Ergebnis wird.
+   Beim Freigeben wandert die Runde in die Rangliste - erst dann zaehlt
+   sie. Das ist der Punkt, an dem aus einer Einreichung ein Ergebnis
+   wird.
    ========================================================================= */
 
 import http from 'node:http';
@@ -24,37 +24,25 @@ import { Freigabeliste, type OffeneRunde } from './freigabe.js';
 import { Tokenliste, brauchtFreigabe } from './tokens.js';
 import type { Kontenliste } from './konten.js';
 import { cookieLesen, SITZUNG_COOKIE } from './konto-api.js';
-import type { Karteispiegel } from './spiegel.js';
-import type { Nachtragliste, Eintragsergebnis } from './nachtrag.js';
 import { leserBeschreibung } from './leser-wahl.js';
 import { bewerteRunde, teileAuf, personVon } from './runde.js';
 import { nameKey } from './namen.js';
 import {
   fruehereAblehnungen, verlaufVon, pruefeVerdacht, type Verlaufseintrag
 } from './verdacht.js';
-import type { TurnierZustand, Spiel } from './turnier-client.js';
+import type { Wertungsstand } from './wertung.js';
 
 export interface FreigabeApiOptionen {
   readonly freigabe: Freigabeliste;
   /** Ohne Schluessel sind die Endpunkte gesperrt - nicht offen. */
   readonly adminKey: string;
-  readonly holeZustand: () => Promise<{ zustand: TurnierZustand; spiel: Spiel }>;
-  readonly eintragen: (
-    gameId: string,
-    e: { name: string; punkte: number }
-  ) => Promise<void | Eintragsergebnis>;
+  readonly holeStand: () => Wertungsstand;
+  /** Erwartet die Konto-Kennung, nicht den gelesenen Namen. */
+  readonly eintragen: (kontoId: string, punkte: number) => void;
   /** Fuer die Tokenverwaltung im Dashboard. */
   readonly tokens?: Tokenliste | undefined;
   /** Fuer die Kontenverwaltung im Dashboard. */
   readonly konten?: Kontenliste | undefined;
-  /**
-   * Kartei-Spiegel. Nur zum ANZEIGEN - das Dashboard soll sagen koennen,
-   * ob turnier gerade da ist und wie alt der gespiegelte Stand ist.
-   * Ohne ihn meldet der Status wie frueher nur "erreichbar: ja/nein".
-   */
-  readonly spiegel?: Karteispiegel | undefined;
-  /** Warteschlange der Eintraege, die auf turnier warten. */
-  readonly nachtrag?: Nachtragliste | undefined;
 }
 
 function sendeJson(res: http.ServerResponse, code: number, obj: unknown): void {
@@ -206,8 +194,7 @@ export async function bearbeiteFreigabe(
   const meine = [
     '/api/offene', '/api/entscheiden', '/api/bild',
     '/api/uebersicht', '/api/tokens', '/api/token-neu', '/api/token-sperren',
-    '/api/konten', '/api/konto-admin',
-    '/api/nachtrag', '/api/nachtrag-jetzt', '/api/nachtrag-loeschen'
+    '/api/konten', '/api/konto-admin'
   ];
   if (!meine.includes(pfad)) return false;
 
@@ -243,59 +230,31 @@ export async function bearbeiteFreigabe(
   if (pfad === '/api/uebersicht') {
     /*
        Der wichtigste Teil des Dashboards: laeuft alles, was laufen muss?
-       Beim Testen war die haeufigste Ursache fuer "es tut nichts", dass
-       der Turnier-Server nicht erreichbar war - das sieht man hier auf
-       einen Blick statt es aus Logzeilen zu raten.
+
+       Hier stand frueher die Frage "ist der Turnier-Server erreichbar?",
+       samt Spiegelalter und Nachtragszaehler - die haeufigste Ursache
+       fuer "es tut nichts". Seit die Wertung im eigenen Haus liegt, kann
+       diese Frage nicht mehr mit Nein beantwortet werden, und die ganze
+       Rubrik faellt weg.
     */
-    let turnierOk = false;
-    let spielName = '';
-    let eintraege = 0;
-    let kartei = 0;
-    let fehler = '';
-    let letzte: ReadonlyArray<{ id: string; name: string; punkte: number; zeit: number }> = [];
-
-    try {
-      const { zustand, spiel } = await o.holeZustand();
-      turnierOk = true;
-      spielName = spiel.name;
-      eintraege = spiel.eintraege;
-      kartei = zustand.kartei.length;
-      letzte = spiel.letzte ?? [];
-    } catch (err) {
-      fehler = (err as Error).message;
-    }
-
-    /*
-       Mit Spiegel antwortet holeZustand() auch dann, wenn turnier weg ist
-       - es kommt eben der gespiegelte Stand. Ohne die folgende Zeile
-       stuende im Dashboard "erreichbar", obwohl seit Stunden niemand
-       drangeht. Die Lage weiss der Spiegel, nicht der Aufruf.
-    */
-    const lage = o.spiegel?.lage();
-    if (lage) {
-      turnierOk = lage.erreichbar;
-      if (!lage.erreichbar) fehler = lage.letzterFehler ?? '';
-    }
-
+    const stand = o.holeStand();
     const alle = o.freigabe.alle();
+
     sendeJson(res, 200, {
       ok: true,
-      turnier: {
-        erreichbar: turnierOk, spiel: spielName, eintraege, kartei, fehler,
-        /* Woher die Kartei kommt, mit der gerade zugeordnet wird. Steht
-           hier drin, damit im Dashboard nicht der Eindruck entsteht, die
-           Zuordnung waere auf dem neuesten Stand. */
-        ausSpiegel: lage?.ausSpiegel ?? false,
-        gespiegeltAm: lage?.gespiegeltAm ?? null,
-        /* Was tatsaechlich in der Punkteliste steht - die Gegenprobe zu
-           "freigegeben". Kommt aus dem Turnier-Server; ist der gerade weg,
-           ist es der gespiegelte Stand und damit aelter als die Anzeige
-           sonst. Deshalb steht ausSpiegel gleich daneben. */
-        letzte
-      },
-      nachtrag: {
-        wartend: o.nachtrag?.anzahl() ?? 0,
-        letzterFehler: o.nachtrag?.alle()[0]?.letzterFehler ?? null
+      wertung: {
+        /* Wer zugeordnet werden kann: angemeldete Konten mit
+           Ingame-Namen. Steht ein Name nicht dabei, wird seine Zeile zur
+           Rueckfrage - deshalb ist die Zahl hier interessant. */
+        spieler: stand.spieler.length,
+        eintraege: stand.eintraege,
+        fenster: stand.fenster,
+        voll: stand.voll,
+        gewertet: stand.gewertet.length,
+        anwaerter: stand.anwaerter.length,
+        /* Was tatsaechlich in der Rangliste steht - die Gegenprobe zu
+           "freigegeben". */
+        letzte: stand.letzte
       },
       /* Damit das Dashboard weiss, was es anzeigen darf - ein Mod sieht
          die Reiter fuer Konten und Zugaenge gar nicht erst. */
@@ -308,67 +267,6 @@ export async function bearbeiteFreigabe(
       },
       tokens: o.tokens ? o.tokens.alle().length : 0
     });
-    return true;
-  }
-
-  /* ---------------------------------------------------------- Nachtrag
-
-     Was noch auf turnier wartet. Steht im Dashboard, damit nicht der
-     Eindruck entsteht, alles sei eingetragen - und damit du im Zweifel
-     nachsehen kannst, welche Punktzahl noch fehlt.
-  */
-  if (pfad === '/api/nachtrag') {
-    sendeJson(res, 200, {
-      ok: true,
-      wartend: (o.nachtrag?.alle() ?? []).map((n) => ({
-        id: n.id,
-        name: n.name,
-        punkte: n.punkte,
-        absender: n.absender ?? null,
-        erstellt: n.erstellt,
-        versuche: n.versuche,
-        letzterFehler: n.letzterFehler
-      }))
-    });
-    return true;
-  }
-
-  /* Von Hand anstossen, statt auf den naechsten Takt zu warten. */
-  if (pfad === '/api/nachtrag-jetzt') {
-    if (req.method !== 'POST') {
-      sendeJson(res, 405, { ok: false, fehler: 'Nur POST' });
-      return true;
-    }
-    if (!o.nachtrag) {
-      sendeJson(res, 200, { ok: true, erledigt: 0, offen: 0, fehler: null });
-      return true;
-    }
-    const a = await o.nachtrag.arbeiteAb();
-    sendeJson(res, 200, { ok: true, ...a });
-    return true;
-  }
-
-  /*
-     Einen Nachtrag wegwerfen. Gebraucht fuer den einen Fall, den die
-     Warteschlange nicht selbst aufloesen kann: der Eintrag ist in
-     Wahrheit schon drin (Antwort verlorengegangen), und ein Nachtragen
-     wuerde ihn doppeln. Siehe Kopf von nachtrag.ts.
-  */
-  if (pfad === '/api/nachtrag-loeschen') {
-    if (req.method !== 'POST') {
-      sendeJson(res, 405, { ok: false, fehler: 'Nur POST' });
-      return true;
-    }
-    let daten: { id?: string } = {};
-    try {
-      daten = JSON.parse(await leseKoerper(req)) as typeof daten;
-    } catch {
-      sendeJson(res, 400, { ok: false, fehler: 'Ungueltige Daten' });
-      return true;
-    }
-    const weg = o.nachtrag?.loesche(String(daten.id ?? '')) ?? false;
-    sendeJson(res, weg ? 200 : 404,
-      weg ? { ok: true } : { ok: false, fehler: 'Nachtrag nicht gefunden' });
     return true;
   }
 
@@ -653,17 +551,7 @@ export async function bearbeiteFreigabe(
     return true;
   }
 
-  let zustand: TurnierZustand;
-  let spiel: Spiel;
-  try {
-    ({ zustand, spiel } = await o.holeZustand());
-  } catch (err) {
-    sendeJson(res, 502, {
-      ok: false,
-      fehler: 'Turnier-Server nicht erreichbar: ' + (err as Error).message
-    });
-    return true;
-  }
+  const stand = o.holeStand();
 
   /*
      NUR die beanspruchten Zeilen werten - nicht alles, was im Bild
@@ -684,40 +572,34 @@ export async function bearbeiteFreigabe(
     ? [...runde.zeilen]                       // aeltere Eintraege ohne Angabe
     : runde.zeilen.filter((z) => beansprucht.includes(nameKey(z.rohName)));
 
-  const bericht = teileAuf(bewerteRunde(zuWerten, zustand.kartei));
+  const bericht = teileAuf(bewerteRunde(zuWerten, stand.spieler));
 
+  /*
+     Erst schreiben, dann als entschieden vermerken.
+
+     Frueher konnte das Schreiben scheitern (der Turnier-Server war weg),
+     und dieser Block war entsprechend umfangreich: Teilerfolge zaehlen,
+     502 melden, die Runde offen lassen, im Nachtrag merken. Eine Datei
+     auf derselben Platte kennt diesen Zustand nicht - sie schreibt oder
+     der Prozess ist tot.
+
+     Die Reihenfolge bleibt trotzdem: kaeme das Entscheiden zuerst und
+     das Schreiben danach schief, staende die Runde als freigegeben da,
+     ohne dass Punkte angekommen waeren - und niemand wuerde es je
+     bemerken.
+  */
   let geschrieben = 0;
-  let gemerkt = 0;
-  try {
-    for (const e of bericht.einzutragen) {
-      const wie = await o.eintragen(spiel.id, {
-        name: personVon(e)!.name,
-        punkte: e.zeile.punkte!.punkte
-      });
-      /* Mit Nachtragsliste wirft das Eintragen nicht mehr, wenn turnier
-         weg ist - es meldet 'gemerkt'. Die Runde gilt trotzdem als
-         freigegeben: entschieden hast DU, das Schreiben ist nur
-         verzoegert. Sonst muesstest du dieselbe Runde spaeter nochmal
-         freigeben, und die schon geschriebenen Zeilen waeren doppelt. */
-      if (wie === 'gemerkt') gemerkt++; else geschrieben++;
-    }
-  } catch (err) {
-    // Teilweise eingetragen: die Runde bleibt offen, damit du siehst,
-    // dass etwas schiefging. Erneutes Freigeben wuerde das Bereits-
-    // Eingetragene allerdings doppeln - deshalb steht es in der Meldung.
-    sendeJson(res, 502, {
-      ok: false,
-      fehler: 'Eintragen fehlgeschlagen nach ' + geschrieben + ' von ' +
-        bericht.einzutragen.length + ' Zeilen: ' + (err as Error).message
-    });
-    return true;
+  for (const e of bericht.einzutragen) {
+    // Die Konto-Kennung, nicht der gelesene Name - sonst waere die
+    // Zuordnung, die gerade stattgefunden hat, wieder aufgeworfen.
+    o.eintragen(personVon(e)!.id, e.zeile.punkte!.punkte);
+    geschrieben++;
   }
 
   const e = o.freigabe.entscheiden(runde.id, 'freigegeben', String(daten.von ?? 'Admin'));
   sendeJson(res, 200, {
     ok: e.ok,
     geschrieben,
-    gemerkt,
     offen: bericht.rueckfragen.length,
     ...(e.ok ? {} : { fehler: e.fehler })
   });

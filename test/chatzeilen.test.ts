@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 
 import { pruefeAntwort, alsRohZeilen } from '../src/leser.js';
 import { bewerteRunde, teileAuf } from '../src/runde.js';
-import type { KarteiPerson } from '../src/namen.js';
+import type { Spieler } from '../src/namen.js';
 
 /* =========================================================================
    Meccha blendet Spielchat ein ("Thingy hat dir ein X gegeben"). Liegt so
@@ -17,7 +17,7 @@ import type { KarteiPerson } from '../src/namen.js';
    Die Beispiele stammen aus echten Screenshots.
    ========================================================================= */
 
-const KARTEI: readonly KarteiPerson[] = [
+const SPIELER: readonly Spieler[] = [
   { id: 'p1', name: 'Baloou', aliases: [] },
   { id: 'p2', name: 'Thingy', aliases: [] },
   { id: 'p3', name: 'Taur131', aliases: [] }
@@ -34,7 +34,7 @@ describe('Chatzeilen landen nicht in der Wertung', () => {
       { name: 'Baloou', rohPunkte: '2614' },
       { name: 'Thingy hat dir ein .Eevan', rohPunkte: 'geben' }
     ]);
-    const bericht = teileAuf(bewerteRunde(zeilen, KARTEI));
+    const bericht = teileAuf(bewerteRunde(zeilen, SPIELER));
 
     assert.equal(bericht.einzutragen.length, 1);
     assert.equal(bericht.einzutragen[0]?.zeile.rohName, 'Baloou');
@@ -44,7 +44,7 @@ describe('Chatzeilen landen nicht in der Wertung', () => {
     // Verschwinden waere schlechter als auffallen - sonst merkt niemand,
     // dass da etwas Fremdes im Bild lag.
     const zeilen = lies([{ name: 'Thingy hat dir ein .Eevan', rohPunkte: 'geben' }]);
-    const bericht = teileAuf(bewerteRunde(zeilen, KARTEI));
+    const bericht = teileAuf(bewerteRunde(zeilen, SPIELER));
 
     assert.equal(bericht.einzutragen.length, 0);
     assert.equal(bericht.rueckfragen.length, 1);
@@ -67,7 +67,7 @@ describe('Verlesene Ziffern bleiben erhalten', () => {
   test('so eine Zeile geht in die Rueckfrage, nicht in die Wertung', () => {
     const bericht = teileAuf(bewerteRunde(lies([
       { name: 'Taur131', rohPunkte: '44B' }
-    ]), KARTEI));
+    ]), SPIELER));
 
     assert.equal(bericht.einzutragen.length, 0);
     assert.equal(bericht.rueckfragen.length, 1);

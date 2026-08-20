@@ -21,8 +21,8 @@
 
 import { ueberwache, codeFuer, tastenListe } from '../tasten.js';
 import { fuehreDurch, zeigeErgebnis } from '../durchlauf.js';
-import { ladeZustand, findeSpiel } from '../turnier-client.js';
-import { TURNIER_URL, SPIEL_NAME } from '../config.js';
+import { ladeWertungAusOrdner } from '../wertung.js';
+import { DATEN_DIR } from '../config.js';
 import { leserBeschreibung } from '../leser-wahl.js';
 import { listeBildschirme, type Ausschnitt } from '../screenshot.js';
 
@@ -57,10 +57,11 @@ async function main(): Promise<void> {
     ausschnitt = { x: t[0]!, y: t[1]!, breite: t[2]!, hoehe: t[3]! };
   }
 
-  // Zuerst den Server fragen. Fehlt er, soll das jetzt auffallen und nicht
-  // erst beim ersten Tastendruck mitten im Spiel.
-  const zustand = await ladeZustand();
-  const spiel = findeSpiel(zustand);
+  /* Die Wertung einmal oeffnen. Faellt dabei etwas auf - kein einziger
+     Spieler mit Ingame-Namen etwa -, soll das jetzt sichtbar werden und
+     nicht erst beim ersten Tastendruck mitten im Spiel. */
+  const { wertung } = ladeWertungAusOrdner(DATEN_DIR);
+  const stand = wertung.stand();
 
   const monitore = listeBildschirme();
   const m = bildschirm > 0 ? monitore[bildschirm - 1] : monitore.find((x) => x.primaer);
@@ -70,9 +71,10 @@ async function main(): Promise<void> {
   console.log('  #   M E C C H A   -   W A C H E            #');
   console.log('  ############################################');
   console.log('');
-  console.log('  Turnier    : ' + TURNIER_URL);
-  console.log('  Liste      : ' + SPIEL_NAME + ' (' + spiel.eintraege + ' Eintraege)');
-  console.log('  Kartei     : ' + zustand.kartei.length + ' Personen');
+  console.log('  Rangliste  : ' + stand.eintraege + ' Eintraege, ' +
+    stand.gewertet.length + ' in der Wertung');
+  console.log('  Spieler    : ' + stand.spieler.length + ' mit Ingame-Namen' +
+    (stand.spieler.length === 0 ? '  <- niemand zuzuordnen!' : ''));
   console.log('  Leser      : ' + leserBeschreibung());
   console.log('  Bildschirm : ' + (m ? m.breite + 'x' + m.hoehe + ' ' + m.name : 'primaer'));
   console.log('  Ausschnitt : ' + (ausschnitt
@@ -96,7 +98,16 @@ async function main(): Promise<void> {
     const zeit = new Date().toLocaleTimeString('de-DE');
     console.log('  ------------------------------------------- #' + nummer + '  ' + zeit);
     try {
-      const e = await fuehreDurch({ zustand, spiel, bildschirm, ausschnitt, eintragen });
+      /* Den Stand je Durchlauf frisch holen: meldet sich waehrend des
+         Streams jemand an, soll seine Zeile ab dem naechsten F9 zaehlen. */
+      const e = await fuehreDurch({
+        stand: wertung.stand(),
+        bildschirm,
+        ausschnitt,
+        eintragen: eintragen
+          ? (kontoId, punkte) => { wertung.eintragen(kontoId, punkte); }
+          : undefined
+      });
       zeigeErgebnis(e);
       if (eintragen) {
         console.log('');

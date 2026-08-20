@@ -9,8 +9,8 @@ import path from 'node:path';
 import { baueServer } from '../src/server.js';
 import { ladeFreigabeliste, type Freigabeliste } from '../src/freigabe.js';
 import { ladeTokens, type Tokenliste } from '../src/tokens.js';
-import type { Spiel } from '../src/turnier-client.js';
-import type { KarteiPerson } from '../src/namen.js';
+import type { Spieler } from '../src/namen.js';
+import { standMit } from './hilfe-stand.js';
 
 /* =========================================================================
    Was aus meiner Einreichung geworden ist.
@@ -22,12 +22,11 @@ import type { KarteiPerson } from '../src/namen.js';
 const ORDNER = mkdtempSync(path.join(tmpdir(), 'mc-meine-'));
 after(() => rmSync(ORDNER, { recursive: true, force: true }));
 
-const KARTEI: readonly KarteiPerson[] = [
+const SPIELER: readonly Spieler[] = [
   { id: 'p1', name: 'Jones', aliases: [] },
   { id: 'p2', name: 'TREV', aliases: [] },
   { id: 'p3', name: 'mj', aliases: [] }
 ];
-const SPIEL: Spiel = { id: 'sp_test', name: 'Meccha 2026', eintraege: 0 };
 
 let server: http.Server;
 let basis: string;
@@ -47,11 +46,8 @@ before(async () => {
     adminKey: 'egal',
     leser: async () => leserAntwort,
     bildpruefer: () => ({ bloecke: [], wirktEcht: true, auffaelligkeiten: [] }),
-    holeZustand: async () => ({
-      zustand: { kartei: KARTEI, spiele: [SPIEL], fenster: 10, voll: 10 },
-      spiel: SPIEL
-    }),
-    eintragen: async () => { /* nichts */ }
+    holeStand: () => standMit(SPIELER),
+    eintragen: () => { /* nichts */ }
   });
 
   await new Promise<void>((f) => server.listen(0, '127.0.0.1', f));

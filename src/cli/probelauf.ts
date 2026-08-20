@@ -13,7 +13,7 @@
    Ohne --eintragen wird NICHTS geschrieben, nur angezeigt.
 
    WARNUNG: mit --eintragen schreibt das Skript echte Eintraege. Setz
-   TURNIER_URL auf einen Testserver, nicht auf den Live-Server 8777.
+   MC_DATEN auf einen Wegwerf-Ordner, nicht auf die echten Daten.
 
    Alle Ausgaben bewusst ohne Umlaute: die cmd-Konsole macht daraus sonst
    Buchstabensalat (dieselbe Regel wie in turnier/discordbot.js).
@@ -21,8 +21,8 @@
 
 import { parseZeilen, SpaltenPassenNicht } from '../parse.js';
 import { bewerteRunde, teileAuf, personVon } from '../runde.js';
-import { ladeZustand, findeSpiel, trageEin } from '../turnier-client.js';
-import { TURNIER_URL, SPIEL_NAME } from '../config.js';
+import { ladeWertungAusOrdner } from '../wertung.js';
+import { DATEN_DIR } from '../config.js';
 
 interface Argumente {
   readonly namen: string;
@@ -58,16 +58,14 @@ function alsSpalte(text: string): string {
 async function main(): Promise<void> {
   const args = leseArgumente(process.argv.slice(2));
 
-  console.log('');
-  console.log('  Turnier-Server : ' + TURNIER_URL);
-  console.log('  Punkteliste    : ' + SPIEL_NAME);
-  console.log('');
+  const { wertung } = ladeWertungAusOrdner(DATEN_DIR);
+  const stand = wertung.stand();
 
-  const zustand = await ladeZustand();
-  const spiel = findeSpiel(zustand);
-  console.log('  Kartei         : ' + zustand.kartei.length + ' Personen');
-  console.log('  Liste gefunden : ' + spiel.name + ' (' + spiel.id + '), ' +
-    spiel.eintraege + ' Eintraege bisher');
+  console.log('');
+  console.log('  Daten          : ' + DATEN_DIR);
+  console.log('  Spieler        : ' + stand.spieler.length + ' mit Ingame-Namen');
+  console.log('  Rangliste      : ' + stand.eintraege + ' Eintraege, ' +
+    stand.gewertet.length + ' in der Wertung, ' + stand.anwaerter.length + ' Anwaerter');
   console.log('');
 
   let zeilen;
@@ -83,7 +81,7 @@ async function main(): Promise<void> {
     throw err;
   }
 
-  const bericht = teileAuf(bewerteRunde(zeilen, zustand.kartei));
+  const bericht = teileAuf(bewerteRunde(zeilen, stand.spieler));
 
   console.log('  EINTRAGEN (' + bericht.einzutragen.length + ')');
   if (bericht.einzutragen.length === 0) console.log('    (nichts)');
@@ -117,10 +115,8 @@ async function main(): Promise<void> {
 
   let ok = 0;
   for (const e of bericht.einzutragen) {
-    const person = personVon(e)!;
-    // Der Kartei-Name, nie der Rohname - sonst legt ensurePerson() im
-    // Server ein Phantom an.
-    await trageEin(spiel.id, { name: person.name, punkte: e.zeile.punkte!.punkte });
+    // Die Konto-Kennung, nie der Rohname aus der Eingabe.
+    wertung.eintragen(personVon(e)!.id, e.zeile.punkte!.punkte);
     ok++;
   }
   console.log('  ' + ok + ' Eintraege geschrieben.');

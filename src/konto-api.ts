@@ -153,13 +153,13 @@ function eigeneRunden(o: KontoApiOptionen, konto: Konto) {
 /**
  * Wie weit ist diese Person von der Wertung entfernt?
  *
- * turnier fuehrt jeden erst ab VOLL Eintraegen in der Wertung, davor
+ * Gewertet wird erst ab VOLL Eintraegen, davor
  * steht man als Anwaerter (listen.js:30). Ohne diese Angabe wundert
  * sich jemand nach drei Runden, warum er nirgends auftaucht - und
  * fragt dich.
  *
  * Gezaehlt werden die eigenen FREIGEGEBENEN Runden. Naeherung: was du
- * im Turnier-Admin von Hand eintraegst, weiss dieser Server nicht.
+ * ausserhalb der Freigabe entsteht, weiss dieser Server nicht.
  */
 function wertungsstand(o: KontoApiOptionen, konto: Konto): { gewertet: number; voll: number } {
   const voll = 10;

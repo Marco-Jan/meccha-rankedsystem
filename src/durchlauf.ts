@@ -13,14 +13,17 @@ import { nimmAuf, type Ausschnitt, type Aufnahme } from './screenshot.js';
 import { leseListe } from './leser.js';
 import { waehleLeser } from './leser-wahl.js';
 import { bewerteRunde, teileAuf, personVon, type RundenBericht } from './runde.js';
-import { trageEin, type TurnierZustand, type Spiel } from './turnier-client.js';
+import type { Wertungsstand } from './wertung.js';
 
 export interface DurchlaufOptionen {
-  readonly zustand: TurnierZustand;
-  readonly spiel: Spiel;
+  readonly stand: Wertungsstand;
   readonly bildschirm: number;
   readonly ausschnitt?: Ausschnitt | undefined;
-  readonly eintragen: boolean;
+  /**
+   * Wohin die Punkte gehen. Fehlt es, wird nur gelesen und angezeigt -
+   * das ist der Probelauf.
+   */
+  readonly eintragen?: ((kontoId: string, punkte: number) => void) | undefined;
 }
 
 export interface DurchlaufErgebnis {
@@ -38,17 +41,13 @@ export async function fuehreDurch(o: DurchlaufOptionen): Promise<DurchlaufErgebn
   const zeilen = await leseListe(aufnahme.bild, 'image/png', waehleLeser());
   const sekunden = (Date.now() - start) / 1000;
 
-  const bericht = teileAuf(bewerteRunde(zeilen, o.zustand.kartei));
+  const bericht = teileAuf(bewerteRunde(zeilen, o.stand.spieler));
 
   let geschrieben = 0;
   if (o.eintragen) {
     for (const e of bericht.einzutragen) {
-      // Der Kartei-Name, nie der Rohname - sonst legt ensurePerson() im
-      // Server ein Phantom an.
-      await trageEin(o.spiel.id, {
-        name: personVon(e)!.name,
-        punkte: e.zeile.punkte!.punkte
-      });
+      // Die Konto-Kennung, nie der Rohname aus dem Bild.
+      o.eintragen(personVon(e)!.id, e.zeile.punkte!.punkte);
       geschrieben++;
     }
   }

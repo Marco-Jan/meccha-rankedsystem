@@ -9,7 +9,8 @@ import path from 'node:path';
 import { baueServer, MAX_BILD } from '../src/server.js';
 import { Freigabeliste, ladeFreigabeliste } from '../src/freigabe.js';
 import { Tokenliste, ladeTokens, MINDESTABSTAND_MS } from '../src/tokens.js';
-import type { KarteiPerson } from '../src/namen.js';
+import type { Spieler } from '../src/namen.js';
+import { standMit } from './hilfe-stand.js';
 
 /* =========================================================================
    Diese Tests brauchen weder Python noch Ollama noch einen Turnier-Server:
@@ -20,7 +21,7 @@ import type { KarteiPerson } from '../src/namen.js';
 const ORDNER = mkdtempSync(path.join(tmpdir(), 'mc-server-'));
 after(() => rmSync(ORDNER, { recursive: true, force: true }));
 
-const KARTEI: readonly KarteiPerson[] = [
+const SPIELER: readonly Spieler[] = [
   { id: 'p1', name: 'Jones', aliases: [] },
   { id: 'p2', name: 'mj', aliases: [] },
   { id: 'p3', name: 'TREV', aliases: [] }
@@ -46,8 +47,7 @@ let minSpielerTest = 0;
 let bildWirktEcht = true;
 
 /** Was der Turnier-Server angeblich bekommen hat. */
-let eingetragen: Array<{ name: string; punkte: number }> = [];
-let zustandWirft: Error | null = null;
+let eingetragen: Array<{ kontoId: string; punkte: number }> = [];
 
 let server: http.Server;
 let basis: string;
@@ -73,14 +73,8 @@ before(async () => {
       wirktEcht: bildWirktEcht,
       auffaelligkeiten: bildWirktEcht ? [] : ['Metadaten fehlen']
     }),
-    eintragen: async (_gameId, e) => { eingetragen.push(e); },
-    holeZustand: async () => {
-      if (zustandWirft) throw zustandWirft;
-      return {
-        zustand: { kartei: KARTEI, spiele: [], fenster: 10, voll: 10 },
-        spiel: { id: 'sp_test', name: 'Meccha 2026', eintraege: 0 }
-      };
-    }
+    eintragen: (kontoId, punkte) => { eingetragen.push({ kontoId, punkte }); },
+    holeStand: () => standMit(SPIELER)
   });
 
   await new Promise<void>((f) => server.listen(0, '127.0.0.1', f));
@@ -100,7 +94,6 @@ beforeEach(() => {
   eigenerToken = tokens.anlegen('Spiel-PC', true).token;
   eingetragen = [];
   leserWirft = null;
-  zustandWirft = null;
   bildWirktEcht = true;
   minSpielerTest = 0;
   leserAntwort = JSON.stringify({
@@ -186,23 +179,16 @@ describe('Server - Routing', () => {
        niemand erst einen Zugang brauchen. */
     const res = await fetch(basis + '/api/rangliste');
     const j = (await res.json()) as {
-      ok: boolean; liste: string; voll: number;
+      ok: boolean; fenster: number; voll: number;
       gewertet: unknown[]; anwaerter: unknown[];
     };
 
     assert.equal(res.status, 200);
     assert.equal(j.ok, true);
-    assert.equal(j.liste, 'Meccha 2026');
+    assert.equal(j.fenster, 10);
     assert.equal(j.voll, 10);
     assert.ok(Array.isArray(j.gewertet));
-  });
-
-  test('liefert die Rangliste auch ohne Turnier-Server', async () => {
-    // Lieber leer als ein Fehler - die Seite soll trotzdem laden.
-    zustandWirft = new Error('turnier weg');
-    const res = await fetch(basis + '/api/rangliste');
-    assert.equal(res.status, 200);
-    assert.deepEqual(((await res.json()) as { gewertet: unknown[] }).gewertet, []);
+    assert.ok(Array.isArray(j.anwaerter));
   });
 
   test('weist unbekannte Pfade ab', async () => {
@@ -423,7 +409,7 @@ describe('Server - Zuschauer ohne Freigabe', () => {
     assert.equal(code, 200);
     assert.equal(body.direkt, true, 'keine Freigabe noetig');
     assert.equal(body.geschrieben, 1, 'aber nur EINE Zeile, nicht die Lobby');
-    assert.deepEqual(eingetragen, [{ name: 'Jones', punkte: 2771 }]);
+    assert.deepEqual(eingetragen, [{ kontoId: 'p1', punkte: 2771 }]);
     assert.equal(freigabe.offene().length, 0);
   });
 
@@ -547,13 +533,48 @@ describe('Server - Dubletten', () => {
   });
 });
 
-/* ------------------------------------------------------ Turnier weg */
 
-describe('Server - Turnier nicht erreichbar', () => {
-  test('meldet 502 statt die Runde zu verlieren', async () => {
-    zustandWirft = new Error('ECONNREFUSED');
-    const { code, body } = await lade(bild('runde1'), { 'X-MC-Token': eigenerToken });
-    assert.equal(code, 502);
-    assert.match(String(body.fehler), /nicht erreichbar/);
+/* ------------------------------------------------- Hinweis bei zu wenig */
+
+describe('Server - was der Zuschauer bei zu wenigen Zeilen erfaehrt', () => {
+  test('bei 0-2 Zeilen wird auf Hintergrund und Rundenende hingewiesen', async () => {
+    /* So wenige Zeilen sind fast nie eine Mini-Lobby, sondern ein
+       schwer lesbares Bild. Dann hilft die Regel nicht weiter, sondern
+       nur der Rat, wie man es besser macht. */
+    minSpielerTest = 6;
+    leserAntwort = JSON.stringify({
+      zeilen: [{ name: 'Jones', rohPunkte: '2771' }]
+    });
+
+    const { code, body } = await lade(bild('zu-wenig-lesefehler'),
+      { 'X-MC-Token': zuschauerToken });
+
+    assert.equal(code, 422);
+    assert.equal(body.art, 'zu-wenige-spieler');
+    assert.match(String(body.hinweis), /Hintergrund|ruhigen/);
+    assert.match(String(body.hinweis), /ENDE der Runde/);
+  });
+
+  test('bei 4-5 Zeilen wird NICHT auf den Hintergrund geschimpft', async () => {
+    /* Da war die Lobby wirklich zu klein. Ein Ratschlag zum Bild waere
+       hier nur irrefuehrend - der Spieler hat alles richtig gemacht. */
+    minSpielerTest = 6;
+    leserAntwort = JSON.stringify({
+      zeilen: [
+        { name: 'Jones', rohPunkte: '2771' },
+        { name: 'mj', rohPunkte: '2000' },
+        { name: 'TREV', rohPunkte: '1500' },
+        { name: 'Vier', rohPunkte: '1000' },
+        { name: 'Fuenf', rohPunkte: '500' }
+      ]
+    });
+
+    const { code, body } = await lade(bild('zu-wenig-echt'),
+      { 'X-MC-Token': zuschauerToken });
+
+    assert.equal(code, 422);
+    assert.equal(body.erkannt, 5);
+    assert.doesNotMatch(String(body.hinweis), /Hintergrund/);
+    assert.match(String(body.hinweis), /zu klein/);
   });
 });

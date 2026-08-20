@@ -9,8 +9,8 @@ import path from 'node:path';
 import { baueServer } from '../src/server.js';
 import { ladeFreigabeliste, VERDACHT_BILD_STUNDEN, type Freigabeliste } from '../src/freigabe.js';
 import { ladeTokens, type Tokenliste } from '../src/tokens.js';
-import type { Spiel } from '../src/turnier-client.js';
-import type { KarteiPerson } from '../src/namen.js';
+import type { Spieler } from '../src/namen.js';
+import { standMit } from './hilfe-stand.js';
 
 /* =========================================================================
    GEFLAGGT - was passiert, wenn dieselbe Punktzahl wiederkommt.
@@ -25,15 +25,14 @@ import type { KarteiPerson } from '../src/namen.js';
 const ORDNER = mkdtempSync(path.join(tmpdir(), 'mc-geflaggt-'));
 after(() => rmSync(ORDNER, { recursive: true, force: true }));
 
-const KARTEI: readonly KarteiPerson[] = [
+const SPIELER: readonly Spieler[] = [
   { id: 'p1', name: 'Jones', aliases: [] },
   { id: 'p2', name: 'TREV', aliases: [] },
   { id: 'p3', name: 'mj', aliases: [] }
 ];
-const SPIEL: Spiel = { id: 'sp_test', name: 'Meccha 2026', eintraege: 3 };
 const ADMIN = 'test-schluessel';
 
-let eingetragen: Array<{ name: string; punkte: number }> = [];
+let eingetragen: Array<{ kontoId: string; punkte: number }> = [];
 let leserAntwort = '';
 /** Steuert die eingesetzte Bildpruefung je Test. */
 let bildWirktEcht = true;
@@ -60,11 +59,8 @@ before(async () => {
       wirktEcht: bildWirktEcht,
       auffaelligkeiten: bildWirktEcht ? [] : ['Metadaten fehlen']
     }),
-    holeZustand: async () => ({
-      zustand: { kartei: KARTEI, spiele: [SPIEL], fenster: 10, voll: 10 },
-      spiel: SPIEL
-    }),
-    eintragen: async (_gameId, e) => { eingetragen.push({ name: e.name, punkte: e.punkte }); }
+    holeStand: () => standMit(SPIELER),
+    eintragen: (kontoId, punkte) => { eingetragen.push({ kontoId, punkte }); }
   });
 
   await new Promise<void>((f) => server.listen(0, '127.0.0.1', f));
@@ -122,7 +118,7 @@ describe('Geflaggt - Zugang ohne Freigabe', () => {
 
     assert.equal(body.direkt, true);
     assert.equal(body.geschrieben, 1);
-    assert.deepEqual(eingetragen, [{ name: 'Jones', punkte: 11714 }]);
+    assert.deepEqual(eingetragen, [{ kontoId: 'p1', punkte: 11714 }]);
   });
 
   test('haelt die zweite mit derselben Punktzahl an', async () => {

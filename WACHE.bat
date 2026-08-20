@@ -16,8 +16,6 @@ set BILDSCHIRM=2
 REM Welche Taste? F1 bis F12, DRUCK, ENDE, POS1, EINFG, NUM0 bis NUM9
 set TASTE=F9
 
-if "%TURNIER_URL%"=="" set TURNIER_URL=http://localhost:8777
-
 call npm run wache --silent -- --bildschirm %BILDSCHIRM% --taste %TASTE% --eintragen
 
 echo.

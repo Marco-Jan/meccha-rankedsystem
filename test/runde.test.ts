@@ -3,9 +3,9 @@ import assert from 'node:assert/strict';
 
 import { bewerteRunde, teileAuf, personVon } from '../src/runde.js';
 import { parseZeilen } from '../src/parse.js';
-import type { KarteiPerson } from '../src/namen.js';
+import type { Spieler } from '../src/namen.js';
 
-const KARTEI: readonly KarteiPerson[] = [
+const SPIELER: readonly Spieler[] = [
   { id: 'r_qjfcfog', name: 'NorikoTv' },
   { id: 'r_zbpxa3z', name: 'Polosios' },
   { id: 'r_cp141h1', name: 'theRealBaloou' }
@@ -13,7 +13,7 @@ const KARTEI: readonly KarteiPerson[] = [
 
 /** Bequemer Aufbau: zwei Spalten als Text, wie sie von OCR kaemen. */
 function runde(namen: string, punkte: string) {
-  return teileAuf(bewerteRunde(parseZeilen(namen, punkte), KARTEI));
+  return teileAuf(bewerteRunde(parseZeilen(namen, punkte), SPIELER));
 }
 
 describe('bewerteRunde - der gute Fall', () => {
@@ -71,7 +71,7 @@ describe('bewerteRunde - Name unsicher', () => {
   });
 
   test('haelt mehrdeutige Namen zurueck und nennt die Kandidaten', () => {
-    const aehnlich: KarteiPerson[] = [
+    const aehnlich: Spieler[] = [
       { id: 'a', name: 'Spielerin' },
       { id: 'b', name: 'Spielerix' }
     ];
@@ -89,7 +89,7 @@ describe('bewerteRunde - Name unsicher', () => {
 
   test('respektiert eine hoehere Mindest-Confidence', () => {
     // Bei 0.99 ist ein fuzzy-Treffer (0.85) nicht mehr gut genug.
-    const e = bewerteRunde(parseZeilen('N0rikoTv', '12160'), KARTEI, 0.99);
+    const e = bewerteRunde(parseZeilen('N0rikoTv', '12160'), SPIELER, 0.99);
     assert.equal(e[0]?.aktion, 'rueckfrage');
   });
 });
@@ -124,13 +124,13 @@ describe('teileAuf', () => {
       'NorikoTv\nQw3rty\nPolosios\nMuell',
       '12160\n450\n10579\nxyz'
     );
-    const e = bewerteRunde(zeilen, KARTEI);
+    const e = bewerteRunde(zeilen, SPIELER);
     const r = teileAuf(e);
     assert.equal(r.einzutragen.length + r.rueckfragen.length, 4);
   });
 
   test('kommt mit einer leeren Runde zurecht', () => {
-    const r = teileAuf(bewerteRunde([], KARTEI));
+    const r = teileAuf(bewerteRunde([], SPIELER));
     assert.equal(r.einzutragen.length, 0);
     assert.equal(r.rueckfragen.length, 0);
   });

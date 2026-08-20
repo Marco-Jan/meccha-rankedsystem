@@ -8,8 +8,9 @@ import path from 'node:path';
 
 import { bearbeiteFreigabe } from '../src/freigabe-api.js';
 import { ladeFreigabeliste, rundenKennung, type Freigabeliste } from '../src/freigabe.js';
-import { nameKey, type KarteiPerson } from '../src/namen.js';
+import { nameKey, type Spieler } from '../src/namen.js';
 import type { RohZeile } from '../src/parse.js';
+import { standMit } from './hilfe-stand.js';
 
 /* =========================================================================
    Beim Freigeben darf NUR gewertet werden, was der Absender beansprucht
@@ -24,7 +25,7 @@ import type { RohZeile } from '../src/parse.js';
 const ORDNER = mkdtempSync(path.join(tmpdir(), 'mc-freigabeapi-'));
 after(() => rmSync(ORDNER, { recursive: true, force: true }));
 
-const KARTEI: readonly KarteiPerson[] = [
+const SPIELER: readonly Spieler[] = [
   { id: 'p1', name: 'Jones', aliases: [] },
   { id: 'p2', name: 'mj', aliases: [] },
   { id: 'p3', name: 'TREV', aliases: [] }
@@ -39,7 +40,7 @@ const LOBBY: RohZeile[] = [zeile('Jones', 2771), zeile('TREV', 922), zeile('mj',
 let server: http.Server;
 let basis: string;
 let liste: Freigabeliste;
-let eingetragen: Array<{ name: string; punkte: number }> = [];
+let eingetragen: Array<{ kontoId: string; punkte: number }> = [];
 let n = 0;
 
 const SCHLUESSEL = 'test-admin-key';
@@ -49,11 +50,8 @@ before(async () => {
     void bearbeiteFreigabe(req, res, {
       freigabe: liste,
       adminKey: SCHLUESSEL,
-      holeZustand: async () => ({
-        zustand: { kartei: KARTEI, spiele: [], fenster: 10, voll: 10 },
-        spiel: { id: 'sp', name: 'Meccha 2026', eintraege: 0 }
-      }),
-      eintragen: async (_g, e) => { eingetragen.push(e); }
+      holeStand: () => standMit(SPIELER),
+      eintragen: (kontoId, punkte) => { eingetragen.push({ kontoId, punkte }); }
     }).then((behandelt) => {
       if (!behandelt) { res.writeHead(404); res.end(); }
     });
@@ -97,7 +95,7 @@ describe('Freigeben wertet nur die beanspruchten Zeilen', () => {
     const r = einreichen('NorikoTv', ['Jones'], 'h1');
     return entscheiden(r.id, 'freigegeben').then(({ body }) => {
       assert.equal(body.geschrieben, 1);
-      assert.deepEqual(eingetragen, [{ name: 'Jones', punkte: 2771 }]);
+      assert.deepEqual(eingetragen, [{ kontoId: 'p1', punkte: 2771 }]);
     });
   });
 
@@ -114,8 +112,8 @@ describe('Freigeben wertet nur die beanspruchten Zeilen', () => {
 
     assert.equal(eingetragen.length, 2);
     assert.deepEqual(eingetragen, [
-      { name: 'Jones', punkte: 2771 },
-      { name: 'mj', punkte: 239 }
+      { kontoId: 'p1', punkte: 2771 },
+      { kontoId: 'p2', punkte: 239 }
     ]);
   });
 

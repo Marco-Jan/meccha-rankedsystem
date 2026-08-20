@@ -1,34 +1,38 @@
 /* =========================================================================
-   NAMENSABGLEICH gegen die bestehende Kartei im Turnier-Server.
+   NAMENSABGLEICH - welche Zeile im Scoreboard gehoert zu welchem Konto.
 
-   Das ist das heikelste Stueck des Feeders. Grund:
-
-   kartei.js:51 ensurePerson() sucht EXAKT und legt sonst stillschweigend
-   eine neue Person an. Fuer Tippen von Hand ist das richtig. Fuer OCR ist
-   es eine Falle: liest Tesseract "NorikoTv" als "N0rikoTv", entsteht
-   lautlos ein Phantom-Spieler, die Punkte landen dort, und Norikos Schnitt
-   ist ab dann aufgeteilt. Nach ein paar Streams ist die Kartei Schrott.
+   Das ist das heikelste Stueck des ganzen Projekts. Der Leser liefert
+   Rohnamen, wie sie aus dem Bild kommen: "N0rikoTv" statt "NorikoTv",
+   "Ba1oou" statt "Baloou". Wuerden die ungeprueft gewertet, bekaeme
+   entweder der Falsche die Punkte oder niemand.
 
    Deshalb wird hier VOR dem Eintragen zugeordnet, und alles Unsichere
-   geht in die Warteschlange statt in die Liste.
+   geht in die Rueckfrage statt in die Wertung. Im Zweifel lieber
+   nachfragen - eine falsche Zuordnung faellt niemandem auf, eine
+   Rueckfrage schon.
+
+   Verglichen wird gegen die INGAME-NAMEN der angemeldeten Konten
+   (konten.ts). Wer nicht angemeldet ist, wird nicht gewertet - das ist
+   die Regel, nicht ein Mangel.
 
    -------------------------------------------------------------------------
    ACHTUNG, zwei verschiedene Normalformen - das ist Absicht:
 
-   1) nameKey()  ist ZEICHENGLEICH zu kartei.js:37 im Turnier-Server.
-      Nur trim + lowercase + Leerzeichen zusammenziehen. Satzzeichen,
-      Unterstriche und Emoji bleiben stehen. Diese Form MUSS identisch
-      bleiben, sonst findet der exakte Treffer bestehende Spieler nicht.
-      Wird sie dort geaendert, muss sie hier mitgeaendert werden.
+   1) nameKey()  ist die milde Form: trim + lowercase + Leerzeichen
+      zusammenziehen. Satzzeichen, Unterstriche und Emoji bleiben stehen.
+      Zeichengleich zu ingameSchluessel() in konten.ts - dort entscheidet
+      sie darueber, ob ein Ingame-Name schon vergeben ist. Laufen die zwei
+      auseinander, koennten sich zwei Konten denselben Namen teilen und
+      beide dieselbe Zeile beanspruchen.
 
-   2) hartNormalisiert() ist unsere eigene, aggressive Form. Sie wirft
-      alles weg, was kein Buchstabe und keine Ziffer ist, und dient nur
-      dazu, Kandidaten zu FINDEN ("Baloou!" soll "Baloou" treffen). Sie
-      wird nie an den Turnier-Server geschickt.
+   2) hartNormalisiert() ist die aggressive Form. Sie wirft alles weg, was
+      kein Buchstabe und keine Ziffer ist, und dient nur dazu, Kandidaten
+      zu FINDEN ("Baloou!" soll "Baloou" treffen). Sie wird nie
+      gespeichert und nie angezeigt.
    ========================================================================= */
 
 /**
- * Vergleichsform des Turnier-Servers. Zeichengleich zu kartei.js:37.
+ * Milde Vergleichsform. Zeichengleich zu ingameSchluessel() in konten.ts.
  * Nicht "verbessern" - die Gleichheit ist der ganze Zweck.
  */
 export function nameKey(name: string): string {
@@ -99,42 +103,46 @@ export function levenshtein(a: string, b: string, max = Infinity): number {
 
 /* ---------------------------------------------------------------- Zuordnung */
 
-export interface KarteiPerson {
+export interface Spieler {
+  /** Die Kennung des Kontos (konten.ts), an der die Wertung haengt. */
   readonly id: string;
+  /** Der Ingame-Name - genau so, wie er im Scoreboard steht. */
   readonly name: string;
   /**
-   * Frueher benutzte Namen, die weiter auf diese Person zeigen.
+   * Weitere Schreibweisen, die ebenfalls auf diese Person zeigen sollen.
    *
-   * Wichtig: die stehen im Server SCHON in nameKey-Form ("baloou", nicht
-   * "Baloou") - kartei.js:99 und :120 legen sie so ab. Sie duerfen also
-   * nicht noch einmal durch nameKey().
+   * Heute vergibt niemand welche: jeder traegt seinen Ingame-Namen auf
+   * der Kontoseite selbst ein, und der ist ueber alle Konten eindeutig.
+   * Das Feld bleibt trotzdem, weil der Abgleich es ohnehin mitliest -
+   * sollte ein Spieler im Spiel je unter zwei Namen auftauchen, ist es
+   * ein Eintrag am Konto und keine Aenderung hier.
    *
-   * Ohne diese Liste waere der Feeder blind fuer den Normalfall: im Spiel
-   * heisst jemand "Baloou", in der Kartei "theRealBaloou". Levenshtein
-   * hilft da nicht (Distanz 7), nur der Alias.
+   * Wichtig, falls es je benutzt wird: die Formen stehen SCHON in
+   * nameKey-Form ("baloou", nicht "Baloou") und duerfen nicht noch
+   * einmal hindurch.
    */
   readonly aliases?: readonly string[];
 }
 
 /** nameKey-Formen, unter denen eine Person zu finden ist. */
-function alleSchluessel(person: KarteiPerson): string[] {
+function alleSchluessel(person: Spieler): string[] {
   return [nameKey(person.name), ...(person.aliases ?? [])];
 }
 
 /** Hart normalisierte Formen aller Namen einer Person. */
-function alleHartformen(person: KarteiPerson): string[] {
+function alleHartformen(person: Spieler): string[] {
   return alleSchluessel(person).map(hartNormalisiert).filter((h) => h.length > 0);
 }
 
 export type Zuordnung =
   /** nameKey-Treffer. So sicher wie es geht. */
-  | { readonly art: 'exakt'; readonly person: KarteiPerson; readonly confidence: 1 }
+  | { readonly art: 'exakt'; readonly person: Spieler; readonly confidence: 1 }
   /** Gleich nach Wegwerfen der Deko ("Baloou!" -> "Baloou"). */
-  | { readonly art: 'normalisiert'; readonly person: KarteiPerson; readonly confidence: number }
+  | { readonly art: 'normalisiert'; readonly person: Spieler; readonly confidence: number }
   /** Nah dran und eindeutig. */
-  | { readonly art: 'fuzzy'; readonly person: KarteiPerson; readonly confidence: number; readonly distanz: number }
+  | { readonly art: 'fuzzy'; readonly person: Spieler; readonly confidence: number; readonly distanz: number }
   /** Mehrere gleich nahe Kandidaten - darf NICHT geraten werden. */
-  | { readonly art: 'mehrdeutig'; readonly kandidaten: readonly KarteiPerson[] }
+  | { readonly art: 'mehrdeutig'; readonly kandidaten: readonly Spieler[] }
   /** Niemand ist nahe genug. Neuer Spieler oder OCR-Muell. */
   | { readonly art: 'unbekannt' };
 
@@ -170,7 +178,7 @@ function maxDistanz(laenge: number): number {
  * Reihenfolge ist bewusst: erst das Sichere, dann das Wahrscheinliche.
  * Sobald eine Stufe eindeutig trifft, wird nicht weitergesucht.
  */
-export function ordneZu(ocrName: string, kartei: readonly KarteiPerson[]): Zuordnung {
+export function ordneZu(ocrName: string, kartei: readonly Spieler[]): Zuordnung {
   const key = nameKey(ocrName);
 
   /*
@@ -205,7 +213,7 @@ export function ordneZu(ocrName: string, kartei: readonly KarteiPerson[]): Zuord
   // Stufe 3: nah dran. Nur eindeutige Treffer zaehlen.
   const grenze = maxDistanz(hart.length);
   let beste = grenze + 1;
-  let nahe: KarteiPerson[] = [];
+  let nahe: Spieler[] = [];
 
   for (const person of kartei) {
     // Die beste Distanz ueber alle Namen dieser Person - ein Alias darf

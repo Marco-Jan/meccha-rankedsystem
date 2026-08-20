@@ -9,23 +9,28 @@ REM  Diese Datei wird von MECCHA-START.bat eingelesen. Beim Umzug auf
 REM  einen anderen Server aenderst du NUR hier etwas, nichts am Code.
 REM ===================================================================
 
-REM --- Turnier-Server -------------------------------------------------
-REM  TEST : http://localhost:8778   (npm run testserver, Wegwerf-Kopie)
-REM  LIVE : http://localhost:8777   (turnier\START.bat, echte Daten)
-REM  Auf dem Hetzner: https://turnier.deine-domain.de
-set TURNIER_URL=http://localhost:8778
-
-REM --- Passwort fuer die Freigabeseite --------------------------------
-REM  Sobald der Server aus dem Internet erreichbar ist: etwas Langes,
-REM  Zufaelliges nehmen.
+REM --- Passwort fuer die Verwaltung -----------------------------------
+REM  LEER heisst GESPERRT, nicht offen: wer die Einrichtung vergisst,
+REM  hat keine Freigabeseite - lieber das als eine, die jeder bedient.
+REM  Etwas Langes, Zufaelliges nehmen.
 set MC_ADMIN_KEY=HIER-EIN-LANGES-ZUFAELLIGES-WORT
 
 REM --- Port des mc-ranked-Servers -------------------------------------
 set MC_PORT=8790
 
-REM --- Turnier-Server mitstarten? (1 = ja) ----------------------------
-REM  Auf 0 setzen, wenn turnier woanders laeuft, z.B. auf dem Hetzner.
-set TURNIER_MITSTARTEN=1
+REM --- Wer immer Admin ist --------------------------------------------
+REM  SteamID64 (17 Ziffern), mehrere mit Komma. Loest das Henne-Ei-
+REM  Problem: Rollen vergibt ein Admin, aber den ersten kann niemand
+REM  ernennen. Wer hier steht, laesst sich auch nicht herabstufen.
+REM set MC_ADMIN_STEAM=76561198000000000
 
-REM  1 = Wegwerf-Kopie (npm run testserver), 0 = turnier\START.bat
-set TURNIER_ALS_TEST=1
+REM --- Wohin Steam nach der Anmeldung zurueckleitet -------------------
+REM  Lokal reicht die Vorgabe (http://localhost:PORT). Auf dem Server
+REM  die oeffentliche Adresse eintragen - das ist beim Umzug die
+REM  einzige Zeile, die sich aendert.
+REM set MC_OEFFENTLICHE_URL=https://meccha-ranked.com
+
+REM --- Wo die Daten liegen --------------------------------------------
+REM  Rangliste, Konten, Zugaenge, Freigabeliste und die Bilder.
+REM  Vorgabe: der Ordner daten\ neben dieser Datei.
+REM set MC_DATEN=E:\meccha-daten

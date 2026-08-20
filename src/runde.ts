@@ -9,7 +9,7 @@
    unbrauchbar wie das Gegenteil, weil die Punkte gewertet werden.
    ========================================================================= */
 
-import { ordneZu, istSicher, type KarteiPerson, type Zuordnung } from './namen.js';
+import { ordneZu, istSicher, type Spieler, type Zuordnung } from './namen.js';
 import type { RohZeile } from './parse.js';
 import { MIN_CONFIDENCE } from './config.js';
 
@@ -54,7 +54,7 @@ function nameGrund(z: Zuordnung): string {
  */
 export function bewerteRunde(
   zeilen: readonly RohZeile[],
-  kartei: readonly KarteiPerson[],
+  kartei: readonly Spieler[],
   mindestConfidence = MIN_CONFIDENCE
 ): Entscheidung[] {
   const vorlaeufig = zeilen.map((zeile) => {
@@ -73,7 +73,7 @@ export function bewerteRunde(
   const zaehler = new Map<string, number>();
   for (const { zuordnung } of vorlaeufig) {
     if (!istSicher(zuordnung)) continue;
-    const id = (zuordnung as { person: KarteiPerson }).person.id;
+    const id = (zuordnung as { person: Spieler }).person.id;
     zaehler.set(id, (zaehler.get(id) ?? 0) + 1);
   }
 
@@ -100,7 +100,7 @@ export function bewerteRunde(
       return { zeile, zuordnung, aktion: 'rueckfrage', grund: nameGrund(zuordnung) };
     }
 
-    const person = (zuordnung as { person: KarteiPerson }).person;
+    const person = (zuordnung as { person: Spieler }).person;
     if ((zaehler.get(person.id) ?? 0) > 1) {
       return {
         zeile, zuordnung, aktion: 'rueckfrage',
@@ -113,9 +113,9 @@ export function bewerteRunde(
 }
 
 /** Die Person einer Entscheidung, sofern sie eintragbar ist. */
-export function personVon(e: Entscheidung): KarteiPerson | null {
+export function personVon(e: Entscheidung): Spieler | null {
   if (!istSicher(e.zuordnung)) return null;
-  return (e.zuordnung as { person: KarteiPerson }).person;
+  return (e.zuordnung as { person: Spieler }).person;
 }
 
 export interface RundenBericht {

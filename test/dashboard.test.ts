@@ -114,14 +114,18 @@ describe('Dashboard - was angezeigt werden muss', () => {
     assert.match(js, /r\.verlauf/);
   });
 
-  test('zeigt, was wirklich in der Punkteliste steht', () => {
+  test('zeigt, was wirklich in der Rangliste steht', () => {
     assert.match(js, /function zeigeLetzte/);
-    assert.match(js, /tn\.letzte/);
+    assert.match(js, /w\.letzte/);
   });
 
-  test('sagt es, wenn die Anzeige aus dem Spiegel kommt', () => {
-    // Sonst sieht ein alter Stand aus wie ein frischer.
-    assert.match(js, /ausSpiegel/);
+  test('warnt, wenn niemand mit Ingame-Namen angemeldet ist', () => {
+    /* Ohne die kann keine Zeile zugeordnet werden, und alles landet in
+       der Rueckfrage. Das ist seit dem Umbau die haeufigste Ursache
+       dafuer, dass scheinbar nichts passiert - frueher stand hier die
+       Frage, ob der Turnier-Server erreichbar ist. */
+    assert.match(js, /Spieler mit Ingame-Name/);
+    assert.match(js, /w\.spieler === 0/);
   });
 
   test('gehoert nicht in Suchmaschinen', () => {
