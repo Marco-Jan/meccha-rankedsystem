@@ -102,15 +102,20 @@ async function main(): Promise<void> {
   const listen = ladeListen(path.join(DATEN_DIR, 'listen.json'));
   const wertung = ladeWertung(rangliste, konten, listen);
 
-  /* Bevorzugt die ZIP, faellt auf die .exe zurueck.
+  /* Bevorzugt die .exe, faellt auf die ZIP zurueck.
 
-     Chrome blockt eine unsignierte .exe von einer jungen Domain hart weg;
-     ein Archiv laesst es durch. Liegt keine ZIP bereit - etwa weil noch
-     nicht neu gebaut wurde -, wird die .exe ausgeliefert wie bisher.
-     Lieber ein Download mit Warnung als gar keiner. */
-  const CLIENT_ZIP = path.join(PROJEKT, 'client-cs', 'Meccha-Ranked.zip');
+     Umgedreht am 21.08.2026. Die ZIP sollte Chromes Warnung umgehen -
+     sie tut es nicht: ein Archiv mit einer unsignierten .exe darin wird
+     genauso gemeldet. Damit blieb von ihr nur der Nachteil, und der ist
+     nicht klein: entpacken ist ein zusaetzlicher Schritt, den nicht jeder
+     kann, und ein Programm, das man erst auspacken muss, wirkt
+     umstaendlicher als es ist.
+
+     Eine Warnung, die man wegklickt, ist besser als eine Warnung PLUS
+     ein Arbeitsschritt. Erklaert wird sie auf /download. */
   const CLIENT_EXE = path.join(PROJEKT, 'client-cs', 'Meccha-Ranked.exe');
-  const clientDatei = existsSync(CLIENT_ZIP) ? CLIENT_ZIP : CLIENT_EXE;
+  const CLIENT_ZIP = path.join(PROJEKT, 'client-cs', 'Meccha-Ranked.zip');
+  const clientDatei = existsSync(CLIENT_EXE) ? CLIENT_EXE : CLIENT_ZIP;
 
   const server = baueServer({
     freigabe,

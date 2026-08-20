@@ -624,7 +624,7 @@ export function kontoSeite(): string {
         <span class="holen-zeichen">⬇</span>
         <span class="holen-worte">
           <span class="holen-gross" data-t="Programm herunterladen">Programm herunterladen</span>
-          <span class="holen-klein" id="holen-daten">ZIP · ohne Installation</span>
+          <span class="holen-klein" id="holen-daten">ohne Installation</span>
         </span>
       </a>
       <a class="holen-warum" href="/download" data-t="Warum warnt mein Browser?">Warum warnt mein Browser?</a>
@@ -762,17 +762,13 @@ export function kontoSeite(): string {
       'Eine solche Signatur muss man jährlich kaufen. Für ein kostenloses Zuschauer-Werkzeug lohnt sich das nicht, deshalb bleibt die Warnung.':
         'Such a signature has to be bought every year. For a free viewer tool that is not worth it, so the warning stays.',
       'Beim Herunterladen': 'While downloading',
-      'Der Browser meldet „Verdächtiger Download blockiert". Deshalb wird das Programm als ZIP ausgeliefert – damit kommt es durch. Melde es trotzdem, wählst du im Download-Menü „Beibehalten".':
-        'Your browser says "Suspicious download blocked". That is why the app ships as a ZIP – it gets through that way. If it still complains, choose "Keep" in the download menu.',
+      'Der Browser meldet „Verdächtiger Download blockiert" oder „wird selten heruntergeladen". Wähle im Download-Menü „Beibehalten" – mehr ist es nicht.':
+        'Your browser says "Suspicious download blocked" or "not commonly downloaded". Choose "Keep" in the download menu – that is all there is to it.',
       'Beim ersten Start': 'On first launch',
       'Es erscheint ein blaues Fenster: „Der Computer wurde durch Windows geschützt". Klick auf „Weitere Informationen" und dann auf „Trotzdem ausführen". Das musst du nur einmal machen – danach startet es normal.':
         'A blue window appears: "Windows protected your PC". Click "More info", then "Run anyway". You only need to do this once – after that it starts normally.',
       'Du willst es selbst prüfen? Lad die Datei bei virustotal.com hoch, das ist kostenlos und lässt sie von über 60 Virenscannern ansehen.':
         'Want to check for yourself? Upload the file to virustotal.com – it is free and has over 60 antivirus engines look at it.',
-      'ZIP · 21 KB · entpacken, starten, fertig':
-        'ZIP · 21 KB · unzip, run, done',
-      'Als ZIP, damit der Browser den Download nicht blockiert. Entpacken und die .exe darin starten.':
-        'Packaged as a ZIP so your browser does not block the download. Unzip it and run the .exe inside.',
       'Windows meldet „Der Computer wurde geschützt"? Auf „Weitere Informationen" klicken, dann „Trotzdem ausführen". Das ist bei unsignierten Programmen normal.':
         'Windows says "Windows protected your PC"? Click "More info", then "Run anyway". That is normal for unsigned programs.',
       'und dann': 'and then',
@@ -932,17 +928,13 @@ export function kontoSeite(): string {
       'Eine solche Signatur muss man jährlich kaufen. Für ein kostenloses Zuschauer-Werkzeug lohnt sich das nicht, deshalb bleibt die Warnung.':
         '这种签名需要每年付费购买。对一个免费的观众工具来说并不划算，所以警告会一直存在。',
       'Beim Herunterladen': '下载时',
-      'Der Browser meldet „Verdächtiger Download blockiert". Deshalb wird das Programm als ZIP ausgeliefert – damit kommt es durch. Melde es trotzdem, wählst du im Download-Menü „Beibehalten".':
-        '浏览器会提示“已拦截可疑下载”。因此程序以 ZIP 形式提供，这样即可正常下载。若仍被拦截，请在下载菜单中选择“保留”。',
+      'Der Browser meldet „Verdächtiger Download blockiert" oder „wird selten heruntergeladen". Wähle im Download-Menü „Beibehalten" – mehr ist es nicht.':
+        '浏览器会提示“已拦截可疑下载”或“下载次数较少”。在下载菜单中选择“保留”即可 – 仅此而已。',
       'Beim ersten Start': '首次运行时',
       'Es erscheint ein blaues Fenster: „Der Computer wurde durch Windows geschützt". Klick auf „Weitere Informationen" und dann auf „Trotzdem ausführen". Das musst du nur einmal machen – danach startet es normal.':
         '会出现一个蓝色窗口：“Windows 已保护你的电脑”。请点击“更多信息”，然后选择“仍要运行”。这一步只需操作一次，之后即可正常启动。',
       'Du willst es selbst prüfen? Lad die Datei bei virustotal.com hoch, das ist kostenlos und lässt sie von über 60 Virenscannern ansehen.':
         '想自己验证？可将文件上传到 virustotal.com，该服务免费，会用 60 多款杀毒引擎进行检测。',
-      'ZIP · 21 KB · entpacken, starten, fertig':
-        'ZIP · 21 KB · 解压后直接运行',
-      'Als ZIP, damit der Browser den Download nicht blockiert. Entpacken und die .exe darin starten.':
-        '以 ZIP 形式提供，避免浏览器拦截下载。解压后运行其中的 .exe 即可。',
       'Windows meldet „Der Computer wurde geschützt"? Auf „Weitere Informationen" klicken, dann „Trotzdem ausführen". Das ist bei unsignierten Programmen normal.':
         'Windows 提示"已保护你的电脑"？点击"更多信息"，然后选择"仍要运行"。未签名程序出现此提示属于正常现象。',
       'und dann': '然后',
@@ -1139,9 +1131,8 @@ export function kontoSeite(): string {
 
     d.appendChild(el('h3', null, t('Beim Herunterladen')));
     d.appendChild(el('p', null, t(
-      'Der Browser meldet „Verdächtiger Download blockiert". Deshalb wird das ' +
-      'Programm als ZIP ausgeliefert – damit kommt es durch. Melde es trotzdem, ' +
-      'wählst du im Download-Menü „Beibehalten".')));
+      'Der Browser meldet „Verdächtiger Download blockiert" oder „wird selten ' +
+      'heruntergeladen". Wähle im Download-Menü „Beibehalten" – mehr ist es nicht.')));
 
     d.appendChild(el('h3', null, t('Beim ersten Start')));
     d.appendChild(el('p', null, t(
@@ -1345,11 +1336,6 @@ export function kontoSeite(): string {
        die Frage, welcher der richtige ist. Also nur der Verweis. */
     kd.appendChild(el('p', null, t(
         'Hol dir zuerst das Programm – der Knopf steht oben.')));
-    /* Chrome blockt eine unsignierte .exe von einer jungen Domain hart
-       weg. Als ZIP kommt sie durch - dafuer muss man einmal entpacken,
-       und das sagt man besser vorher als hinterher. */
-    kd.appendChild(el('p', 'leise', t(
-      'Als ZIP, damit der Browser den Download nicht blockiert. Entpacken und die .exe darin starten.')));
 
     kd.appendChild(warnungsKasten());
 

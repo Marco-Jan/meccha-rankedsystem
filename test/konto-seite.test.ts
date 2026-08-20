@@ -187,13 +187,18 @@ describe('Kontoseite - Inhalt', () => {
     assert.equal(treffer, 1, 'genau ein Weg zur Datei');
   });
 
-  test('liefert als ZIP aus, nicht als nackte .exe', () => {
-    /* Chrome blockt eine unsignierte .exe von einer jungen Domain hart
-       weg - "Verdaechtiger Download blockiert", ohne Knopf zum
-       Trotzdem-Laden. Als Archiv kommt sie durch. Faellt das zurueck,
-       laedt kein Zuschauer den Client mehr herunter. */
-    assert.doesNotMatch(html, /⬇\s*Meccha-Ranked\.exe/);
-    assert.match(html, /entpacken/i);
+  test('verspricht kein Entpacken mehr', () => {
+    /* Umgedreht am 21.08.2026: ausgeliefert wird wieder die .exe.
+
+       Die ZIP sollte Chromes Warnung umgehen - sie tut es nicht, ein
+       Archiv mit einer unsignierten .exe darin wird genauso gemeldet.
+       Damit blieb von ihr nur der Nachteil: entpacken ist ein Schritt
+       mehr, den nicht jeder kann.
+
+       Steht hier noch irgendwo "entpacken", ist ein Text von damals
+       ueberlebt und schickt Leute in einen Arbeitsschritt, den es nicht
+       mehr gibt. */
+    assert.doesNotMatch(html, /entpacken|Unzip|unzip/i);
   });
 
   test('nennt die Mindestzahl-Regel gross, nicht im Kleingedruckten', () => {
