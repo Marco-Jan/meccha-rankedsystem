@@ -9,9 +9,9 @@
 #
 #  git laeuft immer als der Besitzer der Dateien, systemctl ueber sudo.
 #
-#  Holt beide Repos, startet die Dienste neu und prueft nach, ob sie
-#  wirklich antworten. Geht dabei etwas schief, bricht es ab und sagt wo -
-#  statt halb fertig zu sein und den Rest still zu ueberspringen.
+#  Holt das Repo, startet den Dienst neu und prueft nach, ob er wirklich
+#  antwortet. Geht dabei etwas schief, bricht es ab und sagt wo - statt
+#  halb fertig zu sein und den Rest still zu ueberspringen.
 #
 #  Was es NICHT tut:
 #    - npm run build. Der Server laeuft ueber tsx direkt aus src/; ein
@@ -25,9 +25,12 @@
 set -euo pipefail
 
 WURZEL="${MECCHA_WURZEL:-/opt/meccha}"
-DIENSTE=(meccha-turnier meccha-ranked)
+
+# Nur noch ein Dienst. Bis zum 20.08.2026 stand hier auch meccha-turnier -
+# von dort kamen Namensliste und Punkteliste. mc-ranked ist seither
+# eigenstaendig, siehe UMBAU.md.
+DIENSTE=(meccha-ranked)
 RANKED_PORT="${MC_PORT:-8790}"
-TURNIER_PORT="${PORT:-8777}"
 
 rot=$'\033[31m'; gruen=$'\033[32m'; gelb=$'\033[33m'; grau=$'\033[90m'; klar=$'\033[0m'
 
@@ -41,7 +44,7 @@ if [[ "${1:-}" == "--hilfe" || "${1:-}" == "-h" ]]; then
 
   deploy.sh - Meccha Ranked ausrollen
 
-    ./deploy.sh              beide Repos holen, Dienste neu starten, pruefen
+    ./deploy.sh              Repo holen, Dienst neu starten, pruefen
     ./deploy.sh --nur-neustart   nichts holen, nur neu starten
     ./deploy.sh --hilfe          das hier
 
@@ -109,16 +112,7 @@ hole() {
 
   [[ -d "$pfad" ]] || ende "$pfad gibt es nicht."
 
-  # Nicht jedes Verzeichnis haengt an git. turnier liegt auf dem Server
-  # als reine Dateikopie - das GitHub-Repo umfasst nur mc-ranked. Das ist
-  # kein Fehler, aber es muss auffallen: Aenderungen an turnier kommen
-  # dort nur per scp an, nicht durch dieses Skript.
-  if [[ ! -d "$pfad/.git" ]]; then
-    warn "haengt nicht an git - wird uebersprungen"
-    leise "Aenderungen hier kommen per scp:"
-    leise "  scp turnier/server.js meccha@meccha-ranked.com:$pfad/"
-    return 0
-  fi
+  [[ -d "$pfad/.git" ]] || ende "$pfad haengt nicht an git."
 
   cd "$pfad"
 
@@ -155,7 +149,6 @@ hole() {
 }
 
 if [[ "$NUR_NEUSTART" -eq 0 ]]; then
-  hole turnier
   hole mc-ranked
 else
   sage "Nur Neustart, nichts geholt"
@@ -202,17 +195,41 @@ pruefe() {
   fi
 }
 
-# Ueber localhost, denn genau so spricht nginx die Dienste an. Von aussen
-# sind die Ports absichtlich nicht erreichbar - siehe UMZUG.md.
-pruefe "turnier"   "http://127.0.0.1:$TURNIER_PORT/liste"
+# Ueber localhost, denn genau so spricht nginx den Dienst an. Von aussen
+# ist der Port absichtlich nicht erreichbar - siehe UMZUG.md.
 pruefe "mc-ranked" "http://127.0.0.1:$RANKED_PORT/api/status"
 pruefe "die Seite" "https://meccha-ranked.com/api/status"
+pruefe "die Regeln" "https://meccha-ranked.com/regeln"
 
 # Haengt einer der Dienste doch am offenen Netz, faellt es hier auf.
-if ss -tln 2>/dev/null | grep -qE "0\.0\.0\.0:($RANKED_PORT|$TURNIER_PORT)|\*:($RANKED_PORT|$TURNIER_PORT)"; then
-  warn "Ein Dienst lauscht auf allen Schnittstellen statt nur auf 127.0.0.1."
+if ss -tln 2>/dev/null | grep -qE "0\.0\.0\.0:$RANKED_PORT|\*:$RANKED_PORT"; then
+  warn "Der Dienst lauscht auf allen Schnittstellen statt nur auf 127.0.0.1."
   warn "Dann ist er an nginx und am Zertifikat vorbei erreichbar."
   fehlt=1
+fi
+
+# -----------------------------------------------------------------------------
+#  Altbestand
+#
+#  turnier lief hier bis zum 20.08.2026 als eigener Dienst. Es wird nicht
+#  mehr gebraucht, und solange es laeuft, belegt es Port 8777 und
+#  Arbeitsspeicher fuer nichts.
+#
+#  ABGERAEUMT WIRD HIER NICHTS. Ein Deploy-Skript, das von sich aus
+#  Dienste entfernt, ist ein Deploy-Skript, dem man nicht mehr traut -
+#  und /opt/meccha/turnier/data koennte noch etwas enthalten, das jemand
+#  ansehen will. Es sagt nur Bescheid.
+# -----------------------------------------------------------------------------
+if systemctl list-unit-files 2>/dev/null | grep -q '^meccha-turnier\.service'; then
+  printf '\n'
+  warn "Der alte Dienst meccha-turnier ist noch eingerichtet."
+  warn "Er wird nicht mehr gebraucht. Zum Entfernen, in dieser Reihenfolge:"
+  leise "  sudo tar czf /root/turnier-letzter-stand.tar.gz /opt/meccha/turnier/data"
+  leise "  sudo systemctl disable --now meccha-turnier"
+  leise "  sudo rm /etc/systemd/system/meccha-turnier.service /etc/meccha-turnier.env"
+  leise "  sudo systemctl daemon-reload"
+  leise "  sudo rm -rf /opt/meccha/turnier"
+  printf '\n'
 fi
 
 if [[ "$fehlt" -ne 0 ]]; then

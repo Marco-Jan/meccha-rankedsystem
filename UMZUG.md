@@ -1,11 +1,14 @@
 # Umzug auf den Hetzner-Server
 
-Ziel: **`meccha-ranked.com`** — mc-ranked öffentlich erreichbar, `turnier` daneben
-auf demselben Rechner.
+Ziel: **`meccha-ranked.com`** — mc-ranked öffentlich erreichbar.
 
-Beide ziehen um. Das ist kein Zusatzaufwand, sondern der einfachere Weg: mc-ranked
-braucht von `turnier` die Kartei und den Schreibzugriff, und über `localhost` ist das
-eine Zeile Konfiguration statt eines Tunnels zu dir nach Hause.
+> **Stand 20.08.2026.** Eine frühere Fassung dieser Anleitung richtete zusätzlich
+> `turnier` auf dem Server ein — von dort kamen Namensliste und Punkteliste.
+> **Das war ein Missverständnis.** mc-ranked ist ein eigenständiges Programm und
+> braucht das Nachbarprojekt nicht; `turnier` ist OBS-Zeug für den Stream und gehört
+> auf den heimischen Rechner. Warum und was daraus folgte, steht in `UMBAU.md`.
+>
+> Läuft auf deinem Server noch ein `meccha-turnier`: siehe **Schritt 10** ganz unten.
 
 > **Arbeitsweise:** Du führst die Befehle aus, ich lese mit. Nach jedem Schritt kurz
 > Bescheid geben, dann gehen wir weiter. Bei Fehlern die Ausgabe hierher kopieren.
@@ -20,7 +23,7 @@ eine Zeile Konfiguration statt eines Tunnels zu dir nach Hause.
 | Webserver | **nginx** auf 80/443 — drei Seiten: `chew.walk-buddy.app`, `cms.walk-buddy.app`, `walkbuddy` |
 | Node | **v18.19.1** — zu alt, wird in Schritt 1 gehoben |
 | Python | 3.12.3 ✓ |
-| Frei | 8777 und 8790 sind unbelegt ✓ |
+| Frei | 8790 ist unbelegt ✓ |
 | Platz | 7,7 GB RAM (4 GB frei), 24 GB Plattenplatz ✓ |
 | Sonstiges | Docker auf 8055, ein Python-Dienst auf 127.0.0.1:8000 — beide unberührt |
 
@@ -43,10 +46,8 @@ Prüfen, sobald es sich verteilt hat (Minuten bis wenige Stunden):
 dig +short meccha-ranked.com          # muss 89.167.44.253 zeigen
 ```
 
-**`turnier` bekommt keine Adresse.** Es läuft auf dem Server nur intern, mc-ranked
-erreicht es über `localhost:8777`. Von außen kommt niemand daran — auch OBS nicht,
-so wie du es wolltest. Brauchst du das Overlay später doch von unterwegs, ist es ein
-weiterer nginx-Block; heute lassen wir es zu.
+**Ein Dienst, eine Adresse.** mc-ranked lauscht auf `127.0.0.1:8790`, nginx reicht
+`meccha-ranked.com` dorthin durch. Sonst ist nichts einzurichten.
 
 ---
 
@@ -57,7 +58,7 @@ Auf dem Server ausführen, Ausgabe hierher:
 ```bash
 cat /etc/os-release | head -2
 echo "--- wer horcht ---"
-sudo ss -tlnp | grep -E ':(80|443|8777|8790)'
+sudo ss -tlnp | grep -E ':(80|443|8790)'
 echo "--- webserver ---"
 which caddy nginx apache2 2>/dev/null
 systemctl is-active caddy nginx 2>/dev/null
@@ -93,7 +94,7 @@ Eigener Benutzer, damit nichts als root läuft:
 
 ```bash
 sudo adduser --system --group --home /opt/meccha meccha
-sudo mkdir -p /opt/meccha/{turnier,mc-ranked}
+sudo mkdir -p /opt/meccha/mc-ranked
 sudo chown -R meccha:meccha /opt/meccha
 ```
 
@@ -133,73 +134,9 @@ cd /opt/meccha/mc-ranked && sudo -u meccha git pull && sudo systemctl restart me
 | `daten/` | Konten, Tokens, Bilder | wird beim ersten Start leer angelegt |
 | `.venv/` | Python-Umgebung | Schritt 4 |
 
-### turnier ist nicht im Repo
-
-`turnier` liegt eine Ebene darüber und gehört nicht dazu. Das lädst du per rsync
-hoch — **ohne** `START.bat` und **ohne** `data/`:
-
-```bash
-# von deinem PC, im Ordner  E:/myprojects/twitch/scripte
-rsync -av \
-  --exclude 'node_modules' --exclude 'data' \
-  --exclude 'START.bat' --exclude 'mc-ranked' \
-  turnier/ DEIN-USER@DEIN-SERVER:/tmp/turnier/
-
-# auf dem Server
-sudo cp -r /tmp/turnier/* /opt/meccha/turnier/
-sudo chown -R meccha:meccha /opt/meccha/turnier
-```
-
-> **`turnier/START.bat` bleibt zu Hause.** Dort steht dein Discord-Token im Klartext,
-> und im Turnier-Projekt gibt es **keine `.gitignore`**. Solltest du turnier später
-> auch versionieren, lege zuerst eine an — sonst liegt der Token im Verlauf und lässt
-> sich nur noch durch Zurücksetzen bei Discord entschärfen.
-
----
-
-## Schritt 3 · turnier einrichten
-
-`turnier` hat **keine npm-Abhängigkeiten** — kein `npm install` nötig.
-
-```bash
-sudo -u meccha mkdir -p /opt/meccha/turnier/data
-sudo tee /etc/meccha-turnier.env >/dev/null <<'EOF'
-PORT=8777
-TURNIER_KEY=HIER-EIN-LANGES-ZUFAELLIGES-WORT
-# DISCORD_TOKEN=...      nur wenn der Bot mitlaufen soll
-# DISCORD_GUILD=...
-EOF
-sudo chmod 600 /etc/meccha-turnier.env
-```
-
-Zufälligen Schlüssel erzeugen: `openssl rand -hex 24`
-
-```bash
-sudo tee /etc/systemd/system/meccha-turnier.service >/dev/null <<'EOF'
-[Unit]
-Description=Turnier-Server (Overlay + Punkteliste)
-After=network.target
-
-[Service]
-Type=simple
-User=meccha
-WorkingDirectory=/opt/meccha/turnier
-EnvironmentFile=/etc/meccha-turnier.env
-ExecStart=/usr/bin/node server.js
-Restart=always
-RestartSec=5
-
-[Install]
-WantedBy=multi-user.target
-EOF
-
-sudo systemctl daemon-reload
-sudo systemctl enable --now meccha-turnier
-sudo systemctl status meccha-turnier --no-pager
-curl -s localhost:8777/api/state | head -c 200
-```
-
----
+> **Ein Blick in die alte Fassung dieser Anleitung**, falls du sie noch kennst:
+> Hier stand ein `rsync` des `turnier`-Ordners und ein eigener Schritt 3, der ihn als
+> systemd-Dienst einrichtete. Beides entfällt ersatzlos.
 
 ## Schritt 4 · RapidOCR
 
@@ -241,18 +178,24 @@ sudo -u meccha npm install          # MIT devDependencies - tsx steckt dort drin
 ```bash
 sudo tee /etc/meccha-ranked.env >/dev/null <<'EOF'
 MC_PORT=8790
-MC_ADMIN_KEY=HIER-EIN-ANDERES-LANGES-ZUFAELLIGES-WORT
+MC_ADMIN_KEY=HIER-EIN-LANGES-ZUFAELLIGES-WORT
 MC_OEFFENTLICHE_URL=https://meccha-ranked.com
-TURNIER_URL=http://localhost:8777
-TURNIER_KEY=DERSELBE-WIE-IN-SCHRITT-3
-MC_SPIEL=Meccha 2026
 MC_PYTHON=/opt/meccha/mc-ranked/.venv/bin/python
+
+# Deine SteamID64 (17 Ziffern), mehrere mit Komma. Loest das
+# Henne-Ei-Problem: Rollen vergibt ein Admin, aber den ersten kann
+# niemand ernennen. Wer hier steht, laesst sich auch nicht herabstufen.
+MC_ADMIN_STEAM=DEINE-STEAMID64
 EOF
 sudo chmod 600 /etc/meccha-ranked.env
 ```
 
-**`MC_PYTHON` ist Pflicht.** Ohne die Zeile sucht `src/rapidocr.ts:41` unter
-`.venv/Scripts/python.exe` — dem Windows-Pfad — und der Leser startet nie.
+**`MC_PYTHON` ist Pflicht.** Ohne die Zeile sucht `src/rapidocr.ts` unter
+`.venv/Scripts/python.exe` — dem Windows-Pfad — und der Leser startet nie. Dasselbe
+Python schneidet auch den Ranglisten-Block aus (`python/schneide_aus.py`).
+
+**`MC_ADMIN_STEAM` ebenfalls.** Ohne sie kommt niemand in die Verwaltung außer über
+den Schlüssel in der Adresse — und der landet in jeder Logzeile.
 
 **`MC_OEFFENTLICHE_URL` ebenfalls.** Steam leitet nach der Anmeldung exakt dorthin
 zurück, und das Sitzungs-Cookie bekommt sein `Secure` nur bei `https://`.
@@ -260,8 +203,8 @@ zurück, und das Sitzungs-Cookie bekommt sein `Secure` nur bei `https://`.
 ```bash
 sudo tee /etc/systemd/system/meccha-ranked.service >/dev/null <<'EOF'
 [Unit]
-Description=mc-ranked (OCR-Feeder, Freigabe, Kontoseite)
-After=network.target meccha-turnier.service
+Description=mc-ranked (Rangliste, Freigabe, Kontoseite)
+After=network.target
 
 [Service]
 Type=simple
@@ -281,7 +224,16 @@ sudo systemctl enable --now meccha-ranked
 sudo journalctl -u meccha-ranked -n 30 --no-pager
 ```
 
-Im Log muss stehen: `Turnier erreichbar: Meccha 2026 (0 Eintraege)`.
+Im Log steht dann der Startkasten. Zwei Zeilen daraus sind die wichtigen:
+
+```
+  Wertung   :  0 Eintraege, 0 in der Wertung, 0 Anwaerter
+  Spieler   :  0 mit Ingame-Namen  <- ohne die kann nichts zugeordnet werden!
+```
+
+Die zweite ist die häufigste Ursache dafür, dass scheinbar nichts passiert: Solange
+sich niemand über Steam angemeldet und seinen Ingame-Namen eingetragen hat, landet
+jede hochgeladene Runde in der Rückfrage.
 
 ---
 
@@ -338,25 +290,23 @@ sudo certbot --nginx -d meccha-ranked.com
 
 ### Die Ports zumachen
 
-`turnier` und mc-ranked lauschten frueher auf **allen** Schnittstellen. Damit
-waren `89.167.44.253:8777` und `:8790` direkt erreichbar - an nginx vorbei,
-**ohne TLS**, und beim Turnier-Server auch das Admin-Panel.
+mc-ranked lauschte frueher auf **allen** Schnittstellen. Damit war
+`89.167.44.253:8790` direkt erreichbar - an nginx vorbei und **ohne TLS**.
 
-Das ist inzwischen im Code geloest und nicht mehr deine Aufgabe: beide Dienste
-binden an `127.0.0.1` und nehmen nur noch Verbindungen von der Maschine selbst
-an. nginx laeuft dort ebenfalls und spricht sie ueber localhost an - fuer den
-aendert sich nichts. Von aussen sind die Ports nicht gefiltert, sondern gar
+Das ist inzwischen im Code geloest und nicht mehr deine Aufgabe: der Dienst
+bindet an `127.0.0.1` und nimmt nur noch Verbindungen von der Maschine selbst
+an. nginx laeuft dort ebenfalls und spricht ihn ueber localhost an - fuer den
+aendert sich nichts. Von aussen ist der Port nicht gefiltert, sondern gar
 nicht vorhanden.
 
 ```bash
 # Nachpruefen, dass wirklich nur localhost dranhaengt:
-sudo ss -tlnp | grep -E '8777|8790'
+sudo ss -tlnp | grep 8790
 ```
 
 Richtig sieht so aus - `127.0.0.1:8790`, **nicht** `0.0.0.0:8790` oder `*:8790`:
 
 ```
-LISTEN 0 511 127.0.0.1:8777 0.0.0.0:*  users:(("node",pid=...))
 LISTEN 0 511 127.0.0.1:8790 0.0.0.0:*  users:(("node",pid=...))
 ```
 
@@ -374,13 +324,8 @@ curl -m 5 http://89.167.44.253:8790/api/status    # muss ins Leere laufen
 > Hetzner-Konsole mit `sudo ufw disable`. Die Bindung an localhost loest
 > dasselbe Problem und kann dir dabei nichts kaputt machen.
 >
-> Willst du das Overlay im Heimnetz von einem zweiten Geraet holen, startest
-> du `turnier` lokal mit `HOST=0.0.0.0`. Auf dem Server bleibt es zu.
-
-> **Kein Overlay von außen.** `turnier` bleibt damit intern, so wie besprochen.
-> Brauchst du das Scoreboard später doch von unterwegs, ist es ein zweiter
-> nginx-Block plus DNS-Eintrag — aber dann bedenke: `TURNIER_KEY` schützt nur die
-> Schreibzugriffe (`server.js:76`), `/admin` und `/api/state` wären lesbar.
+> Willst du mc-ranked im Heimnetz von einem zweiten Geraet erreichen, startest
+> du es lokal mit `MC_HOST=0.0.0.0`. Auf dem Server bleibt es zu.
 
 ---
 
@@ -418,8 +363,10 @@ Der Reihe nach, jedes einzeln prüfen:
 - [ ] Eine Runde per F9 einreichen
 - [ ] Dashboard `https://meccha-ranked.com/?key=…` zeigt sie
 - [ ] Freigeben → Eintrag erscheint unter „Zuletzt in der Punkteliste"
-- [ ] Der Name steht in der **Kartei** des Servers (sonst „nicht zugeordnet")
-- [ ] OBS-Quellen auf die neue Turnier-Adresse umstellen
+- [ ] Die Runde steht in der **Rangliste** auf `https://meccha-ranked.com/`
+- [ ] `https://meccha-ranked.com/regeln` zeigt die Regeln mit den echten Zahlen
+- [ ] `https://meccha-ranked.com/download` zeigt Prüfsumme und VirusTotal-Link
+- [ ] Im Dashboard: Reiter **Bilder** zeigt den Ausschnitt der Runde
 
 ---
 
@@ -430,15 +377,19 @@ sudo journalctl -u meccha-ranked -f      # mitlesen
 sudo systemctl restart meccha-ranked     # nach Änderungen
 ```
 
-**Sicherung** — die Laufzeitdaten liegen in zwei Ordnern:
+**Sicherung** — alles Wichtige liegt in einem Ordner:
 
 ```bash
-sudo tar czf /root/meccha-$(date +%F).tar.gz \
-  /opt/meccha/turnier/data /opt/meccha/mc-ranked/daten
+sudo tar czf /root/meccha-$(date +%F).tar.gz /opt/meccha/mc-ranked/daten
 ```
 
-Die hochgeladenen Bilder unter `daten/uploads/` räumt der Server selbst auf: nach
-24 Stunden, geflaggte Runden erst nach 30 Tagen.
+Dort stecken Konten, Zugänge, Freigabeliste **und die Rangliste**. Geht der Ordner
+verloren, ist die Saison weg — es gibt keine zweite Quelle mehr.
+
+Die hochgeladenen Bilder unter `daten/uploads/` räumt der Server selbst auf: das
+Original nach 3 Tagen, geflaggte Runden erst nach 30 Tagen. Die **Ausschnitte** unter
+`daten/uploads/ausschnitte/` bleiben dauerhaft — rund 55 KB je Runde, aufs Jahr
+gerechnet unter einem halben Gigabyte.
 
 ---
 
@@ -449,20 +400,68 @@ Die hochgeladenen Bilder unter `daten/uploads/` räumt der Server selbst auf: na
 | **Python-Pfad** | `src/rapidocr.ts:41` zeigt auf Windows. `MC_PYTHON` setzen |
 | **`npm run build`** | Bricht die Pfade. Mit `tsx` starten |
 | **`MC_OEFFENTLICHE_URL`** | Ohne sie leitet Steam falsch zurück, und der Cookie bekommt kein `Secure` |
-| **Discord-Token** | Steht im Klartext in `turnier/START.bat`, die **nicht** ignoriert wird. Nicht hochladen — und wenn die Datei je in einem Backup gelandet ist, den Token bei Discord zurücksetzen |
 | **Admin-Schlüssel in der URL** | `?key=…` landet in Proxy-Logs. Deshalb `access_log off` |
 | **`EINSTELLUNGEN.bat`** | Steht **jetzt** in der `.gitignore`, als Vorlage liegt `EINSTELLUNGEN.bat.beispiel` daneben. Bleibt lokal |
 | **Groß-/Kleinschreibung** | Auf Linux streng. Alle Dateinamen in `public/` sind konsequent klein — geprüft, passt |
-| **turnier ohne npm** | Keine Abhängigkeiten, kein `npm install`, kein Build |
+| **Kein Spieler, keine Zuordnung** | Solange niemand angemeldet ist, geht jede Runde in die Rückfrage. Steht als Warnung im Startkasten |
 
 ---
 
 ## Wenn es schiefgeht
 
 ```bash
-sudo systemctl stop meccha-ranked meccha-turnier
+sudo systemctl stop meccha-ranked
 ```
 
 Deine lokale Einrichtung ist unberührt: `MECCHA-START.bat` startet wie bisher gegen
 `localhost`. Der einzige Weg zurück beim Client ist eine `.exe` mit der alten
 Adresse — deshalb bewahre die aktuelle auf, bevor du in Schritt 7 neu baust.
+
+---
+
+## Schritt 10 · Den alten turnier-Dienst abbauen
+
+Nur nötig, wenn dein Server noch aus der Zeit vor dem 20.08.2026 stammt. `deploy.sh`
+sagt dir von selbst Bescheid, wenn es ihn findet.
+
+> **Vorsicht mit dem Namen.** `/opt/meccha/mc-ranked/daten/` heißt auch „Meccha" und
+> enthält **alles**: Konten, Zugänge, die Rangliste. Nur `turnier` darf weg.
+
+Erst nachsehen, ob dort noch etwas liegt, das jemand sehen will:
+
+```bash
+sudo ls -la /opt/meccha/turnier/data/
+sudo cat /opt/meccha/turnier/data/listen.json | head -c 400
+```
+
+Dann sichern — kostet nichts und macht den Rest entspannt:
+
+```bash
+sudo tar czf /root/turnier-letzter-stand.tar.gz /opt/meccha/turnier
+```
+
+Dienst abschalten und entfernen:
+
+```bash
+sudo systemctl disable --now meccha-turnier
+sudo rm /etc/systemd/system/meccha-turnier.service /etc/meccha-turnier.env
+sudo systemctl daemon-reload
+```
+
+Nachsehen, dass Port 8777 frei ist und mc-ranked unberührt läuft:
+
+```bash
+sudo ss -tlnp | grep 8777        # darf nichts mehr zeigen
+sudo systemctl status meccha-ranked --no-pager
+curl -s localhost:8790/api/status
+```
+
+Erst wenn das stimmt, der Ordner:
+
+```bash
+sudo rm -rf /opt/meccha/turnier
+```
+
+**Was NICHT angefasst wird:** nginx und deine drei walk-buddy-Seiten, Docker auf
+8055, der Python-Dienst auf 127.0.0.1:8000, der Benutzer `meccha`, und vor allem
+`/opt/meccha/mc-ranked/` samt `daten/`.
