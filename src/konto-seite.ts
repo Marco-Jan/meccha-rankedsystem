@@ -663,14 +663,14 @@ export function kontoSeite(): string {
   <div class="tafel aktiv" id="t-rang"><div id="rangliste"></div></div>
   <div class="tafel" id="t-konto"><div id="inhalt"></div></div>
   <div class="fuss">
+    <!-- Hier stand bis eben auch eine Kachel "Programm". Sie sah aus wie
+         ein zweiter Download-Knopf, und genau das sollte sie nicht sein:
+         der Knopf steht oben im Kopf, wo er nicht wegwandert. Uebrig
+         bleibt der Weg zu den Regeln. -->
     <div class="wege">
       <a class="weg" href="/regeln">
         <span class="weg-gross" data-t="Regeln">Regeln</span>
         <span class="weg-klein" data-t="Wann eine Runde zählt">Wann eine Runde zählt</span>
-      </a>
-      <a class="weg" href="/download">
-        <span class="weg-gross" data-t="Programm">Programm</span>
-        <span class="weg-klein" data-t="Herunterladen und einrichten">Herunterladen und einrichten</span>
       </a>
     </div>
     <span data-t="Fragen oder Probleme? Melde dich im Discord bei einem">Fragen oder Probleme? Melde dich im Discord bei einem</span> <b data-t="Admin oder Mod">Admin oder Mod</b>.
