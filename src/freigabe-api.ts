@@ -31,6 +31,7 @@ import {
   fruehereAblehnungen, verlaufVon, pruefeVerdacht, type Verlaufseintrag
 } from './verdacht.js';
 import type { Wertungsstand } from './wertung.js';
+import type { Listen } from './listen.js';
 
 export interface FreigabeApiOptionen {
   readonly freigabe: Freigabeliste;
@@ -43,6 +44,14 @@ export interface FreigabeApiOptionen {
   readonly tokens?: Tokenliste | undefined;
   /** Fuer die Kontenverwaltung im Dashboard. */
   readonly konten?: Kontenliste | undefined;
+  /**
+   * Die Ranglisten - anlegen, umbenennen, ein- und ausschalten.
+   *
+   * Nur fuer Admins. Eine versehentlich angelegte Liste verdoppelt ab
+   * dann jede freigegebene Runde, und das faellt erst auf, wenn die
+   * Wertung schon schief ist.
+   */
+  readonly listen?: Listen | undefined;
 }
 
 function sendeJson(res: http.ServerResponse, code: number, obj: unknown): void {
@@ -194,7 +203,8 @@ export async function bearbeiteFreigabe(
   const meine = [
     '/api/offene', '/api/entscheiden', '/api/bild', '/api/galerie',
     '/api/uebersicht', '/api/tokens', '/api/token-neu', '/api/token-sperren',
-    '/api/konten', '/api/konto-admin'
+    '/api/konten', '/api/konto-admin',
+    '/api/listen', '/api/liste-neu', '/api/liste-aendern', '/api/liste-export'
   ];
   if (!meine.includes(pfad)) return false;
 
@@ -204,6 +214,9 @@ export async function bearbeiteFreigabe(
      oder Rollen vergeben.
   */
   const nurAdmin = [
+    /* Listen anlegen und abschalten aendert, WO gewertet wird - das ist
+       kein Alltagsgeschaeft eines Mods. Lesen und Exportieren darf er. */
+    '/api/liste-neu', '/api/liste-aendern',
     '/api/tokens', '/api/token-neu', '/api/token-sperren',
     '/api/konten', '/api/konto-admin'
   ];
@@ -250,11 +263,21 @@ export async function bearbeiteFreigabe(
         eintraege: stand.eintraege,
         fenster: stand.fenster,
         voll: stand.voll,
-        gewertet: stand.gewertet.length,
-        anwaerter: stand.anwaerter.length,
-        /* Was tatsaechlich in der Rangliste steht - die Gegenprobe zu
-           "freigegeben". */
-        letzte: stand.letzte
+        /* Je Liste. Eine Summe waere hier irrefuehrend: bei zwei aktiven
+           Listen haette jeder doppelt so viele Eintraege, ohne oefter
+           gespielt zu haben. */
+        listen: stand.listen.map((l) => ({
+          id: l.id,
+          name: l.name,
+          aktiv: l.aktiv,
+          eintraege: l.eintraege,
+          gewertet: l.gewertet.length,
+          anwaerter: l.anwaerter.length
+        })),
+        /* Was tatsaechlich angekommen ist - die Gegenprobe zu
+           "freigegeben". Aus den AKTIVEN Listen, denn dorthin ging es. */
+        letzte: stand.listen.filter((l) => l.aktiv).flatMap((l) => l.letzte)
+          .sort((a, b) => b.ts - a.ts).slice(0, 30)
       },
       /* Damit das Dashboard weiss, was es anzeigen darf - ein Mod sieht
          die Reiter fuer Konten und Zugaenge gar nicht erst. */
@@ -484,6 +507,83 @@ export async function bearbeiteFreigabe(
   }
 
   /* -------------------------------------------------------------- Bild */
+  /* ----------------------------------------------------------- Listen
+
+     Mehrere Ranglisten nebeneinander. Eine freigegebene Runde landet in
+     jeder AKTIVEN - so laufen Jahres- und Monatswertung parallel.
+  */
+  if (pfad === '/api/listen') {
+    const stand = o.holeStand();
+    sendeJson(res, 200, {
+      ok: true,
+      listen: stand.listen.map((l) => ({
+        id: l.id,
+        name: l.name,
+        aktiv: l.aktiv,
+        eintraege: l.eintraege,
+        gewertet: l.gewertet.length,
+        anwaerter: l.anwaerter.length
+      }))
+    });
+    return true;
+  }
+
+  /* Eine Liste als CSV. Platz, Name, Schnitt, Runden - eine Zeile je
+     Spieler, wie es in eine Tabellenkalkulation gehoert. */
+  if (pfad === '/api/liste-export') {
+    const url = new URL(req.url ?? '/', 'http://localhost');
+    const id = String(url.searchParams.get('liste') ?? '');
+    const gesucht = o.holeStand().listen.find((l) => l.id === id);
+
+    if (!gesucht) {
+      sendeJson(res, 404, { ok: false, fehler: 'Liste nicht gefunden' });
+      return true;
+    }
+
+    /*
+       Semikolon statt Komma und ein BOM davor.
+
+       Beides fuer Excel: es liest CSV in der Landeseinstellung, und im
+       deutschen Windows trennt es mit Semikolon. Mit Komma landet die
+       ganze Zeile in einer Spalte. Das BOM sagt ihm ausserdem, dass es
+       UTF-8 ist - sonst werden aus Umlauten Fragezeichen, und aus
+       chinesischen Namen Buchstabensalat.
+    */
+    const feld = (x: unknown): string => {
+      const t = String(x ?? '');
+      return /[";\n]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t;
+    };
+
+    const zeilen = [['Platz', 'Spieler', 'Schnitt', 'Runden', 'Gewertet'].join(';')];
+
+    for (const z of gesucht.gewertet) {
+      zeilen.push([
+        z.platz ?? '', feld(z.name),
+        /* Komma als Dezimaltrennzeichen - sonst liest Excel im deutschen
+           Gebietsschema "1234.5" als Text und rechnet nicht damit. */
+        String(z.schnitt.toFixed(2)).replace('.', ','),
+        z.gesamt, 'ja'
+      ].join(';'));
+    }
+    for (const z of gesucht.anwaerter) {
+      zeilen.push([
+        '', feld(z.name),
+        String(z.schnitt.toFixed(2)).replace('.', ','),
+        z.gesamt, 'nein'
+      ].join(';'));
+    }
+
+    const name = gesucht.name.replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-|-$/g, '');
+    res.writeHead(200, {
+      'Content-Type': 'text/csv; charset=utf-8',
+      'Content-Disposition': 'attachment; filename="' +
+        (name || 'rangliste') + '-' + new Date().toISOString().slice(0, 10) + '.csv"',
+      'Cache-Control': 'no-store'
+    });
+    res.end('\uFEFF' + zeilen.join('\r\n') + '\r\n');
+    return true;
+  }
+
   /* ---------------------------------------------------------- Galerie
 
      Alle Runden als Kacheln, nicht nur die offenen.
@@ -622,6 +722,47 @@ export async function bearbeiteFreigabe(
       'X-MC-Bildart': datei === runde.bildPfad ? 'original' : 'ausschnitt'
     });
     res.end(daten);
+    return true;
+  }
+
+  /* ------------------------------------------------- Listen aendern */
+  if (pfad === '/api/liste-neu' || pfad === '/api/liste-aendern') {
+    if (req.method !== 'POST') {
+      sendeJson(res, 405, { ok: false, fehler: 'Nur POST' });
+      return true;
+    }
+    if (!o.listen) {
+      sendeJson(res, 503, { ok: false, fehler: 'Listen sind nicht eingerichtet' });
+      return true;
+    }
+
+    let d: { name?: string; id?: string; aktiv?: boolean } = {};
+    try {
+      d = JSON.parse(await leseKoerper(req)) as typeof d;
+    } catch {
+      sendeJson(res, 400, { ok: false, fehler: 'Ungueltige Daten' });
+      return true;
+    }
+
+    if (pfad === '/api/liste-neu') {
+      /* Sie faengt bei NULL an - eine neue Saison ist eine neue Saison.
+         Und sie ist sofort aktiv, ohne die alte abzuschalten: was
+         nebeneinander laufen soll, entscheidet der Admin danach. */
+      const neu = o.listen.anlegen(String(d.name ?? ''));
+      sendeJson(res, neu.ok ? 200 : 400, neu.ok
+        ? { ok: true, liste: neu.wert }
+        : { ok: false, fehler: neu.fehler });
+      return true;
+    }
+
+    const id = String(d.id ?? '');
+    const erg = typeof d.aktiv === 'boolean'
+      ? o.listen.setzeAktiv(id, d.aktiv)
+      : o.listen.umbenennen(id, String(d.name ?? ''));
+
+    sendeJson(res, erg.ok ? 200 : 400, erg.ok
+      ? { ok: true, liste: erg.wert }
+      : { ok: false, fehler: erg.fehler });
     return true;
   }
 

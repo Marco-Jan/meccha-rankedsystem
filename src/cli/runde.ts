@@ -94,8 +94,11 @@ async function main(): Promise<void> {
   const stand = wertung.stand();
 
   console.log('');
+  const aktive = stand.listen.filter((l) => l.aktiv);
+  const gewertet = aktive.reduce((n, l) => n + l.gewertet.length, 0);
+  console.log('  Listen   : ' + aktive.map((l) => l.name).join(', '));
   console.log('  Rangliste: ' + stand.eintraege + ' Eintraege, ' +
-    stand.gewertet.length + ' in der Wertung');
+    gewertet + ' in der Wertung');
   console.log('  Spieler  : ' + stand.spieler.length + ' mit Ingame-Namen' +
     (stand.spieler.length === 0 ? '  <- niemand zuzuordnen!' : ''));
   console.log('  Leser    : ' + leserBeschreibung());

@@ -64,8 +64,11 @@ async function main(): Promise<void> {
   console.log('');
   console.log('  Daten          : ' + DATEN_DIR);
   console.log('  Spieler        : ' + stand.spieler.length + ' mit Ingame-Namen');
+  const aktive = stand.listen.filter((l) => l.aktiv);
+  const gewertet = aktive.reduce((n, l) => n + l.gewertet.length, 0);
+  console.log('  Listen         : ' + aktive.map((l) => l.name).join(', '));
   console.log('  Rangliste      : ' + stand.eintraege + ' Eintraege, ' +
-    stand.gewertet.length + ' in der Wertung, ' + stand.anwaerter.length + ' Anwaerter');
+    gewertet + ' in der Wertung');
   console.log('');
 
   let zeilen;

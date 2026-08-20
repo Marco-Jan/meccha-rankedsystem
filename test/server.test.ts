@@ -24,7 +24,13 @@ after(() => rmSync(ORDNER, { recursive: true, force: true }));
 const SPIELER: readonly Spieler[] = [
   { id: 'p1', name: 'Jones', aliases: [] },
   { id: 'p2', name: 'mj', aliases: [] },
-  { id: 'p3', name: 'TREV', aliases: [] }
+  { id: 'p3', name: 'TREV', aliases: [] },
+  /* Angemeldet, aber auf den Testbildern nicht zu sehen. Gebraucht fuer
+     die Faelle "dein Name steht nicht in DIESER Rangliste" - die sind
+     etwas anderes als "zu deinem Namen gibt es kein Konto", und seit
+     beides geprueft wird, muessen die Tests sie auseinanderhalten. */
+  { id: 'p4', name: 'GibtsNichtHier', aliases: [] },
+  { id: 'p5', name: 'J0nes', aliases: [] }
 ];
 
 /** Was der eingesetzte Leser zurueckgibt. */
@@ -180,15 +186,20 @@ describe('Server - Routing', () => {
     const res = await fetch(basis + '/api/rangliste');
     const j = (await res.json()) as {
       ok: boolean; fenster: number; voll: number;
-      gewertet: unknown[]; anwaerter: unknown[];
+      listen: Array<{ id: string; name: string; gewertet: unknown[]; anwaerter: unknown[] }>;
     };
 
     assert.equal(res.status, 200);
     assert.equal(j.ok, true);
     assert.equal(j.fenster, 10);
     assert.equal(j.voll, 10);
-    assert.ok(Array.isArray(j.gewertet));
-    assert.ok(Array.isArray(j.anwaerter));
+    /* Seit es mehrere Ranglisten geben kann, steht die Wertung je Liste.
+       Oeffentlich sind nur die AKTIVEN - eine abgeschlossene Saison
+       gehoert ins Dashboard, nicht auf die Startseite. */
+    assert.ok(Array.isArray(j.listen));
+    assert.ok(j.listen.length >= 1, 'mindestens eine aktive Liste');
+    assert.ok(Array.isArray(j.listen[0]!.gewertet));
+    assert.ok(Array.isArray(j.listen[0]!.anwaerter));
   });
 
   test('weist unbekannte Pfade ab', async () => {
@@ -328,6 +339,19 @@ describe('Server - Zuschauer laden hoch', () => {
     const mitFehler = tokens.anlegen('Nori', false, 'J0nes').token;
     const { code } = await lade(bild('runde-fehler'), { 'X-MC-Token': mitFehler });
     assert.equal(code, 200);
+  });
+
+  test('weist ab, wenn zum Ingame-Namen gar kein Konto gehoert', async () => {
+    /* Gewertet wird gegen die angemeldeten Konten. Ein Token ohne Konto
+       dahinter koennte hochladen, wuerde aber NIE gewertet - frueher
+       fiel das erst beim Freigeben auf, an einer kleinen Null. Der
+       Zuschauer wartete und erfuhr nie, warum nichts passierte. */
+    const ohneKonto = tokens.anlegen('Niemand', false, 'NieAngemeldet').token;
+    const { code, body } = await lade(bild('runde1'), { 'X-MC-Token': ohneKonto });
+
+    assert.equal(code, 403);
+    assert.equal(body.art, 'kein-konto');
+    assert.match(String(body.fehler), /Melde dich mit Steam an/);
   });
 
   test('nennt den Absender in der Freigabeliste', async () => {

@@ -619,6 +619,5 @@ der Leser selbst um. `--ausschnitt` gibt es weiterhin, ist aber optional.
 | `src/cli/probelauf.ts` | Kette ohne Screenshot durchspielen |
 | `src/cli/wache.ts` | Auf die Taste warten, Runde auswerten |
 | `src/cli/serve.ts` | Server starten (Upload, Freigabe, Konten) |
-| `src/cli/token.ts` | Token von Hand anlegen, sperren, ansehen |
 | `src/cli/verknuepfen.ts` | Ingame-Namen mit der Kartei verknüpfen |
 | `src/cli/testserver.ts` | Wegwerf-Kopie des Turnier-Servers zum Testen |

@@ -18,10 +18,13 @@ export function standMit(
     fenster: 10,
     voll: 10,
     eintraege: 0,
-    gewertet: [],
-    anwaerter: [],
-    aufDemSprung: [],
-    letzte: [],
+    /* Eine aktive Liste, damit Tests nicht in den Sonderfall "gar keine"
+       laufen - den kann es im Betrieb nicht geben, weil sorgeFuerEine()
+       beim Start eine anlegt. */
+    listen: [{
+      id: 'l_test', name: 'Testliste', aktiv: true, eintraege: 0,
+      gewertet: [], anwaerter: [], aufDemSprung: [], letzte: []
+    }],
     ...extra
   };
 }

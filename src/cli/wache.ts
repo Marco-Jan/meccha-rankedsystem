@@ -71,8 +71,10 @@ async function main(): Promise<void> {
   console.log('  #   M E C C H A   -   W A C H E            #');
   console.log('  ############################################');
   console.log('');
+  const aktiveListen = stand.listen.filter((l) => l.aktiv);
+  console.log('  Listen     : ' + aktiveListen.map((l) => l.name).join(', '));
   console.log('  Rangliste  : ' + stand.eintraege + ' Eintraege, ' +
-    stand.gewertet.length + ' in der Wertung');
+    aktiveListen.reduce((n, l) => n + l.gewertet.length, 0) + ' in der Wertung');
   console.log('  Spieler    : ' + stand.spieler.length + ' mit Ingame-Namen' +
     (stand.spieler.length === 0 ? '  <- niemand zuzuordnen!' : ''));
   console.log('  Leser      : ' + leserBeschreibung());

@@ -24,6 +24,7 @@ import { ladeFreigabeliste } from '../freigabe.js';
 import { ladeTokens } from '../tokens.js';
 import { ladeKonten } from '../konten.js';
 import { ladeRangliste } from '../rangliste.js';
+import { ladeListen } from '../listen.js';
 import { ladeWertung } from '../wertung.js';
 import { leserBeschreibung } from '../leser-wahl.js';
 
@@ -98,7 +99,8 @@ async function main(): Promise<void> {
      etwas anderes ein.
   */
   const rangliste = ladeRangliste(path.join(DATEN_DIR, 'rangliste.json'));
-  const wertung = ladeWertung(rangliste, konten);
+  const listen = ladeListen(path.join(DATEN_DIR, 'listen.json'));
+  const wertung = ladeWertung(rangliste, konten, listen);
 
   /* Bevorzugt die ZIP, faellt auf die .exe zurueck.
 
@@ -118,6 +120,7 @@ async function main(): Promise<void> {
     oeffentlichDir: path.join(PROJEKT, 'public'),
     clientDatei,
     konten,
+    listen,
     oeffentlicheUrl: OEFFENTLICHE_URL,
     holeStand: () => wertung.stand(),
     bildStunden: BILD_STUNDEN,
@@ -146,8 +149,12 @@ async function main(): Promise<void> {
       ' (' + tokens.alle().filter((t) => t.vertraut).length + ' vertraut)');
     console.log('  Konten    :  ' + konten.alle().length + ' angemeldet');
     console.log('  Offen     :  ' + freigabe.offene().length + ' Runden');
-    console.log('  Wertung   :  ' + stand.eintraege + ' Eintraege, ' +
-      stand.gewertet.length + ' in der Wertung, ' + stand.anwaerter.length + ' Anwaerter');
+    const aktiveListen = stand.listen.filter((l) => l.aktiv);
+    console.log('  Listen    :  ' + (aktiveListen.length
+      ? aktiveListen.map((l) => l.name + ' (' + l.eintraege + ')').join(', ')
+      : 'KEINE AKTIVE - freigegebene Runden landen nirgends!'));
+    console.log('  Wertung   :  ' + stand.eintraege + ' Eintraege gesamt, ' +
+      aktiveListen.reduce((n, l) => n + l.gewertet.length, 0) + ' in der Wertung');
     console.log('  Spieler   :  ' + stand.spieler.length + ' mit Ingame-Namen' +
       (stand.spieler.length === 0
         ? '  <- ohne die kann nichts zugeordnet werden!' : ''));

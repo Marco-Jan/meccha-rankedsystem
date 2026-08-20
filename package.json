@@ -13,8 +13,7 @@
     "wache": "tsx src/cli/wache.ts",
     "bild": "tsx src/cli/bild.ts",
     "pruefe": "tsx src/cli/pruefe.ts",
-    "serve": "tsx src/cli/serve.ts",
-    "token": "tsx src/cli/token.ts"
+    "serve": "tsx src/cli/serve.ts"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",

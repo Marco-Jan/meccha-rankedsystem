@@ -37,6 +37,7 @@ import { regelnSeite } from './regeln-seite.js';
 import { downloadSeite, clientstand } from './download-seite.js';
 import type { Kontenliste } from './konten.js';
 import type { Wertungsstand } from './wertung.js';
+import type { Listen } from './listen.js';
 import { schneideAus, ausschnittPfadZu } from './ausschnitt.js';
 import type { RohZeile } from './parse.js';
 
@@ -116,6 +117,9 @@ export interface ServerOptionen {
   readonly oeffentlichDir?: string;
   /** Selbstverwaltung der Zuschauer - Anmeldung ueber Steam. */
   readonly konten?: Kontenliste;
+  /** Die Ranglisten - nur fuers Dashboard, der Server selbst liest sie
+   *  ueber holeStand(). */
+  readonly listen?: Listen;
   /**
    * Adresse, unter der dieser Server von aussen erreichbar ist.
    * Steam leitet dorthin zurueck. Aus MC_OEFFENTLICHE_URL, damit ein
@@ -238,7 +242,8 @@ async function bearbeite(
     holeStand,
     eintragen: o.eintragen,
     tokens: o.tokens,
-    konten: o.konten
+    konten: o.konten,
+    listen: o.listen
   });
   if (behandelt) return;
 
@@ -439,17 +444,29 @@ async function bearbeite(
   */
   if (pfad === '/api/rangliste') {
     const stand = holeStand();
+
+    /* NUR DIE AKTIVEN. Eine deaktivierte Liste ist eine abgeschlossene
+       Saison - sie verschwindet von der oeffentlichen Seite und bleibt
+       im Dashboard einsehbar. Sonst wuerde die Startseite mit jedem Jahr
+       laenger, und niemand faende den laufenden Stand. */
+    const aktive = stand.listen.filter((l) => l.aktiv);
+
     return sendeJson(res, 200, {
       ok: true,
       fenster: stand.fenster,
       voll: stand.voll,
-      gewertet: stand.gewertet,
-      anwaerter: stand.anwaerter,
-      /* Anwaerter, die es unter die ersten drei schaffen wuerden. Sie
-         stehen auch in anwaerter - das hier ist die Auswahl fuer den
-         Block ganz oben. Wer noch keine zehn Runden hat, sieht sich
-         sonst am Ende einer Liste, in der er eigentlich vorne stuende. */
-      aufDemSprung: stand.aufDemSprung
+      listen: aktive.map((l) => ({
+        id: l.id,
+        name: l.name,
+        eintraege: l.eintraege,
+        gewertet: l.gewertet,
+        anwaerter: l.anwaerter,
+        /* Anwaerter, die es unter die ersten drei schaffen wuerden. Sie
+           stehen auch in anwaerter - das hier ist die Auswahl fuer den
+           Block ganz oben. Wer noch keine zehn Runden hat, sieht sich
+           sonst am Ende einer Liste, in der er eigentlich vorne stuende. */
+        aufDemSprung: l.aufDemSprung
+      }))
     });
   }
 
@@ -769,6 +786,11 @@ async function bearbeite(
      Eigene Rechner: alle. Ein Tastendruck erfasst die ganze Lobby, das
      ist ja der Sinn.
   */
+  /* Den Stand hier holen und nicht erst weiter unten: schon die Frage
+     "gibt es zu diesem Ingame-Namen ueberhaupt ein Konto" braucht die
+     Spielerliste. */
+  const stand = holeStand();
+
   let zuWerten = zeilen;
   if (!token.vertraut) {
     const ingame = token.ingameName ?? '';
@@ -776,6 +798,32 @@ async function bearbeite(
       return sendeJson(res, 400, {
         ok: false,
         fehler: 'Fuer diesen Token ist kein Ingame-Name hinterlegt - bitte im Discord bei einem Admin melden'
+      });
+    }
+
+    /*
+       Steht hinter diesem Namen ueberhaupt ein Konto?
+
+       Gewertet wird gegen die angemeldeten Steam-Konten. Ein Token, den
+       niemand ueber /konto geholt hat, hat zwar einen Ingame-Namen, aber
+       kein Konto - und wird deshalb NIE gewertet.
+
+       Frueher fiel das erst beim Freigeben auf, und dort nur an einer
+       kleinen Null ("0 eingetragen"). Der Zuschauer bekam ein "zur
+       Freigabe eingereicht", wartete, und nichts passierte - ohne dass
+       ihm jemand haette sagen koennen, warum. Hier abzuweisen ist
+       unhoeflicher und ehrlicher.
+    */
+    const bekannt = stand.spieler.some(
+      (sp) => nameKey(sp.name) === nameKey(ingame));
+
+    if (!bekannt) {
+      return sendeJson(res, 403, {
+        ok: false,
+        art: 'kein-konto',
+        fehler: 'Zu deinem Ingame-Namen "' + ingame + '" gibt es kein angemeldetes ' +
+          'Konto. Melde dich mit Steam an und trag den Namen dort ein - erst dann ' +
+          'kann eine Runde dir zugeordnet werden.'
       });
     }
     // Denselben Abgleich benutzen wie sonst auch, damit ein Lesefehler im
@@ -836,8 +884,6 @@ async function bearbeite(
       zeilen: zuWerten.map((z) => ({ rohName: z.rohName, rohPunkte: z.rohPunkte }))
     });
   }
-
-  const stand = holeStand();
 
   // Gewertet wird nur, was zuWerten enthaelt - bei Zuschauern die eine
   // eigene Zeile, bei eigenen Rechnern die ganze Lobby.

@@ -73,6 +73,18 @@ export const SPRUNG_PLATZ = 3;
 
 export interface Ranglisteneintrag {
   readonly id: string;
+  /**
+   * In welcher Rangliste dieser Eintrag zaehlt (listen.ts).
+   *
+   * Eine freigegebene Runde erzeugt einen Eintrag JE AKTIVER LISTE -
+   * dieselbe Punktzahl, dieselbe Person, verschiedene listeId. So laufen
+   * Jahres- und Monatswertung nebeneinander, ohne sich zu beeinflussen.
+   *
+   * Fehlt das Feld, stammt der Eintrag aus der Zeit vor dem 20.08.2026,
+   * als es nur eine Liste gab. Beim Laden wird er der ersten Liste
+   * zugeordnet - siehe zuordnenOhneListe().
+   */
+  readonly listeId: string;
   /** Das Konto, dem die Punkte gehoeren - nie der Ingame-Name. */
   readonly kontoId: string;
   readonly punkte: number;
@@ -89,6 +101,7 @@ export interface Ranglisteneintrag {
 }
 
 export interface Ranglistenzeile {
+  readonly listeId: string;
   readonly kontoId: string;
   readonly name: string;
   readonly schnitt: number;
@@ -175,6 +188,9 @@ export class Rangliste {
   private timer: NodeJS.Timeout | null = null;
 
   constructor(private readonly datei: string) {
+    /* listeId darf hier noch fehlen - zuordnenOhneListe() haengt solche
+       Eintraege gleich nach dem Laden an die erste Liste. Punkte muessen
+       dagegen stimmen: ein NaN in der Wertung faellt sonst nie auf. */
     this.eintraege = lesen(datei).filter((e) => Number.isFinite(e.punkte));
 
     // seq nachziehen, falls eine aeltere Datei sie noch nicht hatte.
@@ -219,12 +235,20 @@ export class Rangliste {
    * von verdacht.ts - VOR der Freigabe, mit Bild daneben. Hier ist es
    * dafuer zu spaet.
    */
-  eintragen(kontoId: string, punkte: number, jetzt = Date.now()): Ranglisteneintrag {
+  eintragen(
+    listeId: string,
+    kontoId: string,
+    punkte: number,
+    jetzt = Date.now()
+  ): Ranglisteneintrag {
     if (!Number.isFinite(punkte)) {
       throw new Error('Punktzahl ist keine Zahl: ' + String(punkte));
     }
+    if (!listeId) throw new Error('Ohne Liste laesst sich nichts eintragen.');
+
     const eintrag: Ranglisteneintrag = {
       id: 'e_' + Math.random().toString(36).slice(2, 10),
+      listeId,
       kontoId,
       punkte,
       ts: jetzt,
@@ -260,9 +284,38 @@ export class Rangliste {
 
   /* --------------------------------------------------------------- Lesen */
 
-  /** Alle Eintraege einer Person, aeltester zuerst. */
-  eintraegeVon(kontoId: string): Ranglisteneintrag[] {
-    return this.eintraege.filter((e) => e.kontoId === kontoId).sort(chronologisch);
+  /** Alle Eintraege einer Person in EINER Liste, aeltester zuerst. */
+  eintraegeVon(listeId: string, kontoId: string): Ranglisteneintrag[] {
+    return this.eintraege
+      .filter((e) => e.listeId === listeId && e.kontoId === kontoId)
+      .sort(chronologisch);
+  }
+
+  /** Wie viele Eintraege eine Liste insgesamt hat. */
+  anzahlIn(listeId: string): number {
+    return this.eintraege.filter((e) => e.listeId === listeId).length;
+  }
+
+  /**
+   * Haengt Eintraege ohne Liste an eine bestimmte.
+   *
+   * Genau ein Fall: der erste Start nach dem 20.08.2026. Vorher gab es
+   * nur eine Rangliste, und die Eintraege trugen keine Kennung. Ohne
+   * diese Zuordnung waeren sie herrenlos - in keiner Tabelle, in keinem
+   * Export, nirgends. Eine Saison waere lautlos verschwunden.
+   *
+   * Gibt zurueck, wie viele umgehaengt wurden.
+   */
+  zuordnenOhneListe(listeId: string): number {
+    let n = 0;
+    for (const e of this.eintraege) {
+      if (!e.listeId) {
+        (e as { listeId: string }).listeId = listeId;
+        n++;
+      }
+    }
+    if (n > 0) this.jetztSpeichern();
+    return n;
   }
 
   /**
@@ -270,11 +323,12 @@ export class Rangliste {
    *
    * Uebernommen aus turnier/listen.js:168 - siehe Kopf dieser Datei.
    */
-  tabelle(nameVon: NameVon): Tabelle {
+  tabelle(listeId: string, nameVon: NameVon): Tabelle {
     const proPerson = new Map<string, Ranglisteneintrag[]>();
     for (const e of this.eintraege) {
-      const liste = proPerson.get(e.kontoId);
-      if (liste) liste.push(e);
+      if (e.listeId !== listeId) continue;
+      const gesammelt = proPerson.get(e.kontoId);
+      if (gesammelt) gesammelt.push(e);
       else proPerson.set(e.kontoId, [e]);
     }
 
@@ -290,6 +344,7 @@ export class Rangliste {
       const summe = fenster.reduce((s, e) => s + e.punkte, 0);
 
       zeilen.push({
+        listeId,
         kontoId,
         name,
         schnitt: summe / fenster.length,
@@ -350,10 +405,11 @@ export class Rangliste {
   }
 
   /** Die juengsten Eintraege, neueste zuerst - fuer die Gegenprobe im Dashboard. */
-  letzte(nameVon: NameVon, grenze = 30): Array<{
+  letzte(listeId: string, nameVon: NameVon, grenze = 30): Array<{
     id: string; kontoId: string; name: string; punkte: number; ts: number;
   }> {
     return this.eintraege
+      .filter((e) => e.listeId === listeId)
       .slice()
       .sort((a, b) => b.ts - a.ts || b.seq - a.seq)
       .slice(0, grenze)
@@ -372,8 +428,8 @@ export class Rangliste {
    * Fuer die Kontoseite: "noch 3 Runden bis zur Wertung" ist die Frage,
    * die jeder Neue als erstes stellt.
    */
-  fehlendeRunden(kontoId: string): number {
-    return Math.max(0, VOLL - this.eintraegeVon(kontoId).length);
+  fehlendeRunden(listeId: string, kontoId: string): number {
+    return Math.max(0, VOLL - this.eintraegeVon(listeId, kontoId).length);
   }
 }
 

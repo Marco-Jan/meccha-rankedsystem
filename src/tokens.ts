@@ -156,7 +156,7 @@ export class Tokenliste {
   /**
    * Liest die Datei neu ein, wenn sie sich geaendert hat.
    *
-   * Noetig, weil Tokens mit  npm run token  in einem ANDEREN Prozess
+   * Noetig, weil Tokens aus einem ANDEREN Prozess
    * angelegt werden, waehrend der Server laeuft. Ohne das wuerde ein
    * frisch vergebener Token als unbekannt abgewiesen, bis jemand den
    * Server neu startet - und genau das passiert staendig, weil man

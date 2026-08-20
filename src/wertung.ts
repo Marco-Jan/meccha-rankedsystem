@@ -32,6 +32,7 @@
 import path from 'node:path';
 
 import { Rangliste, ladeRangliste, FENSTER, VOLL, type Ranglistenzeile } from './rangliste.js';
+import { Listen, ladeListen, type Liste } from './listen.js';
 import { Kontenliste, ladeKonten, ingameSchluessel, type Konto } from './konten.js';
 import { Tokenliste, ladeTokens } from './tokens.js';
 import type { Spieler } from './namen.js';
@@ -51,14 +52,12 @@ export interface LetzterEintrag {
  * hundert Eintraege im Speicher - und erspart die Frage, wann ein
  * zwischenzeitlich angelegtes Konto sichtbar wird. Antwort: sofort.
  */
-export interface Wertungsstand {
-  /** Wer zugeordnet werden kann - angemeldet, mit Ingame-Namen. */
-  readonly spieler: readonly Spieler[];
-  /** Groesse des Wertungsfensters. */
-  readonly fenster: number;
-  /** Ab so vielen Eintraegen steht man in der Wertung. */
-  readonly voll: number;
-  /** Wie viele Eintraege die Rangliste insgesamt hat. */
+/** Eine Rangliste samt ihrem Stand. */
+export interface Listenstand {
+  readonly id: string;
+  readonly name: string;
+  readonly aktiv: boolean;
+  /** Wie viele Eintraege diese Liste hat. */
   readonly eintraege: number;
   readonly gewertet: readonly Ranglistenzeile[];
   readonly anwaerter: readonly Ranglistenzeile[];
@@ -66,18 +65,37 @@ export interface Wertungsstand {
    * Anwaerter, die es unter die ersten drei schaffen wuerden.
    *
    * Auswahl aus anwaerter, keine dritte Gruppe - siehe rangliste.ts.
-   * Steht als eigenes Feld hier, damit die Rangliste sie oben hervorheben
-   * kann, ohne die Regel doppelt zu kennen.
+   * Steht als eigenes Feld, damit die Anzeige sie oben hervorheben kann,
+   * ohne die Regel doppelt zu kennen.
    */
   readonly aufDemSprung: readonly Ranglistenzeile[];
-  /** Die juengsten Eintraege, neueste zuerst - Gegenprobe im Dashboard. */
+  /** Die juengsten Eintraege dieser Liste, neueste zuerst. */
   readonly letzte: readonly LetzterEintrag[];
+}
+
+export interface Wertungsstand {
+  /** Wer zugeordnet werden kann - angemeldet, mit Ingame-Namen. */
+  readonly spieler: readonly Spieler[];
+  /** Groesse des Wertungsfensters. */
+  readonly fenster: number;
+  /** Ab so vielen Eintraegen steht man in der Wertung. */
+  readonly voll: number;
+  /** Wie viele Eintraege ueber ALLE Listen. */
+  readonly eintraege: number;
+  /**
+   * Die Listen, jede mit ihrem eigenen Stand.
+   *
+   * Aktive zuerst. Wer nur die oeffentliche Seite fuellt, nimmt die
+   * aktiven; das Dashboard zeigt alle.
+   */
+  readonly listen: readonly Listenstand[];
 }
 
 export class Wertung {
   constructor(
     private readonly rangliste: Rangliste,
-    private readonly konten: Kontenliste
+    private readonly konten: Kontenliste,
+    private readonly listen: Listen
   ) {}
 
   /**
@@ -119,50 +137,109 @@ export class Wertung {
     return this.konten.findeNachIngame(gesucht);
   }
 
+  /** Der Stand EINER Liste. */
+  listenstand(liste: Liste): Listenstand {
+    const t = this.rangliste.tabelle(liste.id, this.nameVon);
+    return {
+      id: liste.id,
+      name: liste.name,
+      aktiv: liste.aktiv,
+      eintraege: this.rangliste.anzahlIn(liste.id),
+      gewertet: t.gewertet,
+      anwaerter: t.anwaerter,
+      aufDemSprung: t.aufDemSprung,
+      letzte: this.rangliste.letzte(liste.id, this.nameVon)
+    };
+  }
+
   stand(): Wertungsstand {
-    const t = this.rangliste.tabelle(this.nameVon);
+    /* Aktive zuerst, danach nach Anlagedatum - die neueste Saison oben.
+       Wer die Seite aufruft, sucht den laufenden Stand, nicht den von
+       vorletztem Jahr. */
+    const sortiert = [...this.listen.alle()].sort((a, b) =>
+      Number(b.aktiv) - Number(a.aktiv) || b.angelegt - a.angelegt);
+
     return {
       spieler: this.spieler(),
       fenster: FENSTER,
       voll: VOLL,
       eintraege: this.rangliste.alle().length,
-      gewertet: t.gewertet,
-      anwaerter: t.anwaerter,
-      aufDemSprung: t.aufDemSprung,
-      letzte: this.rangliste.letzte(this.nameVon)
+      listen: sortiert.map((l) => this.listenstand(l))
     };
   }
 
   /**
-   * Traegt eine Punktzahl ein.
+   * Traegt eine Punktzahl in JEDE AKTIVE Liste ein.
    *
    * Erwartet die KONTO-KENNUNG, nicht den gelesenen Namen. Die Zuordnung
    * hat namen.ts vorher gemacht; hier noch einmal nach einem Namen zu
    * suchen wuerde die Pruefung umgehen, die genau davor sitzt.
+   *
+   * Gibt zurueck, in wie viele Listen geschrieben wurde. Der Aufrufer
+   * meldet das weiter - "eingetragen" ohne Zahl waere bei mehreren
+   * Listen eine Untertreibung, und bei null eine Luege.
+   *
+   * NULL aktive Listen kann es nicht geben: setzeAktiv() laesst die
+   * letzte nicht abschalten, und sorgeFuerEine() legt beim Start eine an,
+   * falls gar keine da ist.
    */
-  eintragen(kontoId: string, punkte: number): void {
-    this.rangliste.eintragen(kontoId, punkte);
+  eintragen(kontoId: string, punkte: number): number {
+    const ziele = this.listen.aktive();
+    for (const l of ziele) this.rangliste.eintragen(l.id, kontoId, punkte);
+    return ziele.length;
   }
 
-  /** Was jemand fuer seine eigene Kontoseite sehen will. */
-  meinStand(kontoId: string): {
+  /**
+   * Was jemand fuer seine eigene Kontoseite sehen will - JE LISTE.
+   *
+   * Eine Zahl ueber alle Listen waere nichtssagend: bei zwei aktiven
+   * haette jeder doppelt so viele Eintraege, ohne oefter gespielt zu
+   * haben. Der Client nennt sie deshalb einzeln.
+   */
+  meinStand(kontoId: string): Array<{
+    listeId: string; name: string; aktiv: boolean;
     eintraege: number; fehlt: number; schnitt: number | null; platz: number | null;
-  } {
-    const meine = this.rangliste.eintraegeVon(kontoId);
-    const t = this.rangliste.tabelle(this.nameVon);
-    const zeile = [...t.gewertet, ...t.anwaerter].find((z) => z.kontoId === kontoId);
+  }> {
+    return this.listen.aktive().map((l) => {
+      const t = this.rangliste.tabelle(l.id, this.nameVon);
+      const zeile = [...t.gewertet, ...t.anwaerter].find((z) => z.kontoId === kontoId);
 
-    return {
-      eintraege: meine.length,
-      fehlt: this.rangliste.fehlendeRunden(kontoId),
-      schnitt: zeile ? zeile.schnitt : null,
-      platz: zeile?.platz ?? null
-    };
+      return {
+        listeId: l.id,
+        name: l.name,
+        aktiv: l.aktiv,
+        eintraege: this.rangliste.eintraegeVon(l.id, kontoId).length,
+        fehlt: this.rangliste.fehlendeRunden(l.id, kontoId),
+        schnitt: zeile ? zeile.schnitt : null,
+        platz: zeile?.platz ?? null
+      };
+    });
   }
 }
 
-export function ladeWertung(rangliste: Rangliste, konten: Kontenliste): Wertung {
-  return new Wertung(rangliste, konten);
+export function ladeWertung(
+  rangliste: Rangliste,
+  konten: Kontenliste,
+  listen: Listen
+): Wertung {
+  /*
+     Erster Start nach dem 20.08.2026: es gibt noch keine Liste, und
+     rangliste.json kann Eintraege ohne Kennung enthalten. Beides wird
+     hier zusammengefuehrt - danach haengt jeder Eintrag an einer Liste.
+
+     Die Reihenfolge ist wichtig: erst die Liste anlegen, dann zuordnen.
+     Umgekehrt gaebe es einen Moment, in dem Eintraege auf eine Kennung
+     zeigen, die es nicht gibt.
+  */
+  const ersteId = listen.sorgeFuerEine();
+  if (ersteId) {
+    const umgehaengt = rangliste.zuordnenOhneListe(ersteId);
+    if (umgehaengt > 0) {
+      console.log('[mc-ranked] ' + umgehaengt +
+        ' Eintraege ohne Liste der ersten Rangliste zugeordnet.');
+    }
+  }
+  return new Wertung(rangliste, konten, listen);
 }
 
 /**
@@ -174,10 +251,12 @@ export function ladeWertung(rangliste: Rangliste, konten: Kontenliste): Wertung 
  * nicht mehr.
  */
 export function ladeWertungAusOrdner(datenDir: string): {
-  wertung: Wertung; rangliste: Rangliste; konten: Kontenliste; tokens: Tokenliste;
+  wertung: Wertung; rangliste: Rangliste; konten: Kontenliste;
+  tokens: Tokenliste; listen: Listen;
 } {
   const tokens = ladeTokens(path.join(datenDir, 'tokens.json'));
   const konten = ladeKonten(path.join(datenDir, 'konten.json'), tokens);
   const rangliste = ladeRangliste(path.join(datenDir, 'rangliste.json'));
-  return { wertung: new Wertung(rangliste, konten), rangliste, konten, tokens };
+  const listen = ladeListen(path.join(datenDir, 'listen.json'));
+  return { wertung: ladeWertung(rangliste, konten, listen), rangliste, konten, tokens, listen };
 }
