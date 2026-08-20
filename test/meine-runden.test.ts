@@ -267,3 +267,30 @@ describe('Meine Runden - was noch zaehlt', () => {
     assert.equal(r.find((x) => x.status === 'abgelehnt')!.zaehlt, false);
   });
 });
+
+describe('Reihenfolge der eigenen Runden', () => {
+  test('sortiert nach der ZULETZT geschehenen Sache, nicht nach dem Eingang', () => {
+    /* Der Client zeigt bearbeitetAm, sobald es das gibt. Wurde nach
+       eingegangen sortiert, passte die Reihenfolge nicht zu den
+       angezeigten Uhrzeiten - es sah aus, als stuenden Ablehnungen
+       immer oben. */
+    const datei = path.join(ORDNER, 'reihenfolge.json');
+    const f = ladeFreigabeliste(datei);
+
+    const alt = f.hinzufuegen({
+      eingegangen: 1000, quelle: 'zuschauer', absender: 'A',
+      bildPfad: 'x', bildHash: 'h1', zeilen: [], beansprucht: ['jones']
+    }).runde;
+    const neu = f.hinzufuegen({
+      eingegangen: 2000, quelle: 'zuschauer', absender: 'A',
+      bildPfad: 'x', bildHash: 'h2', zeilen: [], beansprucht: ['jones']
+    }).runde;
+
+    // Die AELTERE wird spaeter entschieden - ihre Uhrzeit ist damit die juengste.
+    f.entscheiden(alt.id, 'abgelehnt', 'Admin', 'Bild wirkt bearbeitet');
+
+    const liste = f.vonPerson('jones', 'A');
+    assert.deepEqual(liste.map((r) => r.id), [alt.id, neu.id],
+      'die zuletzt entschiedene steht oben, obwohl sie frueher ankam');
+  });
+});

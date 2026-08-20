@@ -244,7 +244,22 @@ export class Freigabeliste {
         return beansprucht.length === 0 && r.absender === absender;
       })
       .slice()
-      .sort((a, b) => b.eingegangen - a.eingegangen)
+      /*
+         Nach der ZULETZT GESCHEHENEN Sache sortieren, nicht nach dem
+         Eingang.
+
+         Der Client zeigt in der Zeitspalte bearbeitetAm, sobald es das
+         gibt (Fenster.cs), sonst eingegangen. Wurde nach eingegangen
+         sortiert, stimmte die Reihenfolge nicht mit den angezeigten
+         Uhrzeiten ueberein: eine Runde von 20:00, die um 21:00
+         abgelehnt wurde, stand unter einer von 20:30, die noch offen
+         ist - obwohl daneben 21:00 und 20:30 steht. Es sah aus, als
+         wuerden Ablehnungen nach oben sortiert.
+
+         Der Schluessel muss derselbe sein wie die angezeigte Zeit, sonst
+         wirkt jede Liste unsortiert.
+      */
+      .sort((a, b) => (b.bearbeitetAm ?? b.eingegangen) - (a.bearbeitetAm ?? a.eingegangen))
       .slice(0, grenze);
   }
 
