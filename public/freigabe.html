@@ -139,6 +139,54 @@
   }
   .reiter button.aktiv .zahl { background:var(--kante); color:var(--text); }
   .reiter .zahl.warn { background:var(--zahl); color:#12141a; }
+  /* ---- Bildergalerie ---- */
+  .reihe {
+    display:flex; gap:9px; flex-wrap:wrap; align-items:center;
+  }
+  .reihe select {
+    background:var(--tiefe); color:var(--text);
+    border:1px solid var(--kante); border-radius:6px; padding:6px 9px;
+  }
+  .galerie {
+    display:grid;
+    grid-template-columns:repeat(auto-fill, minmax(190px, 1fr));
+    gap:14px;
+  }
+  .gk {
+    background:var(--tiefe); border:1px solid var(--kante); border-radius:8px;
+    overflow:hidden; cursor:zoom-in; position:relative;
+  }
+  .gk img { width:100%; display:block; background:#000; }
+  .gk .ohne {
+    height:120px; display:flex; align-items:center; justify-content:center;
+    color:var(--leise); font-size:12px; text-align:center; padding:8px;
+  }
+  .gk .fuss { padding:7px 9px; font-size:12px; }
+  .gk .wer { font-weight:600; }
+  .gk .zahl2 { float:right; font-variant-numeric:tabular-nums; }
+  .gk .wann { color:var(--leise); font-size:11px; }
+  /* Der Statuspunkt liegt AUF dem Bild, nicht darunter: beim Ueberfliegen
+     einer Reihe sucht das Auge die Farbe, nicht den Text. */
+  .gk .punkt {
+    position:absolute; top:7px; right:7px; width:11px; height:11px;
+    border-radius:50%; border:2px solid rgba(0,0,0,.55);
+  }
+  .gk.geflaggt { border-color:var(--schlecht); }
+
+  /* Vollbild. Kein <dialog>, damit es auch in aelteren Browsern geht. */
+  #lupe {
+    display:none; position:fixed; inset:0; z-index:60;
+    background:rgba(0,0,0,.86); padding:24px;
+    align-items:center; justify-content:center; flex-direction:column; gap:12px;
+  }
+  #lupe.auf { display:flex; }
+  #lupe img { max-width:96vw; max-height:78vh; border-radius:6px; }
+  #lupe .zeile { color:#eee; font-size:13px; display:flex; gap:14px; align-items:center; }
+  #lupe button {
+    background:var(--kante); color:var(--text); border:0; border-radius:6px;
+    padding:7px 13px; cursor:pointer;
+  }
+
   .tafel { display:none; }
   .tafel.aktiv { display:block; }
 
@@ -373,6 +421,7 @@
     <button data-tafel="t-liste" data-t="Punkteliste">Punkteliste</button>
     <button data-tafel="t-zuschauer" data-t="Zuschauer">Zuschauer</button>
     <button data-tafel="t-zugaenge" data-t="Zugänge">Zugänge</button>
+    <button data-tafel="t-bilder" data-t="Bilder">Bilder</button>
     <button data-tafel="t-verlauf" data-t="Entschieden">Entschieden</button>
   </div>
 
@@ -441,6 +490,32 @@
   </div>
   </div>
 
+  <div class="tafel" id="t-bilder">
+  <h2 data-t="Alle eingereichten Bilder">Alle eingereichten Bilder</h2>
+
+  <!-- Der Nutzen ist das Nebeneinanderlegen: kommt eine Punktzahl komisch
+       vor, filtert man auf den Spieler und sieht seine letzten Ausschnitte
+       als Reihe. Fälschungen fallen im Vergleich auf, nicht im Einzelbild. -->
+  <div class="block">
+    <div class="reihe">
+      <select id="g-status">
+        <option value="" data-t="alle">alle</option>
+        <option value="offen" data-t="offen">offen</option>
+        <option value="freigegeben" data-t="freigegeben">freigegeben</option>
+        <option value="abgelehnt" data-t="abgelehnt">abgelehnt</option>
+        <option value="geflaggt" data-t="geflaggt">geflaggt</option>
+      </select>
+      <select id="g-spieler">
+        <option value="" data-t="alle Spieler">alle Spieler</option>
+      </select>
+      <span class="leise" id="g-zaehler"></span>
+    </div>
+  </div>
+
+  <div id="galerie" class="galerie"></div>
+  <p class="leise" id="galerie-leer" data-t="Noch nichts eingereicht.">Noch nichts eingereicht.</p>
+  </div>
+
   <div class="tafel" id="t-verlauf">
   <h2 data-t="Zuletzt entschieden">Zuletzt entschieden</h2>
   <div class="block"><div class="rollen"><table id="erledigt"></table></div></div>
@@ -448,6 +523,18 @@
 
 </div>
 <div id="meldung"></div>
+
+<!-- Vollbild einer Kachel. Liegt ausserhalb der Tafeln, damit es ueber
+     allem schwebt und beim Reiterwechsel nicht mitverschwindet. -->
+<div id="lupe">
+  <img id="lupe-bild" alt="">
+  <div class="zeile">
+    <button id="lupe-zurueck">&#9664;</button>
+    <span id="lupe-text"></span>
+    <button id="lupe-vor">&#9654;</button>
+    <button id="lupe-zu" data-t="Schließen">Schließen</button>
+  </div>
+</div>
 
 <script src="freigabe.js"></script>
 </body>

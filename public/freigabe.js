@@ -52,6 +52,21 @@
       'in der Wertung': 'ranked',
       'Anwärter': 'Contenders',
       '{0} Einträge insgesamt': '{0} entries in total',
+      'Bilder': 'Images',
+      'Alle eingereichten Bilder': 'All submitted images',
+      'alle': 'all',
+      'geflaggt': 'flagged',
+      'alle Spieler': 'all players',
+      'Bild nicht mehr vorhanden': 'Image no longer available',
+      'nur Ausschnitt – Original gelöscht': 'crop only – original deleted',
+      'Grund': 'Reason',
+      'Schließen': 'Close',
+      'Noch nichts eingereicht.': 'Nothing submitted yet.',
+      '{0} Bilder': '{0} images',
+      '{0} von {1}': '{0} of {1}',
+      '{0} Zeilen': '{0} rows',
+      'Zeilen': 'rows',
+      'durch': 'by',
       'nicht erreichbar': 'unreachable',
       'offen': 'open',
       'freigegeben': 'approved',
@@ -184,6 +199,21 @@
       'in der Wertung': '已计入排名',
       'Anwärter': '候补',
       '{0} Einträge insgesamt': '共 {0} 条',
+      'Bilder': '图片',
+      'Alle eingereichten Bilder': '所有已提交的图片',
+      'alle': '全部',
+      'geflaggt': '已标记',
+      'alle Spieler': '全部玩家',
+      'Bild nicht mehr vorhanden': '图片已不存在',
+      'nur Ausschnitt – Original gelöscht': '仅截图 – 原图已删除',
+      'Grund': '原因',
+      'Schließen': '关闭',
+      'Noch nichts eingereicht.': '尚未提交任何内容。',
+      '{0} Bilder': '{0} 张图片',
+      '{0} von {1}': '{0} / {1}',
+      '{0} Zeilen': '{0} 行',
+      'Zeilen': '行',
+      'durch': '由',
       'nicht erreichbar': '无法连接',
       'offen': '待处理',
       'freigegeben': '已批准',
@@ -516,6 +546,10 @@
     Array.prototype.forEach.call(tafeln, function (tf) {
       tf.className = tf.id === id ? 'tafel aktiv' : 'tafel';
     });
+    /* Beim Oeffnen des Bilder-Reiters die Kacheln holen. Nicht beim
+       Seitenaufbau: wer nie hinsieht, soll auch nie Bilder laden. */
+    if (id === 't-bilder') ladeGalerie();
+
     // In der Adresse merken, damit ein Neuladen nicht zurueckspringt.
     try {
       var u = new URL(location.href);
@@ -1157,6 +1191,171 @@
   $('t-neu').addEventListener('click', neuerToken);
   reiterEinrichten();
 
+
+  /* =======================================================================
+     BILDERGALERIE
+
+     Alle Einreichungen als Kacheln, nicht nur die offenen.
+
+     Der Nutzen ist das NEBENEINANDERLEGEN. Beim Entscheiden ist die Frage
+     selten „ist dieses Bild echt", sondern „passt diese Zahl zu dem, was
+     der sonst spielt". Eine einzelne Punktzahl sieht immer plausibel aus;
+     zehn Ausschnitte desselben Spielers in einer Reihe verraten ein
+     Muster sofort.
+
+     Gefüllt werden die Kacheln mit dem AUSSCHNITT (~55 KB), nicht mit dem
+     Original (~2 MB). Bei dreißig Kacheln wären das sonst 60 MB für eine
+     Seite — und zu sehen wäre nichts Zusätzliches, denn auf dem
+     Ausschnitt steht alles, was zählt.
+     ======================================================================= */
+
+  /* Was gerade angezeigt wird - für das Durchblättern im Vollbild. */
+  var galerieRunden = [];
+  var lupeBei = -1;
+
+  function ladeGalerie() {
+    var status = $('g-status').value;
+    var spieler = $('g-spieler').value;
+
+    var pfad = '/api/galerie?grenze=120' +
+      (status ? '&status=' + encodeURIComponent(status) : '') +
+      (spieler ? '&spieler=' + encodeURIComponent(spieler) : '');
+
+    anfrage(pfad).then(function (a) {
+      if (!a.body || !a.body.ok) return;
+
+      galerieRunden = a.body.runden || [];
+      fuelleSpielerAuswahl(a.body.namen || []);
+      zeichneGalerie();
+
+      $('g-zaehler').textContent = galerieRunden.length < a.body.gesamt
+        ? tv('{0} von {1}', [galerieRunden.length, a.body.gesamt])
+        : tv('{0} Bilder', [a.body.gesamt]);
+    });
+  }
+
+  /* Die Auswahlliste kommt vom Server aus ALLEN Runden, nicht aus den
+     gefilterten - sonst schrumpfte sie, sobald man sie benutzt, und man
+     käme nicht mehr zurück. */
+  function fuelleSpielerAuswahl(namen) {
+    var w = $('g-spieler');
+    if (w.getAttribute('data-gefuellt') === String(namen.length)) return;
+
+    var vorher = w.value;
+    w.innerHTML = '';
+    var alle = el('option', null, t('alle Spieler'));
+    alle.value = '';
+    w.appendChild(alle);
+
+    namen.forEach(function (n) {
+      var o = el('option', null, n);
+      o.value = n;
+      w.appendChild(o);
+    });
+
+    w.value = vorher;
+    w.setAttribute('data-gefuellt', String(namen.length));
+  }
+
+  var FARBE = {
+    offen: 'var(--warn)',
+    freigegeben: 'var(--gut)',
+    abgelehnt: 'var(--schlecht)'
+  };
+
+  function zeichneGalerie() {
+    var ziel = $('galerie');
+    ziel.innerHTML = '';
+    $('galerie-leer').style.display = galerieRunden.length ? 'none' : 'block';
+
+    galerieRunden.forEach(function (r, i) {
+      var k = el('div', 'gk' + (r.geflaggt ? ' geflaggt' : ''));
+
+      if (r.bildDa) {
+        var img = document.createElement('img');
+        /* Immer der Ausschnitt: er ist klein und bleibt dauerhaft
+           liegen, während das Original nach drei Tagen gelöscht wird. */
+        img.src = '/api/bild?art=ausschnitt&id=' + encodeURIComponent(r.id) +
+                  '&key=' + encodeURIComponent(schluessel);
+        img.loading = 'lazy';
+        img.alt = r.absender;
+        k.appendChild(img);
+      } else {
+        k.appendChild(el('div', 'ohne', t('Bild nicht mehr vorhanden')));
+      }
+
+      var punkt = el('div', 'punkt');
+      punkt.style.background = FARBE[r.status] || 'var(--leise)';
+      punkt.title = t(r.status);
+      k.appendChild(punkt);
+
+      var fuss = el('div', 'fuss');
+      var kopf = el('div', 'wer', r.absender);
+      if (r.punkte !== null) kopf.appendChild(el('span', 'zahl2', String(r.punkte)));
+      fuss.appendChild(kopf);
+      fuss.appendChild(el('div', 'wann', zeit(r.bearbeitetAm || r.eingegangen)));
+      k.appendChild(fuss);
+
+      k.addEventListener('click', function () { oeffneLupe(i); });
+      ziel.appendChild(k);
+    });
+  }
+
+  /* ------------------------------------------------------------- Vollbild */
+
+  function oeffneLupe(i) {
+    if (i < 0 || i >= galerieRunden.length) return;
+    lupeBei = i;
+    var r = galerieRunden[i];
+
+    /* Im Vollbild das ORIGINAL, solange es noch da ist - dort sieht man
+       den ganzen Bildschirm und damit auch, ob drumherum etwas seltsam
+       aussieht. Ist es weg, springt /api/bild von selbst auf den
+       Ausschnitt zurück. */
+    $('lupe-bild').src = '/api/bild?id=' + encodeURIComponent(r.id) +
+                         '&key=' + encodeURIComponent(schluessel);
+
+    var teile = [r.absender, zeit(r.bearbeitetAm || r.eingegangen), t(r.status)];
+    if (r.punkte !== null) teile.push(r.punkte + ' ' + t('Punkte'));
+    if (r.zeilen) teile.push(tv('{0} Zeilen', [r.zeilen]));
+    if (!r.originalDa) teile.push(t('nur Ausschnitt – Original gelöscht'));
+    if (r.grund) teile.push(t('Grund') + ': ' + r.grund);
+    if (r.geflaggt) teile.push('⚑ ' + (r.verdacht || []).join('; '));
+
+    $('lupe-text').textContent = teile.join('   ·   ');
+    $('lupe').className = 'auf';
+  }
+
+  function schliesseLupe() {
+    $('lupe').className = '';
+    $('lupe-bild').src = '';
+    lupeBei = -1;
+  }
+
+  function verbindeGalerie() {
+    $('g-status').addEventListener('change', ladeGalerie);
+    $('g-spieler').addEventListener('change', ladeGalerie);
+
+    $('lupe-zu').addEventListener('click', schliesseLupe);
+    $('lupe-vor').addEventListener('click', function () { oeffneLupe(lupeBei + 1); });
+    $('lupe-zurueck').addEventListener('click', function () { oeffneLupe(lupeBei - 1); });
+
+    /* Klick auf den dunklen Rand schließt - aber nicht auf das Bild
+       selbst oder die Knöpfe darunter. */
+    $('lupe').addEventListener('click', function (e) {
+      if (e.target === $('lupe')) schliesseLupe();
+    });
+
+    /* Pfeiltasten und Esc. Beim Durchsehen einer Reihe will niemand
+       zwanzigmal auf einen kleinen Knopf zielen. */
+    document.addEventListener('keydown', function (e) {
+      if ($('lupe').className !== 'auf') return;
+      if (e.key === 'Escape') schliesseLupe();
+      else if (e.key === 'ArrowRight') oeffneLupe(lupeBei + 1);
+      else if (e.key === 'ArrowLeft') oeffneLupe(lupeBei - 1);
+    });
+  }
+
   $('sprachen').addEventListener('click', function (e) {
     var b = e.target.closest('button');
     if (b) setzeSprache(b.getAttribute('data-sprache'));
@@ -1168,7 +1367,14 @@
   var gemerkt = new URLSearchParams(location.search).get('tafel');
   if (gemerkt && document.getElementById(gemerkt)) zeigeTafel(gemerkt);
 
+  verbindeGalerie();
+
   lade();
+  /* Die Galerie holt ihre Kacheln getrennt und NICHT im 15-Sekunden-Takt:
+     sie zeigt auch Bilder, und die alle Viertelminute neu zu laden waere
+     Verschwendung. Sie laedt beim ersten Oeffnen des Reiters und danach,
+     wenn ein Filter sich aendert. */
+  if (document.getElementById('t-bilder').className.indexOf('aktiv') >= 0) ladeGalerie();
   // Alle 15 Sekunden nachsehen - neue Einreichungen sollen von selbst
   // auftauchen, ohne dass jemand die Seite neu laedt.
   setInterval(lade, 15000);

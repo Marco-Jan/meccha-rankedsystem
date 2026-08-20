@@ -148,3 +148,87 @@ describe('Dashboard - was angezeigt werden muss', () => {
     assert.match(html, /\.rollen \{[^}]*overflow-y:\s*auto/);
   });
 });
+
+describe('Dashboard - die Bildergalerie', () => {
+  test('hat einen eigenen Reiter', () => {
+    assert.match(html, /data-tafel="t-bilder"/);
+    assert.match(html, /id="t-bilder"/);
+  });
+
+  test('filtert nach Status und Spieler', () => {
+    assert.match(html, /id="g-status"/);
+    assert.match(html, /id="g-spieler"/);
+    assert.match(js, /function ladeGalerie/);
+  });
+
+  test('holt fuer die Kacheln den AUSSCHNITT, nicht das Original', () => {
+    /* Ein Original wiegt rund 2 MB. Bei dreissig Kacheln waeren das
+       60 MB fuer eine Seite - und zu sehen waere nichts Zusaetzliches,
+       denn auf dem Ausschnitt steht alles, was zaehlt. */
+    assert.match(js, /art=ausschnitt/);
+  });
+
+  test('laedt die Bilder erst beim Oeffnen des Reiters', () => {
+    // Wer nie hinsieht, soll auch nie Bilder laden.
+    assert.match(js, /if \(id === 't-bilder'\) ladeGalerie\(\)/);
+  });
+
+  test('das Vollbild laesst sich mit den Pfeiltasten durchblaettern', () => {
+    /* Beim Durchsehen einer Reihe will niemand zwanzigmal auf einen
+       kleinen Knopf zielen. */
+    assert.match(js, /ArrowRight/);
+    assert.match(js, /ArrowLeft/);
+    assert.match(js, /Escape/);
+  });
+});
+
+describe('Dashboard - Uebersetzungen sind vollstaendig', () => {
+  /*
+     Dieselbe Wache wie beim Client, aus demselben Grund: t() gibt den
+     deutschen Satz zurueck, wenn ein Eintrag fehlt. Richtige
+     Rueckfallebene - aber niemand bemerkt es.
+
+     Beim Bau der Galerie ist genau das passiert, gleich zweimal: erst
+     fehlten die Eintraege ganz, dann waren sie doppelt kodiert
+     ("gelöscht" statt "gelöscht") und trafen den Schluessel nicht mehr.
+     Beides waere ohne diesen Test durchgegangen.
+  */
+  const schluesselAus = (quelle: string, muster: RegExp): string[] => {
+    const raus: string[] = [];
+    let t: RegExpExecArray | null;
+    while ((t = muster.exec(quelle)) !== null) raus.push(t[1]!);
+    return raus;
+  };
+
+  test('jeder Satz aus freigabe.js steht in der Tabelle', () => {
+    const alle = [
+      ...schluesselAus(js, /\bt\('((?:[^'\\]|\\.)*)'\)/g),
+      ...schluesselAus(js, /\btv\('((?:[^'\\]|\\.)*)'/g)
+    ];
+    assert.ok(alle.length > 30, 'die Suche muss etwas finden, sonst prueft sie nichts');
+
+    const fehlen = [...new Set(alle)].filter((k) => !js.includes("'" + k + "':"));
+    assert.deepEqual(fehlen, [],
+      'ohne Eintrag in WOERTER bleibt der Satz auf Deutsch stehen');
+  });
+
+  test('jedes data-t aus dem HTML steht in der Tabelle', () => {
+    const alle = schluesselAus(html, /data-t="([^"]+)"/g);
+    assert.ok(alle.length > 20);
+
+    const fehlen = [...new Set(alle)].filter((k) => !js.includes("'" + k + "':"));
+    assert.deepEqual(fehlen, []);
+  });
+
+  test('nichts ist doppelt kodiert', () => {
+    /* Ein Zeichen, dessen UTF-8-Bytes als Latin-1 gelesen wurden, sieht
+       im Editor kaputt aus - trifft aber vor allem seinen Schluessel
+       nicht mehr, und dann bleibt die Zeile still auf Deutsch. */
+    const verdaechtig = js.split('\n')
+      .map((z, i) => ({ z, nr: i + 1 }))
+      .filter(({ z }) => /Ã.|â..|Ã¼|Ã¶|Ã¤|ÃŸ/.test(z));
+
+    assert.deepEqual(verdaechtig.map((v) => v.nr), [],
+      'doppelt kodierte Zeilen: ' + verdaechtig.map((v) => v.z.trim().slice(0, 60)).join(' | '));
+  });
+});

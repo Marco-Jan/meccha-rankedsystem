@@ -192,7 +192,7 @@ export async function bearbeiteFreigabe(
   const pfad = (req.url ?? '').split('?')[0]?.replace(/\/+$/, '') || '/';
 
   const meine = [
-    '/api/offene', '/api/entscheiden', '/api/bild',
+    '/api/offene', '/api/entscheiden', '/api/bild', '/api/galerie',
     '/api/uebersicht', '/api/tokens', '/api/token-neu', '/api/token-sperren',
     '/api/konten', '/api/konto-admin'
   ];
@@ -484,6 +484,98 @@ export async function bearbeiteFreigabe(
   }
 
   /* -------------------------------------------------------------- Bild */
+  /* ---------------------------------------------------------- Galerie
+
+     Alle Runden als Kacheln, nicht nur die offenen.
+
+     Der Nutzen ist das NEBENEINANDERLEGEN: kommt eine Punktzahl komisch
+     vor, filtert man auf den Spieler und sieht seine letzten Ausschnitte
+     als Reihe. Faelschungen fallen im Vergleich auf, nicht im
+     Einzelbild - eine einzelne Zahl sieht immer plausibel aus.
+
+     Geliefert werden nur die Angaben fuer die Kachel. Das Bild holt die
+     Seite einzeln ueber /api/bild?art=ausschnitt, sonst haette eine
+     Antwort dreissig eingebettete Bilder.
+  */
+  if (pfad === '/api/galerie') {
+    const url = new URL(req.url ?? '/', 'http://localhost');
+    const spieler = (url.searchParams.get('spieler') ?? '').trim().toLowerCase();
+    const status = url.searchParams.get('status') ?? '';
+    /*
+       NaN muss vor den Klammern abgefangen werden, nicht danach:
+       Math.max(1, NaN) ist NaN, und slice(0, NaN) liefert eine LEERE
+       Liste. Aus "?grenze=quatsch" wuerde damit eine Galerie ohne ein
+       einziges Bild - und es saehe aus, als sei nichts eingereicht.
+    */
+    const gewuenscht = Number(url.searchParams.get('grenze') ?? 60);
+    const grenze = Number.isFinite(gewuenscht)
+      ? Math.min(300, Math.max(1, Math.floor(gewuenscht)))
+      : 60;
+
+    let alle = [...o.freigabe.alle()];
+
+    if (status === 'offen' || status === 'freigegeben' || status === 'abgelehnt') {
+      alle = alle.filter((r) => r.status === status);
+    } else if (status === 'geflaggt') {
+      alle = alle.filter((r) => (r.verdacht?.length ?? 0) > 0);
+    }
+
+    if (spieler) {
+      /* Ueber die BEANSPRUCHTEN Namen, nicht ueber den Absender: wer
+         sich einen neuen Zugang holt oder seinen Anzeigenamen aendert,
+         soll trotzdem unter einem Filter auftauchen. */
+      alle = alle.filter((r) =>
+        (r.beansprucht ?? []).some((n) => n.includes(spieler)) ||
+        r.absender.toLowerCase().includes(spieler));
+    }
+
+    /* Nach der zuletzt geschehenen Sache, wie in der eigenen
+       Rundenliste - sonst passt die Reihenfolge nicht zu den
+       angezeigten Zeiten. */
+    alle.sort((a, b) => (b.bearbeitetAm ?? b.eingegangen) - (a.bearbeitetAm ?? a.eingegangen));
+
+    /* Wer taucht ueberhaupt auf - fuer die Auswahlliste im Filter.
+       Aus ALLEN Runden, nicht aus den gefilterten: sonst schrumpfte die
+       Auswahl, sobald man sie benutzt, und man kaeme nicht mehr zurueck. */
+    const namen = [...new Set(
+      o.freigabe.alle().flatMap((r) => [...(r.beansprucht ?? [])])
+    )].sort();
+
+    sendeJson(res, 200, {
+      ok: true,
+      gesamt: alle.length,
+      namen,
+      runden: alle.slice(0, grenze).map((r) => ({
+        id: r.id,
+        eingegangen: r.eingegangen,
+        bearbeitetAm: r.bearbeitetAm ?? null,
+        absender: r.absender,
+        status: r.status,
+        geflaggt: (r.verdacht?.length ?? 0) > 0,
+        verdacht: r.verdacht ?? [],
+        bildAuffaellig: r.bildAuffaellig ?? [],
+        beansprucht: r.beansprucht ?? [],
+        grund: r.grund ?? null,
+        zeilen: r.zeilen.length,
+        /* Die beanspruchte Punktzahl - das ist die Zahl, um die es geht.
+           Bei einer eigenen Aufnahme steht dort die erste Zeile. */
+        punkte: (() => {
+          const key = (r.beansprucht ?? [])[0];
+          const zeile = key
+            ? r.zeilen.find((z) => nameKey(z.rohName) === key)
+            : r.zeilen[0];
+          return zeile?.punkte?.punkte ?? null;
+        })(),
+        /* Womit die Kachel gefuellt wird: Ausschnitt bevorzugt, Original
+           als Rueckfall, gar nichts wenn beides weg ist. */
+        bildDa: (r.ausschnittPfad !== undefined && existsSync(r.ausschnittPfad)) ||
+                (r.bildGeloescht !== true && existsSync(r.bildPfad)),
+        originalDa: r.bildGeloescht !== true && existsSync(r.bildPfad)
+      }))
+    });
+    return true;
+  }
+
   if (pfad === '/api/bild') {
     const url = new URL(req.url ?? '/', 'http://localhost');
     const runde = o.freigabe.finde(String(url.searchParams.get('id') ?? ''));

@@ -138,13 +138,13 @@ Bestes Ergebnis, zur Erinnerung woran gemessen wird:
 | 3 | Leser-Regeln | **fertig** — Hinweistexte für Client und Regelseite folgen in 7/10 |
 | 4 | Cooldown | **fertig**, 6 neue Tests |
 | 5 | Bilder klein | **fertig**, 10 Tests |
-| 6 | Bildergalerie | offen |
+| 6 | Bildergalerie | **fertig**, 13 Tests |
 | 7 | Öffentliche Seiten | offen |
 | 8 | Deploy und Server | offen |
 | 9 | Download-Warnung entschärfen | offen, Entscheidung nötig |
 | 10 | Update-Hinweis im Client | offen |
 
-Nach Etappe 5: **547 Tests grün, Typecheck sauber.**
+Nach Etappe 6: **568 Tests grün, Typecheck sauber.**
 
 ## Etappen
 
