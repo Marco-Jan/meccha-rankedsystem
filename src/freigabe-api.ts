@@ -492,15 +492,43 @@ export async function bearbeiteFreigabe(
       sendeJson(res, 404, { ok: false, fehler: 'Runde nicht gefunden' });
       return true;
     }
-    if (runde.bildGeloescht || !existsSync(runde.bildPfad)) {
+    /*
+       Erst das Original, dann der Ausschnitt.
+
+       Das Original zeigt den ganzen Bildschirm und ist der bessere
+       Beleg, solange es lebt - nach ein paar Tagen wird es geloescht,
+       weil es rund 2 MB wiegt. Der Ausschnitt bleibt dauerhaft: ~55 KB,
+       volle Aufloesung, und darauf steht alles, was zaehlt.
+
+       Ausdruecklich mit ?art=ausschnitt erzwingbar. Die Galerie zeigt
+       Kacheln und braucht nie das Original - 2 MB je Kachel waeren bei
+       dreissig Kacheln 60 MB fuer eine Seite.
+    */
+    const url2 = new URL(req.url ?? '/', 'http://localhost');
+    const nurAusschnitt = url2.searchParams.get('art') === 'ausschnitt';
+
+    const original = !runde.bildGeloescht && existsSync(runde.bildPfad) ? runde.bildPfad : null;
+    const klein = runde.ausschnittPfad && existsSync(runde.ausschnittPfad)
+      ? runde.ausschnittPfad : null;
+
+    const datei = nurAusschnitt ? (klein ?? original) : (original ?? klein);
+
+    if (!datei) {
       sendeJson(res, 410, { ok: false, fehler: 'Bild wurde nach Ablauf der Frist geloescht' });
       return true;
     }
 
-    const typ = path.extname(runde.bildPfad).toLowerCase() === '.jpg'
+    const typ = path.extname(datei).toLowerCase() === '.jpg'
       ? 'image/jpeg' : 'image/png';
-    const daten = readFileSync(runde.bildPfad);
-    res.writeHead(200, { 'Content-Type': typ, 'Cache-Control': 'no-store' });
+    const daten = readFileSync(datei);
+    res.writeHead(200, {
+      'Content-Type': typ,
+      'Cache-Control': 'no-store',
+      /* Damit die Anzeige sagen kann, was sie da zeigt - "Original nach
+         3 Tagen geloescht, das ist der Ausschnitt" ist eine Auskunft,
+         keine Entschuldigung. */
+      'X-MC-Bildart': datei === runde.bildPfad ? 'original' : 'ausschnitt'
+    });
     res.end(daten);
     return true;
   }

@@ -137,14 +137,14 @@ Bestes Ergebnis, zur Erinnerung woran gemessen wird:
 | 2 | Spieler sind die Steam-Konten | **fertig**, 2038 Zeilen gelöscht |
 | 3 | Leser-Regeln | **fertig** — Hinweistexte für Client und Regelseite folgen in 7/10 |
 | 4 | Cooldown | **fertig**, 6 neue Tests |
-| 5 | Bilder klein | offen |
+| 5 | Bilder klein | **fertig**, 10 Tests |
 | 6 | Bildergalerie | offen |
 | 7 | Öffentliche Seiten | offen |
 | 8 | Deploy und Server | offen |
 | 9 | Download-Warnung entschärfen | offen, Entscheidung nötig |
 | 10 | Update-Hinweis im Client | offen |
 
-Nach Etappe 4 + Client-Umbau: **537 Tests grün, Typecheck sauber.**
+Nach Etappe 5: **547 Tests grün, Typecheck sauber.**
 
 ## Etappen
 
@@ -239,8 +239,8 @@ Nicht verkleinern — **ausschneiden**. Das README warnt zu Recht vor dem Skalie
 
 | | Größe | Frist |
 |---|---|---|
-| **Ausschnitt** (JPEG, volle Auflösung) | ~35 KB | **dauerhaft** |
-| Original (ganzer Bildschirm, PNG) | ~2 MB | **3 Tage** |
+| **Ausschnitt** (JPEG, volle Auflösung) | **57 KB gemessen** | **dauerhaft** |
+| Original (ganzer Bildschirm, PNG) | 4 691 KB gemessen | **3 Tage** |
 | Original bei geflaggter Runde | ~2 MB | 30 Tage |
 
 Rechnung: 8 000 Ausschnitte im Jahr = **280 MB**. Als Original wären es 16 GB — auf

@@ -35,6 +35,7 @@ import { bearbeiteKonto } from './konto-api.js';
 import { kontoSeite } from './konto-seite.js';
 import type { Kontenliste } from './konten.js';
 import type { Wertungsstand } from './wertung.js';
+import { schneideAus, ausschnittPfadZu } from './ausschnitt.js';
 import type { RohZeile } from './parse.js';
 
 /** Groesste erlaubte Bildgroesse. Ein 1920x1080-PNG liegt bei rund 2 MB. */
@@ -132,6 +133,15 @@ export interface ServerOptionen {
   /** Mindestzahl Verstecker im Scoreboard. Vorgabe: MIN_SPIELER (6). Als
    *  Option, damit Tests sie setzen koennen, ohne die Umgebung anzufassen. */
   readonly minSpieler?: number;
+  /**
+   * Wie der Ranglisten-Block ausgeschnitten wird.
+   *
+   * Herausgezogen wie Leser und Bildpruefer: die Tests arbeiten mit
+   * erfundenen Bildern, die Pillow gar nicht oeffnen kann. Der echte
+   * Weg gibt dann null zurueck - richtig, aber dann liesse sich nicht
+   * pruefen, dass der Pfad ueberhaupt vermerkt wird.
+   */
+  readonly schneideAus?: (bildPfad: string, zielPfad: string) => string | null;
 }
 
 function sendeDatei(res: http.ServerResponse, datei: string, typ: string): void {
@@ -582,6 +592,22 @@ async function bearbeite(
   );
   writeFileSync(bildPfad, bild);
 
+  /*
+     Den Ranglisten-Block gleich ausschneiden.
+
+     Er bleibt dauerhaft liegen, waehrend das Original nach ein paar
+     Tagen geloescht wird - ~55 KB statt ~2 MB, in voller Aufloesung.
+     Siehe ausschnitt.ts.
+
+     Vor dem Lesen, nicht danach: schlaegt das Lesen fehl, will man
+     gerade dann nachsehen koennen, WAS da eigentlich im Bild stand.
+     Der Zuschnitt wirft nie - klappt er nicht, bleibt es beim Original.
+  */
+  const ausschnitt = (o.schneideAus ?? schneideAus)(
+    bildPfad,
+    ausschnittPfadZu(bildPfad, path.join(o.bilderDir, 'ausschnitte'))
+  );
+
   let zeilen: RohZeile[];
   try {
     zeilen = await leseListe(bild, typ, o.leser ?? waehleLeser());
@@ -826,6 +852,7 @@ async function bearbeite(
       quelle: token.vertraut ? 'selbst' : 'zuschauer',
       absender: token.name,
       bildPfad,
+      ...(ausschnitt ? { ausschnittPfad: ausschnitt } : {}),
       bildHash: hash,
       zeilen,
       kennung,
@@ -877,6 +904,7 @@ async function bearbeite(
     quelle: 'zuschauer',
     absender: token.name,
     bildPfad,
+    ...(ausschnitt ? { ausschnittPfad: ausschnitt } : {}),
     bildHash: hash,
     zeilen,
     kennung,

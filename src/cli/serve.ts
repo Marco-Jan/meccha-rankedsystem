@@ -44,8 +44,21 @@ const BILDER_DIR = process.env.MC_UPLOADS || path.join(DATEN_DIR, 'uploads');
 const OEFFENTLICHE_URL = process.env.MC_OEFFENTLICHE_URL ||
   ('http://localhost:' + (process.env.MC_PORT || 8790));
 
-/** Wie lange hochgeladene Bilder aufgehoben werden. */
-const BILD_STUNDEN = Number(process.env.MC_BILD_STUNDEN || 24);
+/**
+ * Wie lange das ORIGINAL eines hochgeladenen Bildes liegen bleibt.
+ *
+ * Drei Tage. Frueher waren es 24 Stunden, weil ein Screenshot rund 2 MB
+ * wiegt und der Platz knapp ist. Seit der Ranglisten-Block beim
+ * Hochladen ausgeschnitten und DAUERHAFT aufgehoben wird (ausschnitt.ts,
+ * ~55 KB), ist das Original nur noch fuer den seltenen Fall da, dass man
+ * den ganzen Bildschirm sehen will.
+ *
+ * Drei Tage heisst: am Wochenende kann man die Woche noch durchsehen.
+ * Hoechststand rund 500 MB, auch bei viel Betrieb.
+ *
+ * Geflaggte Runden behalten ihr Original 30 Tage - siehe freigabe.ts.
+ */
+const BILD_STUNDEN = Number(process.env.MC_BILD_STUNDEN || 72);
 
 
 /** Zeitpunkt ohne Umlaute und ohne Abhaengigkeit von der Systemsprache. */

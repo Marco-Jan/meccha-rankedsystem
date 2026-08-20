@@ -71,6 +71,20 @@ export interface OffeneRunde {
   /** true, sobald das Bild nach Ablauf der Frist geloescht wurde. */
   bildGeloescht?: boolean;
   /**
+   * Der ausgeschnittene Ranglisten-Block, ~55 KB statt ~2 MB.
+   *
+   * Bleibt DAUERHAFT liegen, auch wenn das Original laengst geloescht
+   * ist. Er ist der eigentliche Beleg: dort steht alles, was zaehlt -
+   * Raenge, Namen, Punkte, in voller Aufloesung. Der Rest des
+   * Bildschirms war ohnehin nur Spielgrafik, und mit ihm verschwinden
+   * nebenbei fremde Discord-Fenster und Browsertabs.
+   *
+   * Fehlt das Feld, ist der Zuschnitt nicht gelaufen - etwa weil Python
+   * nicht eingerichtet war. Dann bleibt es beim Original, solange es
+   * lebt.
+   */
+  readonly ausschnittPfad?: string;
+  /**
    * Kennung der PARTIE, abgeleitet aus den Punktzahlen. Siehe
    * rundenKennung() - damit faellt auf, wenn zwei Leute aus derselben
    * Lobby dasselbe Scoreboard einschicken.
@@ -352,6 +366,8 @@ export class Freigabeliste {
          nebeneinanderlegen koennen. */
       if ((r.verdacht?.length ?? 0) > 0 ? r.eingegangen > verdachtGrenze : r.eingegangen > grenze) continue;
       try {
+        /* NUR das Original. Der Ausschnitt bleibt - er ist der Grund,
+           warum das Original ueberhaupt gehen darf. */
         if (existsSync(r.bildPfad)) unlinkSync(r.bildPfad);
         r.bildGeloescht = true;
         weg++;
