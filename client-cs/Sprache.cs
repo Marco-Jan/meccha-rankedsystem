@@ -13,6 +13,25 @@
    Vorgabe ist Englisch: die Zuschauer kommen aus dem Stream, nicht aus
    dem Nachbarort.
 
+   -------------------------------------------------------------------
+   EINE SPRACHE DAZUNEHMEN
+
+   Drei Schritte, und der dritte darf dauern:
+
+     1. Kennung und Namen ergaenzen (Kennungen, Namen)
+     2. StelleVon() um einen Fall erweitern
+     3. die Uebersetzungen nach und nach anhaengen
+
+   Schritt 3 muss NICHT vollstaendig sein. Ein zu kurzes Feld faellt auf
+   Deutsch zurueck, genau wie ein fehlender Eintrag - man kann also mit
+   den zwanzig wichtigsten Saetzen anfangen und den Rest spaeter
+   nachziehen. Vorher war das anders: da haette eine neue Sprache
+   bedeutet, alle achtzig Eintraege in einem Rutsch zu erweitern, sonst
+   waere der Client beim ersten unuebersetzten Satz abgestuerzt.
+
+   Die Reihenfolge im Feld: [0] Englisch, [1] Chinesisch, [2] Japanisch.
+   Wer eine dazwischenschiebt, verschiebt alle - also hinten anhaengen.
+
    WICHTIG: Diese Datei braucht eine BOM, sonst liest csc.exe sie in der
    Windows-Codepage und die chinesischen Zeichen zerfallen. Genau das war
    bei Kern.cs passiert - in der ausgelieferten .exe stand
@@ -59,7 +78,7 @@ namespace MecchaRanked
        ================================================================== */
     static class Sprache
     {
-        /// <summary>"en", "de" oder "zh". Wird beim Start aus client.json gesetzt.</summary>
+        /// <summary>Eine der Kennungen. Wird beim Start aus client.json gesetzt.</summary>
         public static string Aktuell = "en";
 
         public static readonly string[] Kennungen = { "en", "de", "zh" };
@@ -72,8 +91,12 @@ namespace MecchaRanked
             return Namen[0];
         }
 
-        /* Reihenfolge im Feld: [0] Englisch, [1] Chinesisch.
-           Deutsch steht links als Schluessel und braucht keinen Eintrag. */
+        /* Reihenfolge im Feld: [0] Englisch, [1] Chinesisch, [2] Japanisch.
+           Deutsch steht links als Schluessel und braucht keinen Eintrag.
+
+           Ein Feld darf kuerzer sein als die Zahl der Sprachen - was
+           fehlt, faellt auf Deutsch zurueck. Neue Sprachen also hinten
+           anhaengen, nie dazwischenschieben. */
         static readonly Dictionary<string, string[]> W = new Dictionary<string, string[]>
         {
             /* ---------------------------------------------- Kopfzeile */
@@ -235,12 +258,49 @@ namespace MecchaRanked
                       "已保存的令牌将被删除。之后需要从账户页面获取新令牌，否则无法提交。" } }
         };
 
+        /// <summary>
+        /// Welche Stelle im Feld gehoert zu welcher Sprache.
+        ///
+        /// Deutsch steht links als Schluessel und hat keine Stelle - es
+        /// braucht keine, der Satz IST schon da.
+        /// </summary>
+        static int StelleVon(string kennung)
+        {
+            switch (kennung)
+            {
+                case "en": return 0;
+                case "zh": return 1;
+                case "ja": return 2;
+                default: return -1;
+            }
+        }
+
         public static string T(string de)
         {
             if (Aktuell == "de") return de;
+
             string[] a;
             if (!W.TryGetValue(de, out a)) return de;
-            int i = (Aktuell == "zh") ? 1 : 0;
+
+            int i = StelleVon(Aktuell);
+
+            /*
+               ZU KURZES FELD IST KEIN FEHLER, sondern der Normalfall
+               beim Hinzufuegen einer Sprache.
+
+               Frueher stand hier a[i] ohne Pruefung. Damit haette eine
+               vierte Sprache bedeutet, ALLE Eintraege gleichzeitig um
+               ein Element zu erweitern - sonst waere der Client beim
+               ersten unuebersetzten Satz mit IndexOutOfRange
+               abgestuerzt. Bei ueber achtzig Eintraegen heisst das:
+               entweder alles auf einmal oder gar nicht.
+
+               So faellt jeder noch nicht uebersetzte Satz einfach auf
+               Deutsch zurueck, genau wie ein fehlender Eintrag. Man kann
+               also anfangen und weitermachen.
+            */
+            if (i < 0 || i >= a.Length) return de;
+
             return string.IsNullOrEmpty(a[i]) ? de : a[i];
         }
 

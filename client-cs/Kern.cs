@@ -116,7 +116,17 @@ namespace MecchaRanked
                 if (!string.IsNullOrEmpty(token) && token.IndexOf("HIER-", StringComparison.Ordinal) < 0)
                     e.Token = token;
                 if (!string.IsNullOrEmpty(taste)) e.Taste = taste.ToUpperInvariant();
-                if (sprache == "de" || sprache == "en" || sprache == "zh") e.Sprache = sprache;
+                /* Gegen die EINE Liste pruefen, nicht gegen eine Aufzaehlung
+                   hier. Sonst haette eine neue Sprache zwei Stellen: eine,
+                   die sie kennt, und diese, die sie stillschweigend
+                   verwirft - der Nutzer stellt um, und beim naechsten Start
+                   steht wieder Englisch da.
+
+                   Voll ausgeschrieben, weil Sprache hier das FELD der
+                   Einstellungen ist und nicht die Klasse - ohne den
+                   Namensraum meint der Compiler das Falsche. */
+                if (System.Array.IndexOf(MecchaRanked.Sprache.Kennungen, sprache) >= 0)
+                    e.Sprache = sprache;
 
                 int n;
                 if (int.TryParse(schirm, out n)) e.Bildschirm = n;

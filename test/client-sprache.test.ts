@@ -110,8 +110,16 @@ describe('Client - Oberflaeche', () => {
 
   test('die Sprache wird gemerkt', () => {
     assert.match(kern, /public string Sprache = "en";/);
-    assert.match(kern, /sprache == "de" \|\| sprache == "en" \|\| sprache == "zh"/);
     assert.match(kern, /\\"sprache\\": /);
+  });
+
+  test('die gespeicherte Sprache wird gegen die EINE Liste geprueft', () => {
+    /* Vorher stand hier eine eigene Aufzaehlung. Damit haette eine neue
+       Sprache zwei Stellen gehabt: eine, die sie kennt, und diese, die
+       sie stillschweigend verwirft - der Nutzer stellt um, und beim
+       naechsten Start steht wieder Englisch da. */
+    assert.match(kern, /IndexOf\(MecchaRanked\.Sprache\.Kennungen, sprache\)/);
+    assert.doesNotMatch(kern, /sprache == "de" \|\| sprache == "en"/);
   });
 
   test('spricht TLS 1.2, bevor irgendetwas gesendet wird', () => {
@@ -255,5 +263,38 @@ describe('Client - der Update-Hinweis', () => {
     assert.match(fenster, /kastenAblehnung = letzteAblehnung/);
     assert.equal((fenster.match(/ZeigeInfoKasten\(\);/g) ?? []).length, 2,
       'genau zwei Aufrufe: einer je Quelle');
+  });
+});
+
+describe('Client - eine weitere Sprache laesst sich schrittweise dazunehmen', () => {
+  /*
+     Vorher stand in T() ein blankes a[i]. Damit haette eine vierte
+     Sprache bedeutet, ALLE achtzig Eintraege gleichzeitig um ein
+     Element zu erweitern - sonst waere der Client beim ersten
+     unuebersetzten Satz mit IndexOutOfRange abgestuerzt.
+
+     Bei einer Sprache, die noch niemand fertig uebersetzt hat, ist das
+     der Unterschied zwischen "geht nicht" und "faengt eben klein an".
+  */
+  test('ein zu kurzes Feld faellt auf Deutsch zurueck statt abzustuerzen', () => {
+    assert.match(sprache, /if \(i < 0 \|\| i >= a\.Length\) return de;/);
+  });
+
+  test('die Stelle im Feld haengt an einer Tabelle, nicht an einem Vergleich', () => {
+    /* Frueher: (Aktuell == "zh") ? 1 : 0 - jede weitere Sprache haette
+       diesen Ausdruck verschachtelt. Jetzt ist es ein Fall mehr. */
+    assert.match(sprache, /static int StelleVon\(string kennung\)/);
+    assert.doesNotMatch(sprache, /\(Aktuell == "zh"\) \? 1 : 0/);
+  });
+
+  test('Japanisch hat schon seinen Platz', () => {
+    // Nur die Stelle - die Saetze kommen, wenn sie kommen.
+    assert.match(sprache, /case "ja": return 2;/);
+  });
+
+  test('die Reihenfolge steht dokumentiert dabei', () => {
+    /* Wer eine Sprache DAZWISCHEN schiebt, verschiebt alle anderen
+       stillschweigend - dann steht Chinesisch im japanischen Feld. */
+    assert.match(sprache, /hinten anhaengen/);
   });
 });
