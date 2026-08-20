@@ -126,7 +126,7 @@ Bestes Ergebnis, zur Erinnerung woran gemessen wird:
 | 1 | Eigene Rangliste | **fertig**, 33 Tests |
 | 2 | Spieler sind die Steam-Konten | **fertig**, 2038 Zeilen gelöscht |
 | 3 | Leser-Regeln | **fertig** — Hinweistexte für Client und Regelseite folgen in 7/10 |
-| 4 | Cooldown | offen |
+| 4 | Cooldown | **fertig**, 6 neue Tests |
 | 5 | Bilder klein | offen |
 | 6 | Bildergalerie | offen |
 | 7 | Öffentliche Seiten | offen |
@@ -134,7 +134,7 @@ Bestes Ergebnis, zur Erinnerung woran gemessen wird:
 | 9 | Download-Warnung entschärfen | offen, Entscheidung nötig |
 | 10 | Update-Hinweis im Client | offen |
 
-Nach Etappe 3: **516 Tests grün, Typecheck sauber.**
+Nach Etappe 4: **526 Tests grün, Typecheck sauber.**
 
 ## Etappen
 
@@ -212,8 +212,15 @@ allen zehn durch. Deshalb **zweistufig**:
 1. beim Annehmen sofort **30 s** stempeln — das Fenster ist nie offen
 2. bei Erfolg auf **3 min** hochsetzen
 
-Die Ausnahme hängt künftig an der Kontorolle `admin` (`konten.ts:247`), nicht mehr an
-`vertraut` am Token. Damit gilt sie unabhängig von Rechner und Token.
+Die Ausnahme hängt jetzt an der Kontorolle `admin`, nicht mehr an `vertraut` am Token.
+Damit gilt sie unabhängig von Rechner und Token — aber auch: **vertraute Zugänge werden
+seither mitgebremst.** `vertraut` sagt etwas über den Rechner, nicht über die Person.
+Deine eigene Wache (`WACHE.bat`) ist davon nicht betroffen, die läuft über die
+Kommandozeile und geht gar nicht durch die Token-Prüfung.
+
+Ein Detail beim Wiederholen desselben Bildes: dann bleibt es beim **kurzen** Abstand.
+Wer versehentlich zweimal drückt, hat nichts Neues eingereicht und soll dafür nicht drei
+Minuten büßen.
 
 ### 5 · Bilder klein
 

@@ -475,7 +475,26 @@ async function bearbeite(
      Token zuerst, VOR dem Einlesen des Bildes. Wer nicht darf, soll nicht
      erst acht Megabyte hochladen duerfen.
   */
-  const pruefung = o.tokens.pruefen(req.headers['x-mc-token']);
+  /*
+     Admins sind vom Mindestabstand befreit - beim Einrichten und
+     Nachpruefen soll niemand auf sich selbst warten.
+
+     Absichtlich NUR Admins, nicht Mods und nicht "vertraute" Zugaenge:
+     vertraut sagt etwas ueber den Rechner, nicht ueber die Person, und
+     ein Mod soll Runden entscheiden, nicht am Limit vorbeischicken.
+
+     Die Rolle liegt am Konto, nicht am Token - deshalb der Umweg.
+     tokens.finde() statt pruefen(), weil eine reine Auskunft weder als
+     Nutzung gelten noch das eigene Zeitfenster verbrauchen darf.
+  */
+  const roh = req.headers['x-mc-token'];
+  let ohneAbstand = false;
+  if (o.konten && typeof roh === 'string') {
+    const konto = o.konten.findeNachToken(roh);
+    ohneAbstand = konto !== null && o.konten.rolleVon(konto) === 'admin';
+  }
+
+  const pruefung = o.tokens.pruefen(roh, Date.now(), ohneAbstand);
   if (!pruefung.ok) {
     return sendeJson(res, pruefung.code, { ok: false, fehler: pruefung.grund });
   }
@@ -798,6 +817,11 @@ async function bearbeite(
     console.log('  ' + token.name + ' (' + (token.vertraut ? 'vertraut' : 'ohne Freigabe') +
       '): ' + geschrieben + ' eingetragen, ' + bericht.rueckfragen.length + ' offen');
 
+    /* Durchgekommen - ab jetzt gilt der lange Abstand. Bis hierher stand
+       nur der kurze aus pruefen(), der das Fenster waehrend des Lesens
+       geschlossen hielt. */
+    if (!ohneAbstand) o.tokens.angenommen(token.token);
+
     return sendeJson(res, 200, {
       ok: true,
       neu: true,
@@ -848,6 +872,15 @@ async function bearbeite(
     (aehnlich.length ? '  (ACHTUNG: ' + aehnlich.length + ' inhaltsgleiche Runde(n))' : '') +
     (befund.wirktEcht ? '' : '  (ACHTUNG: Bild wirkt nachbearbeitet)') +
     (auffaellig.length > 0 ? '  (GEFLAGGT: ' + auffaellig.join('; ') + ')' : ''));
+
+  /* Angenommen heisst hier: in der Freigabeliste gelandet - NICHT "vom
+     Streamer freigegeben". Dessen Entscheidung faellt Minuten spaeter,
+     bis dahin kann kein Abstand warten.
+
+     Bei neuAngelegt === false war es derselbe Screenshot noch einmal.
+     Dann ist nichts Neues passiert, und es bleibt beim kurzen Abstand:
+     wer versehentlich zweimal drueckt, soll nicht drei Minuten buessen. */
+  if (!ohneAbstand && neuAngelegt) o.tokens.angenommen(token.token);
 
   return sendeJson(res, 200, {
     ok: true,

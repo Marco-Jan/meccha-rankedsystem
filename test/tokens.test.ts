@@ -4,7 +4,10 @@ import { mkdtempSync, rmSync, writeFileSync, existsSync, readdirSync } from 'nod
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
-import { ladeTokens, Tokenliste, MINDESTABSTAND_MS, brauchtFreigabe } from '../src/tokens.js';
+import {
+  ladeTokens, Tokenliste, brauchtFreigabe,
+  ABSTAND_FEHLSCHLAG_MS, ABSTAND_ANGENOMMEN_MS
+} from '../src/tokens.js';
 
 const ORDNER = mkdtempSync(path.join(tmpdir(), 'mc-tokens-'));
 after(() => rmSync(ORDNER, { recursive: true, force: true }));
@@ -107,31 +110,80 @@ describe('Tokens - Mindestabstand', () => {
   let liste: Tokenliste;
   beforeEach(() => { liste = ladeTokens(frisch()); });
 
-  test('bremst zu schnelle Einreichungen', () => {
-    // Ohne das koennte jemand die Freigabeliste zumuellen.
+  test('stempelt schon beim Pruefen, nicht erst am Ende', () => {
+    /* Das Lesen eines Bildes dauert Sekunden. Wuerde erst danach
+       gestempelt, kaeme wer zehn Uploads gleichzeitig schickt mit allen
+       zehn durch, bevor der erste fertig ist. */
     const t = liste.anlegen('Zuschauer', false, 'Jones');
     assert.equal(liste.pruefen(t.token, 10000).ok, true);
 
-    const zweite = liste.pruefen(t.token, 10000 + MINDESTABSTAND_MS - 1);
-    assert.equal(zweite.ok, false);
-    if (!zweite.ok) {
-      assert.equal(zweite.code, 429);
-      assert.match(zweite.grund, /warten/);
-    }
+    const sofort = liste.pruefen(t.token, 10001);
+    assert.equal(sofort.ok, false, 'das Fenster darf nie offen stehen');
+    if (!sofort.ok) assert.equal(sofort.code, 429);
   });
 
-  test('laesst nach Ablauf des Abstands wieder durch', () => {
+  test('nach einem Fehlschlag sind es nur 30 Sekunden', () => {
+    /* Ein Fehlschlag ist meist nicht die Schuld des Absenders - schlecht
+       erwischter Moment, unruhiger Hintergrund. Drei Minuten Strafe
+       wuerden ihn seine Runde kosten. */
     const t = liste.anlegen('Zuschauer', false, 'Jones');
     liste.pruefen(t.token, 10000);
-    assert.equal(liste.pruefen(t.token, 10000 + MINDESTABSTAND_MS).ok, true);
+
+    const zuFrueh = liste.pruefen(t.token, 10000 + ABSTAND_FEHLSCHLAG_MS - 1);
+    assert.equal(zuFrueh.ok, false);
+    assert.equal(liste.pruefen(t.token, 10000 + ABSTAND_FEHLSCHLAG_MS).ok, true);
   });
 
-  test('bremst vertraute Tokens nicht', () => {
-    // Der eigene Rechner soll nicht ausgebremst werden, wenn zweimal
-    // kurz hintereinander gedrueckt wird.
+  test('nach einer angenommenen Runde sind es drei Minuten', () => {
+    const t = liste.anlegen('Zuschauer', false, 'Jones');
+    liste.pruefen(t.token, 10000);
+    liste.angenommen(t.token, 10000);
+
+    // Der kurze Abstand waere laengst um - der lange nicht.
+    const nachKurz = liste.pruefen(t.token, 10000 + ABSTAND_FEHLSCHLAG_MS + 1);
+    assert.equal(nachKurz.ok, false);
+    if (!nachKurz.ok) assert.match(nachKurz.grund, /Minute/);
+
+    assert.equal(liste.pruefen(t.token, 10000 + ABSTAND_ANGENOMMEN_MS).ok, true);
+  });
+
+  test('nennt die Restzeit in Minuten, wenn es mehr als eine ist', () => {
+    // "noch 174 Sekunden warten" liest sich niemand aus.
+    const t = liste.anlegen('Zuschauer', false, 'Jones');
+    liste.pruefen(t.token, 10000);
+    liste.angenommen(t.token, 10000);
+
+    const r = liste.pruefen(t.token, 10000 + 1000);
+    assert.equal(r.ok, false);
+    if (!r.ok) assert.match(r.grund, /3 Minute/);
+  });
+
+  test('ohneAbstand geht daran vorbei - fuer Admins beim Testen', () => {
+    const t = liste.anlegen('Chefin', false, 'Jones');
+    liste.pruefen(t.token, 10000);
+    liste.angenommen(t.token, 10000);
+    assert.equal(liste.pruefen(t.token, 10001, true).ok, true);
+  });
+
+  test('ein gesperrter Token bleibt gesperrt, auch mit ohneAbstand', () => {
+    /* Die Befreiung gilt dem Abstand, nicht der Sperre - sonst waere sie
+       ein Generalschluessel. */
+    const t = liste.anlegen('Gesperrte', false, 'Jones');
+    liste.sperren(t.token, 'bearbeitete Screenshots');
+    const r = liste.pruefen(t.token, 10000, true);
+    assert.equal(r.ok, false);
+    if (!r.ok) assert.equal(r.code, 401);
+  });
+
+  test('vertraute Tokens werden MITgebremst', () => {
+    /* Geaendert am 20.08.2026: frueher war "vertraut" von der Sperre
+       befreit. Vertraut sagt aber etwas ueber den RECHNER, nicht ueber
+       die Person - befreit ist jetzt nur, wer Admin ist. Die eigene
+       Wache (WACHE.bat) laeuft ohnehin ueber die Kommandozeile und geht
+       gar nicht durch diese Pruefung. */
     const t = liste.anlegen('Spiel-PC', true);
     assert.equal(liste.pruefen(t.token, 10000).ok, true);
-    assert.equal(liste.pruefen(t.token, 10001).ok, true);
+    assert.equal(liste.pruefen(t.token, 10001).ok, false);
   });
 });
 

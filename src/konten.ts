@@ -344,6 +344,22 @@ export class Kontenliste {
     return this.konten.find((k) => k.id === id) ?? null;
   }
 
+  /**
+   * Wem gehoert dieser Upload-Token?
+   *
+   * Gebraucht fuer die Frage, ob jemand vom Mindestabstand befreit ist:
+   * Tokens kennen keine Rollen, Konten schon. Der Vergleich ist ein
+   * schlichter Zeichenvergleich - der Token wurde vorher schon
+   * zeitkonstant geprueft (tokens.ts finde()), hier geht es nur noch
+   * darum, WER dahintersteckt.
+   */
+  findeNachToken(token: string): Konto | null {
+    this.aktualisieren();
+    const t = String(token ?? '').trim();
+    if (!t) return null;
+    return this.konten.find((k) => k.token === t) ?? null;
+  }
+
   /** Wem gehoert dieser Ingame-Name? */
   findeNachIngame(name: string): Konto | null {
     this.aktualisieren();

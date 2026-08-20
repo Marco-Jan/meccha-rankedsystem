@@ -64,6 +64,16 @@ export interface Token {
   ohneFreigabe?: boolean;
   readonly angelegt: number;
   letzteNutzung?: number;
+  /**
+   * Bis wann dieser Zugang gesperrt ist.
+   *
+   * Steht hier statt "letzteNutzung plus fester Abstand", weil der
+   * Abstand nicht mehr fest ist: er haengt davon ab, was aus der letzten
+   * Einreichung wurde. Ihn jedes Mal neu auszurechnen hiesse, sich
+   * merken zu muessen, WIE die letzte ausging - der Zeitpunkt selbst ist
+   * die einfachere Auskunft.
+   */
+  sperreBis?: number;
   /** Gesperrte Tokens werden abgewiesen, bleiben aber als Spur erhalten. */
   gesperrt?: boolean;
   sperrgrund?: string;
@@ -74,8 +84,28 @@ interface TokenDatei {
   readonly tokens: Token[];
 }
 
-/** Mindestabstand zwischen zwei Einreichungen desselben Tokens. */
-export const MINDESTABSTAND_MS = 5000;
+/* =========================================================================
+   ABSTAND ZWISCHEN ZWEI EINREICHUNGEN
+
+   Zwei Werte, nicht einer - und der Unterschied ist Absicht.
+
+   Nach einer ANGENOMMENEN Runde gibt es nichts mehr einzureichen: die
+   Runde laeuft, das Ergebnis steht, und die naechste Partie dauert
+   ohnehin laenger als drei Minuten. Ein ehrlicher Spieler merkt diese
+   Sperre nie.
+
+   Ein FEHLSCHLAG ist dagegen meistens nicht die Schuld des Absenders:
+   die Rangliste war nicht ganz im Bild, der Untergrund war zu bunt, der
+   Moment war schlecht erwischt. Wer dafuer drei Minuten wartet, verliert
+   seine Runde - bis er wieder darf, ist die Lobby weiter. Deshalb hier
+   nur dreissig Sekunden: neu einblenden, nochmal druecken, passt.
+   ========================================================================= */
+
+/** Nach einer angenommenen Runde. */
+export const ABSTAND_ANGENOMMEN_MS = Number(process.env.MC_ABSTAND_ANGENOMMEN || 3 * 60 * 1000);
+
+/** Nach allem anderen - unlesbares Bild, zu kleine Lobby, Dublette. */
+export const ABSTAND_FEHLSCHLAG_MS = Number(process.env.MC_ABSTAND_FEHLSCHLAG || 30 * 1000);
 
 function lesen(datei: string): Token[] {
   let roh: string;
@@ -265,7 +295,25 @@ export class Tokenliste {
     }) ?? null;
   }
 
-  pruefen(eingabe: unknown, jetzt = Date.now()): PruefErgebnis {
+  /**
+   * Prueft einen Token und setzt sofort den KURZEN Abstand.
+   *
+   * Warum sofort und nicht erst am Ende: das Lesen eines Bildes dauert
+   * ein paar Sekunden. Wuerde erst danach gestempelt, staende in dieser
+   * Zeit gar keine Sperre - wer zehn Uploads gleichzeitig abschickt,
+   * kaeme mit allen zehn durch die Pruefung, bevor der erste fertig ist.
+   *
+   * Kommt die Runde durch, hebt angenommen() den Abstand anschliessend
+   * auf den langen Wert. Kommt sie nicht durch, bleibt es bei dreissig
+   * Sekunden - genau richtig, denn dann soll es der Absender gleich
+   * nochmal versuchen duerfen.
+   *
+   * ohneAbstand befreit von der Sperre. Gedacht fuer Admins, die beim
+   * Einrichten und Pruefen nicht auf sich selbst warten sollen - die
+   * Entscheidung, WER das ist, faellt beim Aufrufer: Tokens kennen keine
+   * Rollen.
+   */
+  pruefen(eingabe: unknown, jetzt = Date.now(), ohneAbstand = false): PruefErgebnis {
     if (typeof eingabe !== 'string' || eingabe.length === 0) {
       return { ok: false, grund: 'Kein Token mitgeschickt', code: 401 };
     }
@@ -277,23 +325,38 @@ export class Tokenliste {
       return { ok: false, grund: 'Token gesperrt: ' + (treffer.sperrgrund ?? 'ohne Angabe'), code: 401 };
     }
 
-    /*
-       Mindestabstand: ohne den koennte jemand hundert Runden pro Sekunde
-       schicken und die Freigabeliste unbenutzbar machen. Betrifft
-       vertraute Tokens nicht - deine eigenen Rechner sollen nicht
-       ausgebremst werden, wenn du zweimal kurz hintereinander drueckst.
-    */
-    if (!treffer.vertraut && treffer.letzteNutzung !== undefined) {
-      const abstand = jetzt - treffer.letzteNutzung;
-      if (abstand < MINDESTABSTAND_MS) {
-        const rest = Math.ceil((MINDESTABSTAND_MS - abstand) / 1000);
-        return { ok: false, grund: 'Zu schnell - bitte ' + rest + ' Sekunden warten', code: 429 };
-      }
+    if (!ohneAbstand && treffer.sperreBis !== undefined && jetzt < treffer.sperreBis) {
+      const rest = Math.ceil((treffer.sperreBis - jetzt) / 1000);
+      return {
+        ok: false,
+        grund: rest > 60
+          ? 'Zu schnell - noch ' + Math.ceil(rest / 60) + ' Minute(n) warten'
+          : 'Zu schnell - noch ' + rest + ' Sekunden warten',
+        code: 429
+      };
     }
 
     treffer.letzteNutzung = jetzt;
+    treffer.sperreBis = jetzt + ABSTAND_FEHLSCHLAG_MS;
     this.speichern();
     return { ok: true, token: treffer };
+  }
+
+  /**
+   * Die Runde kam durch - jetzt gilt der lange Abstand.
+   *
+   * Absichtlich getrennt von pruefen(): zum Pruefzeitpunkt weiss noch
+   * niemand, ob das Bild etwas taugt.
+   *
+   * "Durchgekommen" heisst hier: in der Freigabeliste gelandet oder
+   * direkt gewertet - NICHT "von dir freigegeben". Deine Entscheidung
+   * faellt Minuten spaeter; bis dahin kann kein Abstand warten.
+   */
+  angenommen(token: string, jetzt = Date.now()): void {
+    const treffer = this.finde(token);
+    if (!treffer) return;
+    treffer.sperreBis = jetzt + ABSTAND_ANGENOMMEN_MS;
+    this.speichern();
   }
 }
 

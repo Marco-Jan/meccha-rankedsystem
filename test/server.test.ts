@@ -8,7 +8,7 @@ import path from 'node:path';
 
 import { baueServer, MAX_BILD } from '../src/server.js';
 import { Freigabeliste, ladeFreigabeliste } from '../src/freigabe.js';
-import { Tokenliste, ladeTokens, MINDESTABSTAND_MS } from '../src/tokens.js';
+import { Tokenliste, ladeTokens, ABSTAND_FEHLSCHLAG_MS } from '../src/tokens.js';
 import type { Spieler } from '../src/namen.js';
 import { standMit } from './hilfe-stand.js';
 
@@ -253,9 +253,14 @@ describe('Server - Bildpruefung', () => {
   });
 
   test('nimmt PNG und JPEG an', async () => {
+    /* Je Durchlauf ein eigener Zugang: seit dem zweistufigen
+       Mindestabstand bremst der zweite Upload desselben Tokens, und der
+       Test wuerde 429 statt 200 sehen - obwohl es um die Dateitypen
+       geht und nicht um das Zeitfenster. */
     for (const typ of ['image/png', 'image/jpeg']) {
+      const eigener = tokens.anlegen('Typ-Probe ' + typ, true).token;
       const { code } = await lade(bild(typ), {
-        'X-MC-Token': eigenerToken, 'Content-Type': typ
+        'X-MC-Token': eigener, 'Content-Type': typ
       });
       assert.equal(code, 200, typ + ' sollte angenommen werden');
     }
@@ -523,7 +528,7 @@ describe('Server - Dubletten', () => {
 
   test('warnt bei inhaltsgleicher Runde mit anderem Bild', async () => {
     await lade(bild('bild-a'), { 'X-MC-Token': zuschauerToken });
-    tokens.pruefen(zuschauerToken, Date.now() + MINDESTABSTAND_MS * 2);
+    tokens.pruefen(zuschauerToken, Date.now() + ABSTAND_FEHLSCHLAG_MS * 2);
 
     const zweite = await lade(bild('bild-b'), { 'X-MC-Token': eigenerToken });
     // Vertraute Quelle geht direkt durch, die Warnung greift bei
