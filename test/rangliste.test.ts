@@ -4,7 +4,7 @@ import { mkdtempSync, writeFileSync, readFileSync, existsSync, readdirSync } fro
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
-import { Rangliste, ladeRangliste, FENSTER, VOLL } from '../src/rangliste.js';
+import { Rangliste, ladeRangliste, FENSTER, VOLL, SPRUNG_AB } from '../src/rangliste.js';
 
 /* =========================================================================
    Die Wertung ist der Kern des ganzen Projekts, und ihr Fehlerbild ist
@@ -355,5 +355,100 @@ describe('Auskunft fuer die Kontoseite', () => {
 
     const l = r.letzte(namenAusId, 3);
     assert.deepEqual(l.map((e) => e.punkte), [5, 4, 3]);
+  });
+});
+
+describe('Auf dem Sprung - Anwaerter mit Aussicht auf die ersten drei', () => {
+  test('unter SPRUNG_AB Eintraegen zaehlt niemand mit', () => {
+    /* Aus vier Runden laesst sich nichts ablesen: ein einzelner
+       Glueckstreffer wuerde jemanden ganz nach oben spuelen und beim
+       naechsten Eintrag wieder hinunter. */
+    const { r } = neu();
+    traegeEin(r, 'platzhirsch', Array(10).fill(100));
+    traegeEin(r, 'frisch', Array(SPRUNG_AB - 1).fill(9000));
+
+    const t = r.tabelle(namenAusId);
+    assert.equal(t.anwaerter.length, 1, 'er ist Anwaerter');
+    assert.deepEqual(t.aufDemSprung, [], 'aber noch nicht auf dem Sprung');
+  });
+
+  test('genau ab SPRUNG_AB Eintraegen wird er sichtbar', () => {
+    const { r } = neu();
+    traegeEin(r, 'platzhirsch', Array(10).fill(100));
+    traegeEin(r, 'frisch', Array(SPRUNG_AB).fill(9000));
+
+    const t = r.tabelle(namenAusId);
+    assert.deepEqual(t.aufDemSprung.map((z) => z.name), ['frisch']);
+  });
+
+  test('ein schwacher Anwaerter bleibt draussen, egal wie viele Runden', () => {
+    const { r } = neu();
+    for (const wer of ['a', 'b', 'c']) traegeEin(r, wer, Array(10).fill(1000));
+    traegeEin(r, 'schwach', Array(9).fill(50));
+
+    const t = r.tabelle(namenAusId);
+    assert.equal(t.gewertet.length, 3);
+    assert.deepEqual(t.aufDemSprung, [],
+      'sein Schnitt reicht nicht an den Dritten heran');
+  });
+
+  test('massgeblich ist der Schnitt des Dritten, nicht der des Ersten', () => {
+    const { r } = neu();
+    traegeEin(r, 'erster', Array(10).fill(9000));
+    traegeEin(r, 'zweiter', Array(10).fill(8000));
+    traegeEin(r, 'dritter', Array(10).fill(1000));
+    // Besser als der Dritte, schlechter als der Erste - reicht fuer Platz 3.
+    traegeEin(r, 'kandidat', Array(6).fill(5000));
+
+    assert.deepEqual(r.tabelle(namenAusId).aufDemSprung.map((z) => z.name), ['kandidat']);
+  });
+
+  test('bei exaktem Gleichstand mit dem Dritten reicht es NICHT', () => {
+    /* Er stuende dann hinter ihm, also auf vier. "Koennte unter die
+       ersten drei kommen" waere eine Uebertreibung. */
+    const { r } = neu();
+    traegeEin(r, 'erster', Array(10).fill(9000));
+    traegeEin(r, 'zweiter', Array(10).fill(8000));
+    traegeEin(r, 'dritter', Array(10).fill(1000));
+    traegeEin(r, 'gleichauf', Array(6).fill(1000));
+
+    assert.deepEqual(r.tabelle(namenAusId).aufDemSprung, []);
+  });
+
+  test('gibt es noch keine drei Gewerteten, reicht jeder Schnitt', () => {
+    /* In eine Wertung mit zwei Leuten kommt man auch mit wenig unter
+       die ersten drei - das ist keine Schoenrechnerei, sondern wahr. */
+    const { r } = neu();
+    traegeEin(r, 'einziger', Array(10).fill(9000));
+    traegeEin(r, 'bescheiden', Array(SPRUNG_AB).fill(3));
+
+    assert.deepEqual(r.tabelle(namenAusId).aufDemSprung.map((z) => z.name), ['bescheiden']);
+  });
+
+  test('wer schon in der Wertung steht, ist nie auf dem Sprung', () => {
+    const { r } = neu();
+    traegeEin(r, 'gewertet', Array(10).fill(9000));
+    assert.deepEqual(r.tabelle(namenAusId).aufDemSprung, []);
+  });
+
+  test('die Auswahl bleibt AUCH in der Anwaerterliste stehen', () => {
+    /* Sonst risse man ein Loch in eine Liste, das niemand erklaeren
+       koennte: der Beste der Neuen waere nirgends zu finden. */
+    const { r } = neu();
+    traegeEin(r, 'kandidat', Array(SPRUNG_AB).fill(500));
+
+    const t = r.tabelle(namenAusId);
+    assert.deepEqual(t.aufDemSprung.map((z) => z.name), ['kandidat']);
+    assert.deepEqual(t.anwaerter.map((z) => z.name), ['kandidat']);
+  });
+
+  test('mehrere Kandidaten stehen in der Reihenfolge der Anwaerterliste', () => {
+    const { r } = neu();
+    traegeEin(r, 'platzhirsch', Array(10).fill(100));
+    traegeEin(r, 'mittel', Array(SPRUNG_AB).fill(500));
+    traegeEin(r, 'stark', Array(SPRUNG_AB).fill(900));
+
+    assert.deepEqual(r.tabelle(namenAusId).aufDemSprung.map((z) => z.name),
+      ['stark', 'mittel'], 'bester zuerst, wie in der Anwaerterliste');
   });
 });

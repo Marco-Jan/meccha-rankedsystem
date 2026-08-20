@@ -62,6 +62,14 @@ export interface Wertungsstand {
   readonly eintraege: number;
   readonly gewertet: readonly Ranglistenzeile[];
   readonly anwaerter: readonly Ranglistenzeile[];
+  /**
+   * Anwaerter, die es unter die ersten drei schaffen wuerden.
+   *
+   * Auswahl aus anwaerter, keine dritte Gruppe - siehe rangliste.ts.
+   * Steht als eigenes Feld hier, damit die Rangliste sie oben hervorheben
+   * kann, ohne die Regel doppelt zu kennen.
+   */
+  readonly aufDemSprung: readonly Ranglistenzeile[];
   /** Die juengsten Eintraege, neueste zuerst - Gegenprobe im Dashboard. */
   readonly letzte: readonly LetzterEintrag[];
 }
@@ -120,6 +128,7 @@ export class Wertung {
       eintraege: this.rangliste.alle().length,
       gewertet: t.gewertet,
       anwaerter: t.anwaerter,
+      aufDemSprung: t.aufDemSprung,
       letzte: this.rangliste.letzte(this.nameVon)
     };
   }

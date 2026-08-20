@@ -45,6 +45,32 @@ export const FENSTER = 10;
 /** Ab so vielen Eintraegen steht man in der Wertung statt bei den Anwaertern. */
 export const VOLL = 10;
 
+/* -------------------------------------------------------- Auf dem Sprung
+
+   Wer noch Anwaerter ist, steht ganz unten - hinter allen Gewerteten,
+   auch wenn er besser spielt als sie alle. Das ist fuer die Wertung
+   richtig (verglichen wird nur ueber zehn Runden), fuer die Motivation
+   aber genau verkehrt: der Beste der Neuen sieht sich am Ende einer
+   Liste, in der er eigentlich vorne stuende.
+
+   Deshalb bekommen die Aussichtsreichen einen eigenen Block ganz oben.
+   Zwei Bedingungen, beide noetig:
+
+     - mindestens SPRUNG_AB Eintraege. Aus zwei Runden laesst sich
+       nichts ablesen; ein einzelner Glueckstreffer wuerde jemanden ganz
+       nach oben spuelen und beim naechsten Eintrag wieder hinunter.
+
+     - der Schnitt muesste fuer die ersten SPRUNG_PLATZ reichen. Nicht
+       "irgendwo in der Wertung" - dann staende dort die halbe Liste und
+       es waere kein Ansporn mehr, sondern Rauschen.
+*/
+
+/** Ab so vielen Eintraegen kann jemand "auf dem Sprung" sein. */
+export const SPRUNG_AB = 5;
+
+/** So weit vorne muesste sein Schnitt ihn bringen. */
+export const SPRUNG_PLATZ = 3;
+
 export interface Ranglisteneintrag {
   readonly id: string;
   /** Das Konto, dem die Punkte gehoeren - nie der Ingame-Name. */
@@ -82,6 +108,15 @@ export interface Tabelle {
   readonly gewertet: readonly Ranglistenzeile[];
   /** Noch nicht genug Eintraege. */
   readonly anwaerter: readonly Ranglistenzeile[];
+  /**
+   * Anwaerter, deren Schnitt fuer die ersten SPRUNG_PLATZ reichen wuerde.
+   *
+   * Eine AUSWAHL aus anwaerter, keine dritte Gruppe: dieselben Zeilen
+   * stehen dort weiterhin. Die Anzeige hebt sie oben hervor und laesst
+   * sie unten in der Liste - wer sie herausrechnete, riesse ein Loch in
+   * die Anwaerterliste, das niemand erklaeren koennte.
+   */
+  readonly aufDemSprung: readonly Ranglistenzeile[];
 }
 
 interface RanglisteDatei {
@@ -292,7 +327,26 @@ export class Rangliste {
       z.platz = platz;
     });
 
-    return { gewertet, anwaerter };
+    /*
+       Wer wuerde unter die ersten SPRUNG_PLATZ kommen?
+
+       Die Schwelle ist der Schnitt des derzeit Dritten. Gibt es noch
+       keine drei Gewerteten, ist sie unendlich niedrig - dann reicht
+       jeder Schnitt, und das ist richtig so: in eine Wertung mit zwei
+       Leuten kommt man auch mit wenig unter die ersten drei.
+
+       Verglichen wird mit > und nicht mit >=: bei exakter Gleichheit
+       stuende er hinter dem Dritten, also auf vier.
+    */
+    const schwelle = gewertet.length >= SPRUNG_PLATZ
+      ? gewertet[SPRUNG_PLATZ - 1]!.schnitt
+      : Number.NEGATIVE_INFINITY;
+
+    const aufDemSprung = anwaerter.filter(
+      (z) => z.imFenster >= SPRUNG_AB && z.schnitt > schwelle
+    );
+
+    return { gewertet, anwaerter, aufDemSprung };
   }
 
   /** Die juengsten Eintraege, neueste zuerst - fuer die Gegenprobe im Dashboard. */

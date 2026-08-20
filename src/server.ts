@@ -403,7 +403,12 @@ async function bearbeite(
       fenster: stand.fenster,
       voll: stand.voll,
       gewertet: stand.gewertet,
-      anwaerter: stand.anwaerter
+      anwaerter: stand.anwaerter,
+      /* Anwaerter, die es unter die ersten drei schaffen wuerden. Sie
+         stehen auch in anwaerter - das hier ist die Auswahl fuer den
+         Block ganz oben. Wer noch keine zehn Runden hat, sieht sich
+         sonst am Ende einer Liste, in der er eigentlich vorne stuende. */
+      aufDemSprung: stand.aufDemSprung
     });
   }
 

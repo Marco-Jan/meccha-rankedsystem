@@ -62,6 +62,16 @@ Leute, die Zahl der Jäger schwankt (2 bis 8) — im Scoreboard landen dadurch e
 
 Bei gleichem Schnitt steht vorne, wer mehr Einträge hat — er hat es öfter gezeigt.
 
+**Auf dem Sprung.** Wer noch Anwärter ist, steht ganz unten — hinter allen Gewerteten,
+auch wenn er besser spielt als sie alle. Für die Wertung ist das richtig (verglichen
+wird nur über zehn Runden), für die Motivation genau verkehrt. Deshalb stehen Anwärter,
+deren Schnitt für die **ersten drei** reichen würde, zusätzlich in einem eigenen Block
+ganz oben — **ab 5 Einträgen**. Darunter sagt ein Schnitt nichts: ein Glückstreffer
+würde jemanden nach oben spülen und beim nächsten Eintrag wieder hinunter.
+
+Sie bleiben dabei auch in der Anwärterliste stehen. Wer sie herausrechnete, risse ein
+Loch, das niemand erklären könnte.
+
 ### Abstand zwischen zwei Einreichungen
 
 | | |
@@ -134,7 +144,7 @@ Bestes Ergebnis, zur Erinnerung woran gemessen wird:
 | 9 | Download-Warnung entschärfen | offen, Entscheidung nötig |
 | 10 | Update-Hinweis im Client | offen |
 
-Nach Etappe 4: **526 Tests grün, Typecheck sauber.**
+Nach Etappe 4 + Client-Umbau: **537 Tests grün, Typecheck sauber.**
 
 ## Etappen
 

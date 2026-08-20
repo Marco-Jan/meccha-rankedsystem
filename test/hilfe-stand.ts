@@ -20,6 +20,7 @@ export function standMit(
     eintraege: 0,
     gewertet: [],
     anwaerter: [],
+    aufDemSprung: [],
     letzte: [],
     ...extra
   };
