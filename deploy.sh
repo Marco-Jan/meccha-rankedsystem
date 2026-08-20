@@ -48,13 +48,28 @@ if [[ "${1:-}" == "--hilfe" || "${1:-}" == "-h" ]]; then
     ./deploy.sh --nur-neustart   nichts holen, nur neu starten
     ./deploy.sh --hilfe          das hier
 
-  Die Client-.exe geht nicht ueber git. Von deinem PC aus:
+  Die Client-.exe geht nicht ueber git - sie steht in der .gitignore,
+  eine Binaerdatei hat in einem Repo nichts verloren. Von deinem PC aus:
 
-    scp mc-ranked/client-cs/Meccha-Ranked.exe \
-        meccha@meccha-ranked.com:/opt/meccha/mc-ranked/client-cs/
+    scp client-cs/Meccha-Ranked.exe DEIN-BENUTZER@meccha-ranked.com:/tmp/
+
+  Und dann auf dem Server:
+
+    sudo mv /tmp/Meccha-Ranked.exe /opt/meccha/mc-ranked/client-cs/
+    sudo chown meccha:meccha /opt/meccha/mc-ranked/client-cs/Meccha-Ranked.exe
+
+  NICHT direkt als meccha@ hochladen. Dieses Konto ist mit --system
+  angelegt: kein Passwort, keine Anmeldung. Es existiert nur, damit der
+  Dienst nicht als root laeuft - scp fragt dort nach einem Passwort, das
+  es gar nicht gibt.
+
+  Das chown nicht vergessen. Gehoert die Datei danach root, liest der
+  Dienst sie zwar noch, aber es ist genau die Abweichung, die Wochen
+  spaeter als raetselhafter Rechtefehler wiederkommt.
 
   Danach bietet /client die neue Fassung an. Ein Neustart ist dafuer
-  nicht noetig - der Server liest die Datei bei jeder Anfrage frisch.
+  nicht noetig - der Server liest die Datei bei jeder Anfrage frisch,
+  und /api/client rechnet die Pruefsumme neu.
 
 HILFE
   exit 0

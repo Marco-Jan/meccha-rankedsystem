@@ -341,9 +341,26 @@ Auf **deinem PC**, in `mc-ranked/config/verteilung.json`:
 }
 ```
 
-Dann `client-cs\BAUEN.bat`. Die neue `Meccha-Ranked.exe` nach
-`/opt/meccha/mc-ranked/client-cs/` hochladen — ab dann lädt sie jeder über
-`https://meccha-ranked.com/client`.
+Dann `client-cs\BAUEN.bat`. Die neue `Meccha-Ranked.exe` hochladen — aber
+**nicht als `meccha@`**: dieses Konto ist mit `--system` angelegt, hat kein
+Passwort und keine Anmeldung. Es existiert nur, damit der Dienst nicht als root
+läuft. Also über deinen eigenen Zugang und dann verschieben:
+
+```bash
+# von deinem PC
+scp client-cs/Meccha-Ranked.exe DEIN-BENUTZER@meccha-ranked.com:/tmp/
+
+# auf dem Server
+sudo mv /tmp/Meccha-Ranked.exe /opt/meccha/mc-ranked/client-cs/
+sudo chown meccha:meccha /opt/meccha/mc-ranked/client-cs/Meccha-Ranked.exe
+```
+
+Das `chown` nicht vergessen: gehört die Datei danach `root`, liest der Dienst sie
+zwar noch, aber es ist genau die Abweichung, die Wochen später als rätselhafter
+Rechtefehler wiederkommt.
+
+Ab dann lädt sie jeder über `https://meccha-ranked.com/client`. Ein Neustart ist
+nicht nötig — der Server liest die Datei bei jeder Anfrage frisch.
 
 **`clientVersion` unbedingt hochzählen.** Der Server meldet die Zahl über `/api/wer`;
 wer noch die alte Fassung hat, sieht dann „NEUE FASSUNG verfügbar". Ohne das senden
