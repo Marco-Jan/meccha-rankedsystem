@@ -285,9 +285,25 @@ namespace MecchaRanked
         public string Punkte = "";
         public string Grund = "";
         public long BearbeitetAm;
-        /* Zaehlt diese Runde noch? turnier wertet je Person die letzten
+        /* Zaehlt diese Runde noch? Gewertet werden je Person die letzten
            zehn Eintraege - aeltere fallen aus dem Fenster. */
         public bool Zaehlt;
+
+        /* --- Was beim Aufklappen gezeigt wird -------------------------
+           Bewusst OHNE die Namen der Mitspieler: sie helfen beim
+           Nachpruefen nicht und stuenden bei einer vollen Lobby zu
+           dreizehnt im Fenster. Der eigene Rohname dagegen ist die
+           wichtigste Auskunft ueberhaupt - an ihm sieht man, wie der
+           Leser einen verstanden hat. */
+
+        /// <summary>Der eigene Name, wie der Leser ihn gelesen hat.</summary>
+        public string RohName = "";
+        /// <summary>Platz im Scoreboard, 1-basiert. 0 = Zeile fehlte.</summary>
+        public int Rang;
+        /// <summary>Wie viele Verstecker im Bild standen.</summary>
+        public int Lobby;
+        /// <summary>Wer entschieden hat. Leer, solange offen.</summary>
+        public string BearbeitetVon = "";
     }
 
     /// <summary>Wie weit jemand von der Wertung entfernt ist.</summary>
@@ -396,20 +412,28 @@ namespace MecchaRanked
                     if (i < 0) break;
                     string teil = koerper.Substring(i);
 
-                    MeineRunde m = new MeineRunde();
-                    m.Id = Feld(teil, "id") ?? "";
-                    m.Status = Feld(teil, "status") ?? "";
-                    m.Grund = Feld(teil, "grund") ?? "";
-                    m.Eingegangen = Zahl(teil, "eingegangen");
-                    m.BearbeitetAm = Zahl(teil, "bearbeitetAm");
-                    long p = Zahl(teil, "punkte");
-                    m.Punkte = p > 0 ? p.ToString() : "";
-
-                    /* Nur bis zum naechsten Eintrag suchen, sonst faende
-                       "zaehlt":true der Folgerunde auch hier einen Treffer. */
+                    /* Den Abschnitt ZUERST begrenzen, dann alles daraus
+                       lesen. Vorher tat das nur "zaehlt", und die
+                       uebrigen Felder durchsuchten den ganzen Rest der
+                       Antwort - bei "grund":null fand Feld() dann den
+                       Grund der NAECHSTEN Runde und schrieb ihn hierhin. */
                     int naechster = teil.IndexOf("\"id\"", 4, StringComparison.Ordinal);
                     string abschnitt = naechster > 0 ? teil.Substring(0, naechster) : teil;
+
+                    MeineRunde m = new MeineRunde();
+                    m.Id = Feld(abschnitt, "id") ?? "";
+                    m.Status = Feld(abschnitt, "status") ?? "";
+                    m.Grund = Feld(abschnitt, "grund") ?? "";
+                    m.Eingegangen = Zahl(abschnitt, "eingegangen");
+                    m.BearbeitetAm = Zahl(abschnitt, "bearbeitetAm");
+                    long p = Zahl(abschnitt, "punkte");
+                    m.Punkte = p > 0 ? p.ToString() : "";
                     m.Zaehlt = abschnitt.IndexOf("\"zaehlt\":true", StringComparison.Ordinal) >= 0;
+
+                    m.RohName = Feld(abschnitt, "rohName") ?? "";
+                    m.Rang = (int)Zahl(abschnitt, "rang");
+                    m.Lobby = (int)Zahl(abschnitt, "lobby");
+                    m.BearbeitetVon = Feld(abschnitt, "bearbeitetVon") ?? "";
 
                     raus.Add(m);
                     pos = i + 4;

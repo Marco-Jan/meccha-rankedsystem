@@ -35,6 +35,7 @@ namespace MecchaRanked
         NotifyIcon symbol;
         Label statusZeile, serverZeile, fussZeile;
         ListView verlauf;
+        Label infoKasten;
         Button knopfSenden, knopfEinstellungen, knopfAktualisieren, knopfBeenden;
         ToolStripItem punktZeigen, punktBeenden;
         TextBox feldToken;
@@ -137,6 +138,27 @@ namespace MecchaRanked
             };
             knopfEinstellungen.Click += (a, b) => ZeigeEinstellungen(true);
 
+            /* Der Info-Kasten ueber der Liste: was von MIR gerade noch
+               offen ist und was zuletzt abgelehnt wurde.
+
+               Die Liste zeigt alles der Reihe nach; genau darin geht die
+               eine Frage unter, die einen Zuschauer wirklich umtreibt -
+               "haengt bei mir noch was?". Der Kasten beantwortet sie,
+               ohne dass man scrollt. Er verschwindet, wenn es nichts zu
+               sagen gibt: ein dauerhaft leerer Kasten waere nur
+               weggenommene Hoehe. */
+            infoKasten = new Label
+            {
+                Dock = DockStyle.Top,
+                AutoSize = false,
+                Height = 0,
+                Visible = false,
+                Padding = new Padding(14, 8, 14, 8),
+                BackColor = Farben.Kante,
+                ForeColor = Farben.Text,
+                TextAlign = ContentAlignment.MiddleLeft
+            };
+
             verlauf = new ListView
             {
                 Dock = DockStyle.Fill,
@@ -152,6 +174,10 @@ namespace MecchaRanked
             verlauf.Columns.Add("", 26);
             verlauf.Columns.Add("", 300);
             verlauf.Columns.Add("", 90, HorizontalAlignment.Right);
+            /* Klick klappt auf und zu. Nicht DoubleClick: den findet
+               niemand von selbst, und der Pfeil vor der Uhrzeit laedt
+               zum einfachen Klick ein. */
+            verlauf.Click += (a, b) => KlappeUm();
 
             knopfSenden = new Button
             {
@@ -235,6 +261,7 @@ namespace MecchaRanked
             kopfLeiste.Controls.Add(zahnradPlatz);
 
             Controls.Add(verlauf);
+            Controls.Add(infoKasten);
             Controls.Add(knopfSenden);
             Controls.Add(fussLeiste);
             Controls.Add(kopfLeiste);
@@ -802,21 +829,20 @@ namespace MecchaRanked
 
                Fehlschlaege bleiben stehen: zu ihnen gibt es keine Runde
                beim Server, und sie sollen nicht lautlos verschwinden. */
-            eintrag.Tag = ok ? "runde" : "senden";
+            Zeilendaten frisch = new Zeilendaten();
+            frisch.Art = ok ? "runde" : "senden";
+            eintrag.Tag = frisch;
             verlauf.Items.Insert(0, eintrag);
 
-            if (a != null)
-            {
-                foreach (string z in a.Zeilen)
-                {
-                    string[] teile = z.Split('\t');
-                    ListViewItem zeile = new ListViewItem("");
-                    zeile.SubItems.Add("");
-                    zeile.SubItems.Add(teile.Length > 0 ? teile[0] : "");
-                    zeile.SubItems.Add(teile.Length > 1 ? teile[1] : "");
-                    verlauf.Items.Insert(1, zeile);
-                }
-            }
+            /* Hier wurden frueher ALLE gelesenen Zeilen flach in die
+               Liste geschuettet - eine je Mitspieler, ohne Einrueckung,
+               ohne Bezug zur Runde darueber. Bei einer 13er-Lobby waren
+               das dreizehn namenlose Zeilen zwischen den eigenen Runden.
+
+               Die Absicht war richtig - man soll sehen, was gelesen
+               wurde -, nur der Ort war falsch. Das steht jetzt unter der
+               Runde, beim Aufklappen, und beschraenkt auf die eigene
+               Zeile: fremde Namen helfen beim Nachpruefen nicht. */
 
             while (verlauf.Items.Count > 60) verlauf.Items.RemoveAt(verlauf.Items.Count - 1);
             Aktualisiere();
@@ -896,13 +922,26 @@ namespace MecchaRanked
            Ohne das faengt die Liste nach jedem Neustart bei null an, und
            die Frage "was ist eigentlich freigegeben?" liesse sich im
            Client gar nicht beantworten. */
+        /// <summary>Merkt sich, was hinter einer Verlaufszeile steckt.</summary>
+        class Zeilendaten
+        {
+            /// <summary>"runde" vom Server, "senden" aus dieser Sitzung, "detail" aufgeklappt.</summary>
+            public string Art = "runde";
+            /// <summary>Null bei reinen Sende-Meldungen.</summary>
+            public MeineRunde Runde;
+            public bool Offen;
+        }
+
+        const string PfeilZu = "▸ ";     // kleines Dreieck nach rechts
+        const string PfeilAuf = "▾ ";    // kleines Dreieck nach unten
+
         void ZeigeRueckmeldungen(List<MeineRunde> runden)
         {
             long gesehen = LiesGesehen();
             long neuestes = gesehen;
 
             /*
-               Die Liste zeigt den STAND der letzten 15 Einreichungen, nicht
+               Die Liste zeigt den STAND der letzten Einreichungen, nicht
                eine Ereignisfolge - deshalb wird sie jedes Mal neu gebaut.
                Nur die eigenen Sende-Meldungen aus dieser Sitzung bleiben
                oben stehen, die haengen an keiner Runde.
@@ -912,11 +951,23 @@ namespace MecchaRanked
                         gefallen - nicht "weg", nur nicht mehr in der Wertung
                  rot    abgelehnt, mit Grund
                  gelb   wartet noch auf die Pruefung
+
+               Aufgeklappte Zeilen gehen dabei zu. Das ist Absicht: nach
+               einer Aktualisierung kann dieselbe Runde einen anderen
+               Ausgang haben, und eine offene Detailzeile mit veralteten
+               Angaben waere schlimmer als eine geschlossene.
             */
             for (int i = verlauf.Items.Count - 1; i >= 0; i--)
             {
-                if (verlauf.Items[i].Tag as string == "runde") verlauf.Items.RemoveAt(i);
+                Zeilendaten d = verlauf.Items[i].Tag as Zeilendaten;
+                if (d == null || d.Art == "runde" || d.Art == "detail")
+                {
+                    verlauf.Items.RemoveAt(i);
+                }
             }
+
+            int offene = 0;
+            string letzteAblehnung = "";
 
             foreach (MeineRunde m in runden)
             {
@@ -938,21 +989,27 @@ namespace MecchaRanked
                     text = Sprache.T("Abgelehnt: {0}",
                         m.Grund.Length > 0 ? m.Grund : Sprache.T("ohne Angabe"));
                     farbe = Farben.Rot;
+                    if (letzteAblehnung.Length == 0) letzteAblehnung = text;
                 }
                 else
                 {
                     text = Sprache.T("Wartet auf Prüfung");
                     farbe = Farben.Gelb;
+                    offene++;
                 }
 
                 long zeit = m.BearbeitetAm > 0 ? m.BearbeitetAm : m.Eingegangen;
-                ListViewItem eintrag = new ListViewItem(Uhrzeit(zeit));
+                ListViewItem eintrag = new ListViewItem(PfeilZu + Uhrzeit(zeit));
                 eintrag.SubItems.Add(m.Status == "freigegeben" ? (m.Zaehlt ? "OK" : "–")
                     : (m.Status == "abgelehnt" ? "!" : "…"));
                 eintrag.SubItems.Add(text);
                 eintrag.SubItems.Add(m.Punkte);
                 eintrag.ForeColor = farbe;
-                eintrag.Tag = "runde";
+
+                Zeilendaten daten = new Zeilendaten();
+                daten.Art = "runde";
+                daten.Runde = m;
+                eintrag.Tag = daten;
                 verlauf.Items.Add(eintrag);
 
                 /* Eine frische Ablehnung soll auffallen, auch wenn das
@@ -961,7 +1018,146 @@ namespace MecchaRanked
                 if (m.BearbeitetAm > neuestes) neuestes = m.BearbeitetAm;
             }
 
+            ZeigeInfoKasten(offene, letzteAblehnung);
             if (neuestes > gesehen) SchreibeGesehen(neuestes);
+        }
+
+        /// <summary>
+        /// Der Kasten ueber der Liste: was von MIR gerade noch offen ist.
+        ///
+        /// Die Liste zeigt alles der Reihe nach, und genau darin geht die
+        /// eine Frage unter, die einen Zuschauer wirklich umtreibt -
+        /// "haengt bei mir noch was?". Ist nichts offen und nichts
+        /// abgelehnt, verschwindet der Kasten: dauerhaft leere Flaeche
+        /// waere nur weggenommene Hoehe.
+        /// </summary>
+        void ZeigeInfoKasten(int offene, string letzteAblehnung)
+        {
+            List<string> saetze = new List<string>();
+
+            if (offene == 1) saetze.Add(Sprache.T("1 Runde wartet auf Prüfung"));
+            else if (offene > 1) saetze.Add(Sprache.T("{0} Runden warten auf Prüfung", offene.ToString()));
+
+            if (letzteAblehnung.Length > 0) saetze.Add(Sprache.T("Zuletzt {0}", letzteAblehnung));
+
+            if (saetze.Count == 0)
+            {
+                infoKasten.Visible = false;
+                infoKasten.Height = 0;
+                return;
+            }
+
+            infoKasten.Text = string.Join(Environment.NewLine, saetze.ToArray());
+            infoKasten.Height = 16 + saetze.Count * 18;
+            infoKasten.ForeColor = letzteAblehnung.Length > 0 ? Farben.Rot : Farben.Gelb;
+            infoKasten.Visible = true;
+        }
+
+        /// <summary>
+        /// Klappt die angeklickte Runde auf oder zu.
+        ///
+        /// Eine ListView kann das nicht von Haus aus. Der Trick ist
+        /// schlicht: die Detailzeilen werden direkt hinter der Runde
+        /// eingefuegt und beim Zuklappen wieder entfernt. Sie tragen die
+        /// Art "detail" und fliegen beim naechsten Aufbau ohnehin raus.
+        /// </summary>
+        void KlappeUm()
+        {
+            if (verlauf.SelectedItems.Count == 0) return;
+            ListViewItem gewaehlt = verlauf.SelectedItems[0];
+
+            Zeilendaten d = gewaehlt.Tag as Zeilendaten;
+            if (d == null || d.Runde == null) return;   // Sende-Meldung, nichts zu zeigen
+
+            int wo = gewaehlt.Index;
+
+            if (d.Offen)
+            {
+                while (wo + 1 < verlauf.Items.Count)
+                {
+                    Zeilendaten n = verlauf.Items[wo + 1].Tag as Zeilendaten;
+                    if (n == null || n.Art != "detail") break;
+                    verlauf.Items.RemoveAt(wo + 1);
+                }
+                d.Offen = false;
+                gewaehlt.Text = PfeilZu + gewaehlt.Text.Substring(PfeilAuf.Length);
+                return;
+            }
+
+            int eingefuegt = 0;
+            foreach (string[] paar in Auskuenfte(d.Runde))
+            {
+                ListViewItem zeile = new ListViewItem("");
+                zeile.SubItems.Add("");
+                zeile.SubItems.Add("    " + paar[0]);
+                zeile.SubItems.Add(paar[1]);
+                zeile.ForeColor = Farben.Leise;
+                Zeilendaten dd = new Zeilendaten();
+                dd.Art = "detail";
+                zeile.Tag = dd;
+                verlauf.Items.Insert(wo + 1 + eingefuegt, zeile);
+                eingefuegt++;
+            }
+
+            d.Offen = true;
+            gewaehlt.Text = PfeilAuf + gewaehlt.Text.Substring(PfeilZu.Length);
+        }
+
+        /// <summary>
+        /// Was unter einer aufgeklappten Runde steht.
+        ///
+        /// Ausdruecklich OHNE die Namen der Mitspieler - die Lobbygroesse
+        /// als Zahl genuegt. Der eigene ROHNAME dagegen steht ganz oben:
+        /// an ihm sieht man, wie der Leser einen verstanden hat, und wer
+        /// sich beim Ingame-Namen vertippt hat, erkennt es hier und
+        /// nirgends sonst.
+        /// </summary>
+        List<string[]> Auskuenfte(MeineRunde m)
+        {
+            List<string[]> raus = new List<string[]>();
+
+            raus.Add(new string[] {
+                Sprache.T("Gelesen als"),
+                m.RohName.Length > 0 ? m.RohName : Sprache.T("deine Zeile wurde nicht gefunden")
+            });
+
+            if (m.Lobby > 0)
+            {
+                raus.Add(new string[] {
+                    Sprache.T("Lobby"),
+                    m.Rang > 0
+                        ? Sprache.T("{0} Verstecker, du auf Rang {1}",
+                            m.Lobby.ToString(), m.Rang.ToString())
+                        : Sprache.T("{0} Verstecker", m.Lobby.ToString())
+                });
+            }
+
+            raus.Add(new string[] { Sprache.T("Eingereicht"), Uhrzeit(m.Eingegangen) });
+
+            if (m.BearbeitetAm > 0)
+            {
+                string wer = m.BearbeitetVon.Length > 0
+                    ? Uhrzeit(m.BearbeitetAm) + "  ·  " + m.BearbeitetVon
+                    : Uhrzeit(m.BearbeitetAm);
+                raus.Add(new string[] {
+                    m.Status == "abgelehnt" ? Sprache.T("Abgelehnt am") : Sprache.T("Freigegeben am"),
+                    wer
+                });
+            }
+
+            if (m.Status == "abgelehnt" && m.Grund.Length > 0)
+                raus.Add(new string[] { Sprache.T("Grund"), m.Grund });
+
+            if (m.Status == "offen")
+                raus.Add(new string[] { Sprache.T("Stand"),
+                    Sprache.T("wartet auf die Prüfung durch einen Mod") });
+
+            if (m.Status == "freigegeben")
+                raus.Add(new string[] { Sprache.T("Wertung"),
+                    m.Zaehlt ? Sprache.T("zählt in den letzten 10")
+                             : Sprache.T("aus den letzten 10 gefallen") });
+
+            return raus;
         }
 
         /// <summary>Zeitstempel des Servers als Uhrzeit, notfalls jetzt.</summary>

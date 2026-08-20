@@ -344,8 +344,22 @@ async function bearbeite(
       voll,
       gewertet: alleFreigegeben,
       runden: meine.map((r) => {
-        // Nur die eigene Zeile - die der Mitspieler gehen ihn nichts an.
-        const eigene = r.zeilen.find((z) => nameKey(z.rohName) === key) ?? null;
+        /*
+           Nur die EIGENE Zeile - die der Mitspieler gehen ihn nichts an.
+
+           Der Client klappt eine Runde auf und zeigt, was dabei
+           herauskam. Dafuer braucht er ein paar Angaben mehr als bisher,
+           aber ausdruecklich keine fremden Namen: sie helfen ihm beim
+           Nachpruefen nicht und stehen bei einer vollen Lobby zu
+           dreizehnt in seinem Fenster.
+
+           Der eigene ROHNAME dagegen ist die wichtigste Auskunft
+           ueberhaupt: an ihm sieht er, wie der Leser ihn verstanden hat.
+           Wer sich beim Ingame-Namen vertippt hat, erkennt es hier und
+           nirgends sonst.
+        */
+        const wo = r.zeilen.findIndex((z) => nameKey(z.rohName) === key);
+        const eigene = wo >= 0 ? r.zeilen[wo]! : null;
 
         let zaehlt = false;
         if (r.status === 'freigegeben') {
@@ -360,7 +374,15 @@ async function bearbeite(
           punkte: eigene?.punkte?.punkte ?? null,
           grund: r.grund ?? null,
           bearbeitetAm: r.bearbeitetAm ?? null,
-          zaehlt
+          zaehlt,
+          /** Wie der Leser den Namen gelesen hat - nicht wie er eingetragen ist. */
+          rohName: eigene?.rohName ?? null,
+          /** Platz im Scoreboard, 1-basiert. Null, wenn die Zeile fehlt. */
+          rang: wo >= 0 ? wo + 1 : null,
+          /** Wie viele Verstecker im Bild standen - als Zahl, ohne Namen. */
+          lobby: r.zeilen.length,
+          /** Wer entschieden hat. Bei offenen Runden null. */
+          bearbeitetVon: r.bearbeitetVon ?? null
         };
       })
     });

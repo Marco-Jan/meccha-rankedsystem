@@ -161,3 +161,62 @@ describe('Client - Oberflaeche', () => {
     }
   });
 });
+
+describe('Client - Uebersetzungen sind vollstaendig', () => {
+  /*
+     Ohne diese Wache faellt eine fehlende Uebersetzung nicht auf: T()
+     gibt den deutschen Satz zurueck, wenn es keinen Eintrag gibt. Das
+     ist die richtige Rueckfallebene - sichtbarer Text statt einer leeren
+     Stelle -, aber es heisst eben auch, dass niemand es bemerkt.
+
+     Genau so ist es beim Aufklappen der Runden passiert: siebzehn neue
+     Saetze, kein einziger uebersetzt, alle Tests gruen.
+  */
+  const schluesselAus = (quelle: string): string[] => {
+    const raus: string[] = [];
+    /*
+       Sprache.T("...") - der erste Parameter ist der Schluessel.
+
+       Lange Saetze stehen im Quelltext als mehrere Literale mit + davon
+       zwischen, damit die Zeilen nicht ueberlaufen. In Sprache.cs steht
+       dann der ZUSAMMENGESETZTE Satz. Wer nur das erste Literal liest,
+       meldet drei Fehlalarme - deshalb wird hier weitergelesen, solange
+       ein + folgt.
+    */
+    const start = /Sprache\.T\(\s*"/g;
+    let t: RegExpExecArray | null;
+
+    while ((t = start.exec(quelle)) !== null) {
+      let i = t.index + t[0].length;
+      let ganz = '';
+
+      for (;;) {
+        let stueck = '';
+        while (i < quelle.length && quelle[i] !== '"') {
+          if (quelle[i] === '\\') { stueck += quelle[i]! + quelle[i + 1]!; i += 2; continue; }
+          stueck += quelle[i]!;
+          i++;
+        }
+        ganz += stueck;
+        i++;                                   // schliessendes Anfuehrungszeichen
+
+        const rest = quelle.slice(i);
+        const weiter = /^\s*\+\s*"/.exec(rest);
+        if (!weiter) break;
+        i += weiter[0].length;
+      }
+
+      raus.push(ganz);
+    }
+    return raus;
+  };
+
+  test('jeder Satz aus Fenster.cs und Kern.cs steht in der Tabelle', () => {
+    const alle = [...schluesselAus(fenster), ...schluesselAus(kern)];
+    assert.ok(alle.length > 20, 'die Suche muss etwas finden, sonst prueft sie nichts');
+
+    const fehlen = [...new Set(alle)].filter((k) => !sprache.includes('"' + k + '"'));
+    assert.deepEqual(fehlen, [],
+      'ohne Eintrag in Sprache.cs bleibt der Satz auf Deutsch stehen');
+  });
+});
