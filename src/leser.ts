@@ -87,17 +87,38 @@ Gib ALLE Zeilen der Rangliste zurueck, nicht nur die erste.`;
 /* ------------------------------------------------------------------ Pruefung */
 
 /*
-   Eine Meccha-Lobby hat laut Spiel hoechstens 10 Spieler. Etwas Luft fuer
-   eine Kopfzeile, die faelschlich als Zeile durchgeht - alles darueber ist
-   keine Rangliste mehr.
+   Ab so vielen Zeilen kann es keine Rangliste mehr sein.
 
-   Der Grund ist ein echter Vorfall: auf einem Bildschirm ohne Rangliste hat
-   das Modell eine erfunden (Resident-Evil-Figuren) und sich dann in einer
-   Zeile festgefahren, die es elfmal wiederholt hat. Ohne diese Sperre
-   haengt die Erkennung solcher Ausfaelle allein daran, dass die erfundenen
-   Namen zufaellig nicht in der Kartei stehen. Das ist zu wenig.
+   Bis zum 20.08.2026 standen hier 12, unter der Annahme "eine Lobby hat
+   hoechstens 10 Spieler". Das stimmt nicht: eine Lobby fasst bis zu 24
+   Leute. Im Scoreboard stehen davon nur die VERSTECKER - die Jaeger
+   tauchen gar nicht auf, und wie viele es sind, schwankt (2 bis 8).
+   Damit sind rund 20 Zeilen moeglich, bei einer Runde ganz ohne Jaeger
+   theoretisch 24.
+
+   Deshalb 24 statt 20: die Bremse soll Fantasie fangen, nicht eine
+   ungewoehnlich volle Lobby.
+
+   Der Grund fuer die Bremse ist ein echter Vorfall: auf einem Bildschirm
+   ohne Rangliste hat das Vision-Modell eine erfunden
+   (Resident-Evil-Figuren) und sich dann in einer Zeile festgefahren, die
+   es elfmal wiederholt hat. Gefangen haette das aber ohnehin
+   MAX_WIEDERHOLUNG - das ist die schaerfere der beiden Sperren.
 */
-export const MAX_ZEILEN = 12;
+export const MAX_ZEILEN = 24;
+
+/**
+ * Bis zu welchem Rang gewertet wird.
+ *
+ * Darunter sind kaum Punkte zu holen, und es sind genau die Zeilen, die
+ * am unzuverlaessigsten gelesen werden - weit unten im Bild, kleine
+ * Zahlen, oft ueber unruhigem Untergrund.
+ *
+ * Zeilen ab Rang 16 sind KEIN Fehler: sie werden gelesen und dann
+ * verworfen. Die ganze Runde deswegen abzulehnen waere falsch, denn eine
+ * volle Lobby ist ein voellig normaler Fall.
+ */
+export const MAX_RANG = 15;
 
 /** Ab so vielen gleichen Zeilen gilt die Antwort als entgleist. */
 export const MAX_WIEDERHOLUNG = 3;
@@ -184,7 +205,8 @@ export function pruefeAntwort(roh: string): GeleseneZeile[] {
   */
   if (zeilen.length > MAX_ZEILEN) {
     throw new ModellAntwortUnbrauchbar(
-      zeilen.length + ' Zeilen - eine Lobby hat hoechstens 10. Vermutlich war keine Rangliste im Bild.', roh);
+      zeilen.length + ' Zeilen - im Scoreboard stehen hoechstens ' + MAX_ZEILEN +
+      ' Verstecker. Vermutlich war keine Rangliste im Bild.', roh);
   }
 
   /*
@@ -203,7 +225,18 @@ export function pruefeAntwort(roh: string): GeleseneZeile[] {
     haeufigkeit.set(schluessel, n);
   }
 
-  return zeilen;
+  /*
+     Nur die Raenge 1 bis MAX_RANG werden gewertet.
+
+     Abgeschnitten wird ERST HIER, nach allen Pruefungen: die verworfenen
+     Zeilen sollen vorher noch mitzaehlen. Sonst koennte eine erfundene
+     Antwort mit 30 Zeilen durchkommen, indem 15 davon stillschweigend
+     wegfallen und der Rest harmlos aussieht.
+
+     Die Reihenfolge kommt aus dem Bild - der Leser gibt die Zeilen von
+     oben nach unten zurueck, und oben steht Rang 1.
+  */
+  return zeilen.slice(0, MAX_RANG);
 }
 
 /* ------------------------------------------------------- Uebergang zu parse.ts */

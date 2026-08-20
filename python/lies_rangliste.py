@@ -50,7 +50,17 @@ STANDARD_GEOMETRIE = {
     # Oberkante und Unterkante des Ranglistenblocks, ohne die Kopfzeile.
     # Die Kopfzeile MUSS draussen bleiben: sie wird sonst als Zeile
     # gelesen und verschiebt die Paarung Name/Punkte um eins.
-    "bereich_y": [165, 810],
+    #
+    # Die Unterkante lag bis zum 20.08.2026 bei 810 - gemessen an einer
+    # 9er-Lobby, in die sie genau passte. Bei mehr Spielern waechst der
+    # Block nach unten, und alles ab Rang 11 lag ausserhalb: der Leser
+    # sah es gar nicht erst. An einem 16-Zeilen-Screenshot nachgemessen
+    # liegt Rang 16 bei y=976, die Zeilenhoehe bei rund 31 px.
+    #
+    # 995 laesst Luft fuer die Unterlaengen der letzten Zeile. Gewertet
+    # werden ohnehin nur die Raenge 1-15 (siehe leser.ts) - der Rest
+    # wird gelesen und verworfen.
+    "bereich_y": [465, 995],
     "spalten": {
         "name":   [55, 320],
         "punkte": [318, 400]

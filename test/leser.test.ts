@@ -2,10 +2,11 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
-  pruefeAntwort, alsRohZeilen, leseListe, ModellAntwortUnbrauchbar
+  pruefeAntwort, alsRohZeilen, leseListe, ModellAntwortUnbrauchbar,
+  MAX_ZEILEN, MAX_RANG
 } from '../src/leser.js';
 import { bewerteRunde, teileAuf, personVon } from '../src/runde.js';
-import type { KarteiPerson } from '../src/namen.js';
+import type { Spieler } from '../src/namen.js';
 
 /*
    Die Namen aus dem echten Screenshot (Pictures/heseder.JPG). Genau diese
@@ -153,7 +154,7 @@ describe('leseListe - bis in die Punkteliste', () => {
      Kartei kennt nur drei der acht Namen aus dem Screenshot - der Rest muss
      zur Rueckfrage, nicht als neuer Spieler angelegt werden.
   */
-  const KARTEI: readonly KarteiPerson[] = [
+  const SPIELER: readonly Spieler[] = [
     { id: 'r_qjfcfog', name: 'NorikoTv' },
     { id: 'r_zbpxa3z', name: 'Polosios' },
     { id: 'r_cp141h1', name: 'theRealBaloou' }
@@ -161,7 +162,7 @@ describe('leseListe - bis in die Punkteliste', () => {
 
   test('traegt nur bekannte Namen ein, der Rest wird Rueckfrage', async () => {
     const zeilen = await leseListe(Buffer.from(''), 'image/png', async () => ECHTE_ANTWORT);
-    const bericht = teileAuf(bewerteRunde(zeilen, KARTEI));
+    const bericht = teileAuf(bewerteRunde(zeilen, SPIELER));
 
     // "Baloou" ist NICHT "theRealBaloou" - Distanz 7, viel zu weit.
     // Kein einziger Name aus dem Screenshot ist in der Kartei.
@@ -170,7 +171,7 @@ describe('leseListe - bis in die Punkteliste', () => {
   });
 
   test('traegt ein, sobald der Name in der Kartei steht', async () => {
-    const mitBaloou = [...KARTEI, { id: 'r_neu', name: 'Baloou' }];
+    const mitBaloou = [...SPIELER, { id: 'r_neu', name: 'Baloou' }];
     const zeilen = await leseListe(Buffer.from(''), 'image/png', async () => ECHTE_ANTWORT);
     const bericht = teileAuf(bewerteRunde(zeilen, mitBaloou));
 
@@ -210,25 +211,36 @@ describe('pruefeAntwort - Schutz gegen entgleiste Antworten', () => {
     assert.equal(pruefeAntwort(viele(10)).length, 10);
   });
 
-  test('laesst 12 Zeilen gerade noch durch (Luft fuer eine Kopfzeile)', () => {
-    assert.equal(pruefeAntwort(viele(12)).length, 12);
+  test('laesst die 15 gewerteten Raenge durch', () => {
+    assert.equal(pruefeAntwort(viele(MAX_RANG)).length, MAX_RANG);
   });
 
-  test('verwirft mehr Zeilen, als eine Lobby haben kann', () => {
+  test('schneidet ab Rang 16 ab, statt die Runde abzulehnen', () => {
+    /* Eine volle Lobby hat bis zu 20 Verstecker im Scoreboard. Die
+       Zeilen darunter sind ein normaler Fall, kein Fehler - sie werden
+       gelesen und verworfen. */
+    const gelesen = pruefeAntwort(viele(20));
+    assert.equal(gelesen.length, MAX_RANG);
+    assert.equal(gelesen[0]!.name, 'Spieler0', 'oben wird nicht abgeschnitten');
+    assert.equal(gelesen[MAX_RANG - 1]!.name, 'Spieler' + (MAX_RANG - 1));
+  });
+
+  test('verwirft mehr Zeilen, als ins Scoreboard passen', () => {
     assert.throws(
-      () => pruefeAntwort(viele(20)),
+      () => pruefeAntwort(viele(MAX_ZEILEN + 1)),
       (err: unknown) => {
         assert.ok(err instanceof ModellAntwortUnbrauchbar);
-        assert.match(err.message, /hoechstens 10/);
+        assert.match(err.message, /hoechstens 24/);
         return true;
       }
     );
   });
 
-  test('verwirft die GANZE Antwort, nicht nur die ueberzaehligen Zeilen', () => {
-    // Die ersten zehn zu nehmen waere gefaehrlich: wenn das Modell hier
-    // danebenliegt, ist auch der Anfang nicht vertrauenswuerdig.
-    assert.throws(() => pruefeAntwort(viele(20)), ModellAntwortUnbrauchbar);
+  test('zaehlt die ueberzaehligen Zeilen MIT, statt sie vorher wegzuschneiden', () => {
+    /* Sonst kaeme eine erfundene Antwort mit 30 Zeilen durch: 15 fielen
+       stillschweigend weg, der Rest saehe harmlos aus. Die Bremse muss
+       VOR dem Abschneiden greifen. */
+    assert.throws(() => pruefeAntwort(viele(30)), ModellAntwortUnbrauchbar);
   });
 
   test('verwirft eine Antwort, die sich in einer Zeile festgefahren hat', () => {
