@@ -78,9 +78,9 @@ if errorlevel 1 (
 )
 
 echo.
-echo   Fertig: %~dp0Meccha-Ranked.zip
+echo   Fertig: %~dp0Meccha-Ranked.exe
 echo.
-echo   Weitergeben: die ZIP. Beim ersten Start legt die entpackte .exe
+echo   Weitergeben: die .exe. Beim ersten Start legt sie
 echo   client.json daneben an; die Serveradresse ist schon eingetragen,
 echo   der Zuschauer muss nur seinen Token einfuegen.
 echo.
