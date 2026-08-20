@@ -239,3 +239,85 @@ describe('Kontoseite - Auf dem Sprung', () => {
     assert.match(kontoSeite(), /href="\/regeln"/);
   });
 });
+
+describe('Kontoseite - Uebersetzungen sind vollstaendig', () => {
+  /*
+     Dieselbe Wache wie bei Client und Dashboard, aus demselben Grund:
+     t() gibt den deutschen Satz zurueck, wenn ein Eintrag fehlt. Das ist
+     die richtige Rueckfallebene - sichtbarer Text statt einer Luecke -,
+     bedeutet aber, dass ein vergessener Eintrag NIEMANDEM auffaellt.
+
+     Beim Dashboard sind auf diesem Weg zwei Saetze monatelang deutsch
+     geblieben, ohne dass es jemand bemerkt hat.
+  */
+  const quelle = kontoSeite();
+
+  /** Saetze aus t('...'), auch ueber mehrere Zeilen mit + verkettet. */
+  const schluessel = (): string[] => {
+    const raus: string[] = [];
+    const start = /\bt\(\s*'/g;
+    let treffer: RegExpExecArray | null;
+
+    while ((treffer = start.exec(quelle)) !== null) {
+      let i = treffer.index + treffer[0].length;
+      let ganz = '';
+
+      for (;;) {
+        while (i < quelle.length && quelle[i] !== "'") {
+          if (quelle[i] === '\\') { ganz += quelle[i + 1]!; i += 2; continue; }
+          ganz += quelle[i]!;
+          i++;
+        }
+        i++;
+        const weiter = /^\s*\+\s*'/.exec(quelle.slice(i));
+        if (!weiter) break;
+        i += weiter[0].length;
+      }
+      raus.push(ganz);
+    }
+    return raus;
+  };
+
+  test('jeder Satz steht in der Woerterliste', () => {
+    const alle = schluessel();
+    assert.ok(alle.length > 40, 'die Suche muss etwas finden, sonst prueft sie nichts');
+
+    const fehlen = [...new Set(alle)].filter((k) => !quelle.includes("'" + k + "':"));
+    assert.deepEqual(fehlen, [],
+      'ohne Eintrag bleibt der Satz auf Deutsch stehen');
+  });
+
+  test('nichts ist doppelt kodiert', () => {
+    /* Ein Zeichen, dessen UTF-8-Bytes als Latin-1 gelesen wurden, trifft
+       seinen Schluessel nicht mehr - und dann bleibt die Zeile still auf
+       Deutsch, obwohl eine Uebersetzung dasteht. */
+    const verdaechtig = quelle.split('\n')
+      .map((z, i) => ({ z, nr: i + 1 }))
+      .filter(({ z }) => /Ã.|â..|Ã¼|Ã¶|Ã¤|ÃŸ/.test(z));
+
+    assert.deepEqual(verdaechtig.map((v) => v.nr), [],
+      'doppelt kodiert: ' + verdaechtig.map((v) => v.z.trim().slice(0, 60)).join(' | '));
+  });
+});
+
+describe('Kontoseite - die Pruefsumme', () => {
+  const quelle = kontoSeite();
+
+  test('holt sie vom Server statt sie fest einzutragen', () => {
+    /* Eine hinterlegte Pruefsumme waere nach dem naechsten BAUEN.bat
+       falsch - und eine falsche ist schlimmer als keine: sie laesst die
+       echte Datei manipuliert aussehen. */
+    assert.match(quelle, /fetch\('\/api\/client'\)/);
+    assert.doesNotMatch(quelle, /[0-9a-f]{64}/,
+      'im Quelltext darf keine feste SHA-256 stehen');
+  });
+
+  test('verlinkt VirusTotal mit genau dieser Summe', () => {
+    assert.match(quelle, /virustotal\.com\/gui\/file\/' \+ c\.sha256/);
+  });
+
+  test('bleibt brauchbar, wenn die Auskunft ausfaellt', () => {
+    // Ohne Pruefsumme ist der Rest des Kastens weiterhin nuetzlich.
+    assert.match(quelle, /pruef\.remove\(\)/);
+  });
+});

@@ -36,6 +36,18 @@ namespace MecchaRanked
         Label statusZeile, serverZeile, fussZeile;
         ListView verlauf;
         Label infoKasten;
+
+        /* Was der Kasten gerade zu sagen hat.
+
+           Als Felder, weil zwei verschiedene Ereignisse ihn fuellen: die
+           Rueckmeldungen vom Server (im Minutentakt) und die Auskunft
+           "wer bin ich" (beim Start und nach Aenderungen). Wer beide
+           Wege getrennt zeichnen liesse, wuerde sich gegenseitig
+           ueberschreiben - mal stuende die Ablehnung da, mal der
+           Update-Hinweis, je nachdem was zuletzt kam. */
+        int kastenOffene;
+        string kastenAblehnung = "";
+        string kastenNeueFassung = "";
         Button knopfSenden, knopfEinstellungen, knopfAktualisieren, knopfBeenden;
         ToolStripItem punktZeigen, punktBeenden;
         TextBox feldToken;
@@ -178,6 +190,13 @@ namespace MecchaRanked
                niemand von selbst, und der Pfeil vor der Uhrzeit laedt
                zum einfachen Klick ein. */
             verlauf.Click += (a, b) => KlappeUm();
+
+            /* Nur wirksam, solange eine neue Fassung gemeldet ist -
+               sonst gibt es nichts zu holen und der Klick tut nichts. */
+            infoKasten.Click += (a, b) =>
+            {
+                if (kastenNeueFassung.Length > 0) OeffneDownload();
+            };
 
             knopfSenden = new Button
             {
@@ -1018,7 +1037,9 @@ namespace MecchaRanked
                 if (m.BearbeitetAm > neuestes) neuestes = m.BearbeitetAm;
             }
 
-            ZeigeInfoKasten(offene, letzteAblehnung);
+            kastenOffene = offene;
+            kastenAblehnung = letzteAblehnung;
+            ZeigeInfoKasten();
             if (neuestes > gesehen) SchreibeGesehen(neuestes);
         }
 
@@ -1031,25 +1052,53 @@ namespace MecchaRanked
         /// abgelehnt, verschwindet der Kasten: dauerhaft leere Flaeche
         /// waere nur weggenommene Hoehe.
         /// </summary>
-        void ZeigeInfoKasten(int offene, string letzteAblehnung)
+        void ZeigeInfoKasten()
         {
             List<string> saetze = new List<string>();
 
-            if (offene == 1) saetze.Add(Sprache.T("1 Runde wartet auf Prüfung"));
-            else if (offene > 1) saetze.Add(Sprache.T("{0} Runden warten auf Prüfung", offene.ToString()));
+            /* Der Update-Hinweis steht GANZ OBEN und nicht als Anhaengsel
+               in der Kopfzeile, wo er vorher stand.
 
-            if (letzteAblehnung.Length > 0) saetze.Add(Sprache.T("Zuletzt {0}", letzteAblehnung));
+               Der Grund ist nicht Kosmetik: die Serveradresse steckt fest
+               in der .exe. Nach einem Serverumzug sendet eine alte
+               Fassung ins Leere - keine Fehlermeldung, keine Runde,
+               nichts. Wer den Hinweis ueberliest, spielt weiter und
+               wundert sich wochenspaeter, warum er nirgends auftaucht. */
+            if (kastenNeueFassung.Length > 0)
+            {
+                saetze.Add(Sprache.T(
+                    "Neue Fassung {0} verfügbar – hier klicken zum Herunterladen",
+                    kastenNeueFassung));
+            }
+
+            if (kastenOffene == 1) saetze.Add(Sprache.T("1 Runde wartet auf Prüfung"));
+            else if (kastenOffene > 1)
+                saetze.Add(Sprache.T("{0} Runden warten auf Prüfung", kastenOffene.ToString()));
+
+            if (kastenAblehnung.Length > 0)
+                saetze.Add(Sprache.T("Zuletzt {0}", kastenAblehnung));
 
             if (saetze.Count == 0)
             {
                 infoKasten.Visible = false;
                 infoKasten.Height = 0;
+                infoKasten.Cursor = Cursors.Default;
                 return;
             }
 
             infoKasten.Text = string.Join(Environment.NewLine, saetze.ToArray());
             infoKasten.Height = 16 + saetze.Count * 18;
-            infoKasten.ForeColor = letzteAblehnung.Length > 0 ? Farben.Rot : Farben.Gelb;
+
+            /* Farbe nach dem Dringlichsten: eine veraltete Fassung wiegt
+               schwerer als eine wartende Runde, denn sie bedeutet, dass
+               gar nichts mehr ankommt. */
+            infoKasten.ForeColor = kastenNeueFassung.Length > 0 ? Farben.Gelb
+                : (kastenAblehnung.Length > 0 ? Farben.Rot : Farben.Gelb);
+
+            /* Anklickbar NUR, wenn es auch etwas zu klicken gibt. Ein
+               Handzeiger ueber einem Kasten, der auf nichts reagiert,
+               ist ein Versprechen, das die Oberflaeche nicht haelt. */
+            infoKasten.Cursor = kastenNeueFassung.Length > 0 ? Cursors.Hand : Cursors.Default;
             infoKasten.Visible = true;
         }
 
@@ -1235,10 +1284,14 @@ namespace MecchaRanked
 
             serverZeile.Text = wer + "   ·   " + stand +
                 "   ·   " + Sprache.T("Bildschirm {0}", e.Bildschirm) +
-                " (" + Schirme.Beschriftung(e.Bildschirm) + ")" +
-                (veraltet ? "   ·   " + Sprache.T(
-                    "NEUE FASSUNG {0} verfügbar – „Zugang holen\" öffnet die Seite",
-                    auskunft.NeuesteVersion) : "");
+                " (" + Schirme.Beschriftung(e.Bildschirm) + ")";
+
+            /* Der Update-Hinweis stand frueher hier hinten dran, klein
+               und grau zwischen drei anderen Angaben. Jetzt fuellt er den
+               Kasten ueber der Liste - dort, wo alles steht, was den
+               Nutzer wirklich betrifft. */
+            kastenNeueFassung = veraltet ? auskunft.NeuesteVersion : "";
+            ZeigeInfoKasten();
 
             if (veraltet)
                 serverZeile.ForeColor = Farben.Gelb;
@@ -1246,6 +1299,36 @@ namespace MecchaRanked
                 serverZeile.ForeColor = Farben.Rot;
             else
                 serverZeile.ForeColor = Farben.Leise;
+        }
+
+        /// <summary>
+        /// Oeffnet die Download-Seite im Browser.
+        ///
+        /// Nicht die Kontoseite: dorthin fuehrte der Hinweis frueher, und
+        /// von dort musste man den Download erst suchen. Wer gesagt
+        /// bekommt "neue Fassung verfuegbar", will sie holen - und nichts
+        /// anderes.
+        /// </summary>
+        void OeffneDownload()
+        {
+            string adresse = e.Server.TrimEnd('/') + "/download";
+            try
+            {
+                System.Diagnostics.Process.Start(adresse);
+                Melde(Sprache.T("Download-Seite im Browser geöffnet."));
+            }
+            catch (Exception ex)
+            {
+                /* Dasselbe Verhalten wie bei der Kontoseite: kein
+                   Standardbrowser eingerichtet oder abgeschaltet - dann
+                   wenigstens die Adresse zeigen, damit man sie abtippen
+                   kann. Eine blosse Fehlermeldung liesse den Nutzer mit
+                   nichts zurueck. */
+                MessageBox.Show(
+                    Sprache.T("Der Browser ließ sich nicht öffnen ({0}).", ex.Message) +
+                    Environment.NewLine + Environment.NewLine + adresse,
+                    Info.Projekt, MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
         }
 
         /// <summary>Oeffnet die Kontoseite des Servers im Browser.</summary>

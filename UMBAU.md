@@ -141,10 +141,10 @@ Bestes Ergebnis, zur Erinnerung woran gemessen wird:
 | 6 | Bildergalerie | **fertig**, 13 Tests |
 | 7 | Öffentliche Seiten | **fertig**, 19 Tests |
 | 8 | Deploy und Server | offen |
-| 9 | Download-Warnung entschärfen | offen, Entscheidung nötig |
-| 10 | Update-Hinweis im Client | offen |
+| 9 | Download-Warnung entschärfen | **fertig**, 13 Tests |
+| 10 | Update-Hinweis im Client | **fertig**, 4 Tests |
 
-Nach Etappe 7: **587 Tests grün, Typecheck sauber.**
+Nach Etappe 10: **609 Tests grün, Typecheck sauber.**
 
 ## Etappen
 
@@ -344,9 +344,8 @@ Weg zum Download.
 
 ## Reihenfolge
 
-`0 → 1 → 2` hängen aneinander und sind der Kern — **erledigt**. `3, 4, 5, 6, 7, 10` sind
-danach unabhängig. `9` braucht zuerst eine Entscheidung. `8` zum Schluss, wenn lokal
-alles läuft.
+Alles außer **Etappe 8** ist erledigt. Die fasst als einzige den Live-Server an und
+wird einzeln abgefragt.
 
 ## Offen für später
 

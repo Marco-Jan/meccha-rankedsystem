@@ -474,13 +474,20 @@ describe('Kontoseite und API passen zusammen', () => {
     assert.ok(pfade.size >= 5, 'die Seite sollte mehrere Pfade aufrufen, gefunden: ' + pfade.size);
 
     for (const p of pfade) {
-      /* /client und /freigabe liefert der Server selbst aus - die .exe
-         liegt neben ihm, das Dashboard ist eine eigene Seite. /api/status
-         und /api/rangliste bedient ebenfalls der Hauptserver, nicht der
-         Kontobereich. Dafuer gibt es Tests in server.test.ts bzw.
-         dashboard.test.ts. */
-      if (p === '/client' || p === '/freigabe'
-          || p === '/api/rangliste' || p === '/api/status') continue;
+      /* Was der HAUPTSERVER ausliefert und nicht der Kontobereich.
+         Jeder Eintrag hier ist eine Zusicherung, die anderswo geprueft
+         wird - sonst waere die Liste ein Loch in diesem Test:
+
+           /client, /download, /api/client  ->  download.test.ts
+           /regeln                          ->  regeln.test.ts
+           /api/rangliste, /api/status      ->  server.test.ts
+           /freigabe                        ->  dashboard.test.ts
+      */
+      const vomHauptserver = [
+        '/client', '/download', '/api/client',
+        '/regeln', '/freigabe', '/api/rangliste', '/api/status'
+      ];
+      if (vomHauptserver.includes(p)) continue;
 
       const text = await (await hole(p)).text();
       assert.notEqual(text, 'nicht meine', p + ' wird von der Seite aufgerufen, aber nicht bedient');

@@ -234,6 +234,16 @@ export function kontoSeite(): string {
 
   #rangliste { margin-bottom:16px; }
 
+  /* Die Pruefsumme: umbrechbar, mit Luft zwischen den Zeichen - sie soll
+     sich von Auge mit dem vergleichen lassen, was Get-FileHash ausgibt. */
+  code.summe {
+    display:block; margin:6px 0 8px;
+    font-family:ui-monospace, Consolas, monospace; font-size:12px;
+    background:var(--grund); border:1px solid var(--kante);
+    border-radius:5px; padding:8px 10px;
+    word-break:break-all; line-height:1.8; letter-spacing:.03em;
+  }
+
   /* Auf dem Sprung. Bernstein, weil es um Punkte geht - nicht Steam-Blau,
      das gehoert den Knoepfen. */
   .sprung {
@@ -622,6 +632,13 @@ export function kontoSeite(): string {
       'noch {0} Runden': '{0} rounds to go',
       'Alle Regeln nachlesen': 'Read all rules',
       'mehr': 'more',
+      'Selbst nachsehen': 'Check for yourself',
+      'Fingerabdruck wird geladen \u2026': 'Loading fingerprint \u2026',
+      'SHA-256 der Datei:': 'SHA-256 of the file:',
+      'Bei VirusTotal nachschlagen': 'Look it up on VirusTotal',
+      'Findet VirusTotal nichts, hat die Datei noch niemand hochgeladen \u2013 das kannst du selbst tun, kostenlos.':
+        'If VirusTotal finds nothing, nobody has uploaded the file yet \u2013 you can do that yourself, for free.',
+      'Ausf\u00fchrlich mit Bildern': 'In detail, with screenshots',
       'in der Rangliste': 'on the leaderboard',
       'Fragen oder Probleme? Melde dich im Discord bei einem':
         'Questions or trouble? Ask an',
@@ -776,6 +793,13 @@ export function kontoSeite(): string {
       'noch {0} Runden': '还差 {0} 局',
       'Alle Regeln nachlesen': '查看全部规则',
       'mehr': '更多',
+      'Selbst nachsehen': '\u81ea\u5df1\u9a8c\u8bc1',
+      'Fingerabdruck wird geladen \u2026': '\u6b63\u5728\u52a0\u8f7d\u6307\u7eb9 \u2026',
+      'SHA-256 der Datei:': '\u6587\u4ef6\u7684 SHA-256\uff1a',
+      'Bei VirusTotal nachschlagen': '\u5728 VirusTotal \u4e0a\u67e5\u770b',
+      'Findet VirusTotal nichts, hat die Datei noch niemand hochgeladen \u2013 das kannst du selbst tun, kostenlos.':
+        '\u5982\u679c VirusTotal \u6ca1\u6709\u7ed3\u679c\uff0c\u8bf4\u660e\u8fd8\u6ca1\u6709\u4eba\u4e0a\u4f20\u8fc7 \u2013 \u4f60\u53ef\u4ee5\u81ea\u5df1\u4e0a\u4f20\uff0c\u514d\u8d39\u3002',
+      'Ausf\u00fchrlich mit Bildern': '\u8be6\u7ec6\u8bf4\u660e\uff08\u5e26\u622a\u56fe\uff09',
       'in der Rangliste': '进入排行榜',
       'Fragen oder Probleme? Melde dich im Discord bei einem':
         '有疑问或遇到问题？请在 Discord 联系',
@@ -1023,9 +1047,47 @@ export function kontoSeite(): string {
       'geschützt". Klick auf „Weitere Informationen" und dann auf „Trotzdem ' +
       'ausführen". Das musst du nur einmal machen – danach startet es normal.')));
 
-    d.appendChild(el('p', 'leise', t(
-      'Du willst es selbst prüfen? Lad die Datei bei virustotal.com hoch, das ' +
-      'ist kostenlos und lässt sie von über 60 Virenscannern ansehen.')));
+    /* Die Pruefsumme ist das Stueck, das aus "glaub mir" ein "sieh
+       selbst nach" macht. Sie kommt vom Server (/api/client) und wird
+       dort aus der ausgelieferten Datei berechnet - eine fest
+       hinterlegte waere nach dem naechsten Bauen falsch, und eine
+       falsche Pruefsumme ist schlimmer als keine: sie laesst die echte
+       Datei manipuliert aussehen. */
+    d.appendChild(el('h3', null, t('Selbst nachsehen')));
+
+    var pruef = el('p', 'leise', t('Fingerabdruck wird geladen …'));
+    d.appendChild(pruef);
+
+    fetch('/api/client').then(function (r) { return r.json(); }).then(function (c) {
+      if (!c || !c.ok) { pruef.remove(); return; }
+      pruef.innerHTML = '';
+
+      pruef.appendChild(el('span', null, t('SHA-256 der Datei:')));
+      var code = el('code', 'summe', c.sha256);
+      pruef.appendChild(code);
+
+      var vt = document.createElement('a');
+      vt.href = 'https://www.virustotal.com/gui/file/' + c.sha256;
+      vt.target = '_blank';
+      vt.rel = 'noopener nofollow';
+      vt.textContent = t('Bei VirusTotal nachschlagen');
+      pruef.appendChild(vt);
+
+      pruef.appendChild(el('span', 'leise', ' ' + t(
+        'Findet VirusTotal nichts, hat die Datei noch niemand hochgeladen – ' +
+        'das kannst du selbst tun, kostenlos.')));
+    }).catch(function () {
+      /* Ohne Pruefsumme bleibt der Rest des Kastens brauchbar. Eine
+         Fehlermeldung waere hier nur Rauschen. */
+      pruef.remove();
+    });
+
+    var mehr = document.createElement('p');
+    var a = document.createElement('a');
+    a.href = '/download';
+    a.textContent = t('Ausführlich mit Bildern');
+    mehr.appendChild(a);
+    d.appendChild(mehr);
 
     return d;
   }

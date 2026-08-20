@@ -220,3 +220,40 @@ describe('Client - Uebersetzungen sind vollstaendig', () => {
       'ohne Eintrag in Sprache.cs bleibt der Satz auf Deutsch stehen');
   });
 });
+
+describe('Client - der Update-Hinweis', () => {
+  test('steht im Info-Kasten, nicht mehr in der Kopfzeile', () => {
+    /* Die Serveradresse steckt fest in der .exe. Nach einem Serverumzug
+       sendet eine alte Fassung ins Leere - keine Fehlermeldung, keine
+       Runde, nichts. Wer den Hinweis ueberliest, spielt weiter und
+       wundert sich wochenspaeter, warum er nirgends auftaucht. Deshalb
+       gehoert er dorthin, wo alles steht, was den Nutzer betrifft. */
+    assert.match(fenster, /kastenNeueFassung/);
+    assert.match(fenster, /Neue Fassung \{0\} verfügbar/);
+    assert.doesNotMatch(fenster, /NEUE FASSUNG \{0\} verfügbar/,
+      'die alte Kopfzeilen-Fassung ist weg');
+  });
+
+  test('fuehrt direkt zum Download, nicht zur Kontoseite', () => {
+    // Wer "neue Fassung verfuegbar" liest, will sie holen.
+    assert.match(fenster, /void OeffneDownload/);
+    assert.match(fenster, /"\/download"/);
+  });
+
+  test('der Kasten ist nur anklickbar, wenn es etwas zu holen gibt', () => {
+    /* Ein Handzeiger ueber einem Kasten, der auf nichts reagiert, ist
+       ein Versprechen, das die Oberflaeche nicht haelt. */
+    assert.match(fenster, /kastenNeueFassung\.Length > 0 \? Cursors\.Hand : Cursors\.Default/);
+    assert.match(fenster, /if \(kastenNeueFassung\.Length > 0\) OeffneDownload\(\)/);
+  });
+
+  test('beide Quellen fuellen denselben Kasten, ohne sich zu ueberschreiben', () => {
+    /* Rueckmeldungen kommen im Minutentakt, die Auskunft "wer bin ich"
+       beim Start. Wuerden beide direkt zeichnen, stuende mal die
+       Ablehnung da, mal der Update-Hinweis - je nachdem was zuletzt kam. */
+    assert.match(fenster, /kastenOffene = offene/);
+    assert.match(fenster, /kastenAblehnung = letzteAblehnung/);
+    assert.equal((fenster.match(/ZeigeInfoKasten\(\);/g) ?? []).length, 2,
+      'genau zwei Aufrufe: einer je Quelle');
+  });
+});

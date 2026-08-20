@@ -107,9 +107,16 @@ namespace MecchaRanked
               new[] { "{0}/{1} until ranked", "{0}/{1} 进入排名" } },
             { "Bildschirm {0}",
               new[] { "Screen {0}", "屏幕 {0}" } },
-            { "NEUE FASSUNG {0} verfügbar – „Zugang holen\" öffnet die Seite",
-              new[] { "NEW VERSION {0} available – \"Get access\" opens the page",
-                      "有新版本 {0} – 点击“获取访问权限”打开页面" } },
+            /* Frueher stand dieser Hinweis klein in der Kopfzeile und
+               verwies auf "Zugang holen". Jetzt fuellt er den Kasten
+               ueber der Liste und fuehrt direkt zum Download - wer
+               gesagt bekommt "neue Fassung verfuegbar", will sie holen. */
+            { "Neue Fassung {0} verfügbar – hier klicken zum Herunterladen",
+              new[] { "New version {0} available – click here to download",
+                      "有新版本 {0} – 点击此处下载" } },
+            { "Download-Seite im Browser geöffnet.",
+              new[] { "Download page opened in your browser.",
+                      "已在浏览器中打开下载页面。" } },
 
             /* ------------------------------------------------- Knoepfe */
             { "Jetzt aufnehmen und senden",

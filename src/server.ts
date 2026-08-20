@@ -34,6 +34,7 @@ import { bearbeiteFreigabe } from './freigabe-api.js';
 import { bearbeiteKonto } from './konto-api.js';
 import { kontoSeite } from './konto-seite.js';
 import { regelnSeite } from './regeln-seite.js';
+import { downloadSeite, clientstand } from './download-seite.js';
 import type { Kontenliste } from './konten.js';
 import type { Wertungsstand } from './wertung.js';
 import { schneideAus, ausschnittPfadZu } from './ausschnitt.js';
@@ -461,6 +462,34 @@ async function bearbeite(
 
      Typ und Dateiname kommen aus der Endung von clientDatei - so liefert
      dieselbe Stelle auch eine .exe aus, falls doch mal eine bereitliegt. */
+  /*
+     DIE DOWNLOAD-SEITE - die Warnung erklaeren, statt sie zu
+     verschweigen.
+
+     Chrome und SmartScreen warnen beide, weil die Datei unbekannt ist:
+     keine Signatur, kein Ruf. Dagegen hilft nur ein Zertifikat fuer
+     mehrere hundert Euro im Jahr. Der kostenlose Weg ist, die Warnung
+     zu ZEIGEN und dem Misstrauischen die Pruefsumme in die Hand zu
+     geben. Siehe download-seite.ts.
+  */
+  if (pfad === '/download') {
+    res.writeHead(200, {
+      'Content-Type': 'text/html; charset=utf-8',
+      'Cache-Control': 'no-store'
+    });
+    res.end(downloadSeite(o.clientDatei ? clientstand(o.clientDatei) : null));
+    return;
+  }
+
+  /* Die Pruefsumme auch als JSON - die Kontoseite nennt sie neben dem
+     Knopf, damit man sie nicht suchen muss. */
+  if (pfad === '/api/client') {
+    const stand = o.clientDatei ? clientstand(o.clientDatei) : null;
+    return sendeJson(res, 200, stand
+      ? { ok: true, ...stand }
+      : { ok: false, fehler: 'Kein Client hinterlegt' });
+  }
+
   if (pfad === '/client' || pfad === '/client.exe' || pfad === '/client.zip') {
     if (!o.clientDatei || !existsSync(o.clientDatei)) {
       res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
