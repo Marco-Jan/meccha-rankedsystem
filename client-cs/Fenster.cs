@@ -1175,8 +1175,8 @@ namespace MecchaRanked
             bool nurHinweis = saetze.Count == 0;
             saetze.Add(Sprache.T(
                 "Erst am Ende der Runde drücken – die Punkte laufen bis zuletzt weiter. " +
-                "Dabei auf einen ruhigen, kontrastreichen Hintergrund schauen: Himmel " +
-                "oder eine Wand statt buntem Boden."));
+                "Dabei kurz stehen bleiben und auf einen ruhigen, kontrastreichen " +
+                "Hintergrund schauen: Himmel oder eine Wand statt buntem Boden."));
 
             infoKasten.Text = string.Join(Environment.NewLine, saetze.ToArray());
 

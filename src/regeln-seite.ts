@@ -177,7 +177,7 @@ export function regelnSeite(zahlen: RegelZahlen): string {
 <div class="karte">
 <ul>
   <li data-tp="Am Ende der Runde, wenn die Rangliste vollständig steht.">Am Ende der Runde, wenn die Rangliste vollständig steht.</li>
-  <li data-tp="Dabei auf einen ruhigen Hintergrund schauen – Himmel oder eine Wand statt buntem Boden.">Dabei auf einen ruhigen Hintergrund schauen – Himmel oder eine Wand statt buntem Boden.</li>
+  <li data-tp="Kurz stehen bleiben und auf einen ruhigen Hintergrund schauen – Himmel oder eine Wand statt buntem Boden.">Kurz stehen bleiben und auf einen ruhigen Hintergrund schauen – Himmel oder eine Wand statt buntem Boden.</li>
 </ul>
 <p class="klein leise" data-tp="Die Schrift im Spiel ist durchsichtig. Über Wiese und Bonbons verschwindet sie halb, und dann ist die Rangliste nicht mehr lesbar. Es liegt nicht an dir und nicht an deinem Rechner – nur am Bild.">Die Schrift im Spiel ist durchsichtig. Über Wiese und Bonbons verschwindet sie halb, und dann ist die Rangliste nicht mehr lesbar. Es liegt nicht an dir und nicht an deinem Rechner – nur am Bild.</p>
 </div>
@@ -280,8 +280,8 @@ export function regelnSeite(zahlen: RegelZahlen): string {
       'F9 richtig drücken': 'Pressing F9 properly',
       'Am Ende der Runde, wenn die Rangliste vollständig steht.':
         'At the end of the round, once the leaderboard is complete.',
-      'Dabei auf einen ruhigen Hintergrund schauen – Himmel oder eine Wand statt buntem Boden.':
-        'While looking at a calm background \\u2013 sky or a wall instead of colourful ground.',
+      'Kurz stehen bleiben und auf einen ruhigen Hintergrund schauen – Himmel oder eine Wand statt buntem Boden.':
+        'Stand still for a moment and look at a calm background \\u2013 sky or a wall instead of colourful ground.',
       'Die Schrift im Spiel ist durchsichtig. Über Wiese und Bonbons verschwindet sie halb, und dann ist die Rangliste nicht mehr lesbar. Es liegt nicht an dir und nicht an deinem Rechner – nur am Bild.':
         'The in-game text is see-through. Over grass and candy it half disappears, and then the leaderboard cannot be read. It is not you and not your computer \\u2013 only the picture.',
 
@@ -350,8 +350,8 @@ export function regelnSeite(zahlen: RegelZahlen): string {
       'F9 richtig drücken': '\\u6b63\\u786e\\u5730\\u6309 F9',
       'Am Ende der Runde, wenn die Rangliste vollständig steht.':
         '\\u5728\\u4e00\\u5c40\\u7ed3\\u675f\\u65f6\\uff0c\\u6392\\u884c\\u699c\\u5b8c\\u6574\\u663e\\u793a\\u4e4b\\u540e\\u3002',
-      'Dabei auf einen ruhigen Hintergrund schauen – Himmel oder eine Wand statt buntem Boden.':
-        '\\u540c\\u65f6\\u770b\\u5411\\u5e72\\u51c0\\u7684\\u80cc\\u666f \\u2013 \\u5929\\u7a7a\\u6216\\u5899\\u58c1\\uff0c\\u800c\\u4e0d\\u662f\\u4e94\\u989c\\u516d\\u8272\\u7684\\u5730\\u9762\\u3002',
+      'Kurz stehen bleiben und auf einen ruhigen Hintergrund schauen – Himmel oder eine Wand statt buntem Boden.':
+        '\\u5148\\u7ad9\\u5b9a\\u4e0d\\u52a8\\uff0c\\u5e76\\u770b\\u5411\\u5e72\\u51c0\\u7684\\u80cc\\u666f \\u2013 \\u5929\\u7a7a\\u6216\\u5899\\u58c1\\uff0c\\u800c\\u4e0d\\u662f\\u4e94\\u989c\\u516d\\u8272\\u7684\\u5730\\u9762\\u3002',
       'Die Schrift im Spiel ist durchsichtig. Über Wiese und Bonbons verschwindet sie halb, und dann ist die Rangliste nicht mehr lesbar. Es liegt nicht an dir und nicht an deinem Rechner – nur am Bild.':
         '\\u6e38\\u620f\\u5185\\u7684\\u6587\\u5b57\\u662f\\u534a\\u900f\\u660e\\u7684\\u3002\\u5728\\u8349\\u5730\\u548c\\u7cd6\\u679c\\u4e0a\\u5b83\\u4f1a\\u534a\\u9690\\u5f62\\uff0c\\u6392\\u884c\\u699c\\u5c31\\u65e0\\u6cd5\\u8bc6\\u522b\\u3002\\u8fd9\\u4e0d\\u662f\\u4f60\\u7684\\u9519\\uff0c\\u4e5f\\u4e0d\\u662f\\u7535\\u8111\\u7684\\u9519 \\u2013 \\u53ea\\u662f\\u56fe\\u7247\\u7684\\u95ee\\u9898\\u3002',
 
@@ -419,8 +419,8 @@ export function regelnSeite(zahlen: RegelZahlen): string {
       'F9 richtig drücken': 'F9 の正しい押し方',
       'Am Ende der Runde, wenn die Rangliste vollständig steht.':
         'ラウンドの最後、ランキングが完全に表示されてから。',
-      'Dabei auf einen ruhigen Hintergrund schauen – Himmel oder eine Wand statt buntem Boden.':
-        'そのとき落ち着いた背景を見てください \u2013 カラフルな地面ではなく、空や壁を。',
+      'Kurz stehen bleiben und auf einen ruhigen Hintergrund schauen – Himmel oder eine Wand statt buntem Boden.':
+        '少し立ち止まり、落ち着いた背景を見てください \u2013 カラフルな地面ではなく、空や壁を。',
       'Die Schrift im Spiel ist durchsichtig. Über Wiese und Bonbons verschwindet sie halb, und dann ist die Rangliste nicht mehr lesbar. Es liegt nicht an dir und nicht an deinem Rechner – nur am Bild.':
         'ゲーム内の文字は半透明です。草地やお菓子の上では half 消えてしまい、ランキングが読み取れなくなります。あなたのせいでも、パソコンのせいでもありません \u2013 画像だけの問題です。',
 

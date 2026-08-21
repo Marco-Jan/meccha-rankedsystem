@@ -4,7 +4,7 @@
   "server": "https://meccha-ranked.com",
 
   "_version": "Fassung der ausgelieferten .exe. Wird beim Bauen in den Client geschrieben UND vom Server gemeldet - laeuft bei jemandem eine aeltere, sagt sein Client es ihm.",
-  "clientVersion": "0.14.0",
+  "clientVersion": "0.15.0",
 
   "_github": "Wo die .exe liegt. Seit dem 21.08.2026 liefert der Server sie NICHT mehr selbst aus - er verweist nur noch. Eine Quelle, und die mit Quelltext daneben. Achtung: ohne Release gibt es keinen Download.",
   "quelltext": "https://github.com/Marco-Jan/meccha-rankedsystem",

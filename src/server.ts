@@ -54,10 +54,10 @@ export const MAX_BILD = 8 * 1024 * 1024;
  * liegt halbtransparent ueber der Spielwelt.
  */
 const RAT_UNTERGRUND =
-  'Druecke am ENDE der Runde, wenn die Rangliste vollstaendig steht, und ' +
-  'schau dabei auf einen ruhigen Hintergrund - Himmel oder eine Wand statt ' +
-  'buntem Boden. Die Schrift ist durchsichtig; ueber Bonbons und Wiese ' +
-  'verschwindet sie.';
+  'Druecke am ENDE der Runde, wenn die Rangliste vollstaendig steht. Bleib ' +
+  'dabei kurz stehen und schau auf einen ruhigen Hintergrund - Himmel oder ' +
+  'eine Wand statt buntem Boden. Die Schrift ist durchsichtig; ueber Bonbons ' +
+  'und Wiese verschwindet sie.';
 
 /**
  * Mindestzahl Verstecker im Scoreboard, damit eine Zuschauer-Runde zaehlt.
