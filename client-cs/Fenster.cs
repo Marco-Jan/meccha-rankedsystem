@@ -818,7 +818,7 @@ namespace MecchaRanked
                 {
                     Fertig(a.Ok, a.Ok ? a.Hinweis
                         : (a.Nochmal ? a.Hinweis + " – " + Sprache.T("liegt in der Warteschlange")
-                          : a.ZuWenige ? a.Hinweis   // eigener Satz, kein "Abgelehnt:"
+                          : a.Mild ? a.Hinweis   // eigener Satz, kein "Abgelehnt:"
                                      : Sprache.T("Abgelehnt: {0}", a.Hinweis)), a);
                 });
             });
@@ -834,7 +834,7 @@ namespace MecchaRanked
             /* Drei Zustaende, drei Farben: gruen angenommen, gelb "zaehlt
                nicht" (Lobby zu klein - kein Fehler des Zuschauers), rot
                abgelehnt. Das Zeichen in der zweiten Spalte zieht mit. */
-            bool zuWenige = a != null && a.ZuWenige;
+            bool zuWenige = a != null && a.Mild;
             ListViewItem eintrag = new ListViewItem(DateTime.Now.ToString("HH:mm"));
             eintrag.SubItems.Add(ok ? "OK" : (zuWenige ? "–" : "!"));
             eintrag.SubItems.Add(text);

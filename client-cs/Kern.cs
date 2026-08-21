@@ -29,7 +29,7 @@ namespace MecchaRanked
     static class Info
     {
         public const string Projekt = "Meccha Ranked";
-        public const string Version = "0.8.0";
+        public const string Version = "0.9.0";
         public const string Entwickler = "Baloou";
 
         /* Wird beim Bauen ersetzt - siehe baue.ps1 und
@@ -303,6 +303,13 @@ namespace MecchaRanked
            zaehlt nicht. Der Client zeigt das gelb statt rot - der
            Zuschauer hat nichts falsch gemacht. */
         public bool ZuWenige;
+        /* Ebenfalls kein Fehler des Zuschauers: die eigene Zeile war da,
+           nur die Punktzahl nicht lesbar - fast immer der Untergrund.
+           Der Server hat dazu nichts gespeichert, also darf es sofort
+           nochmal versucht werden. */
+        public bool Untergrund;
+        /** Gelb statt rot: der Absender hat nichts falsch gemacht. */
+        public bool Mild { get { return ZuWenige || Untergrund; } }
         public List<string> Zeilen = new List<string>();
     }
 
@@ -606,6 +613,22 @@ namespace MecchaRanked
                 long da = Zahl(koerper, "erkannt");
                 a.Hinweis = Sprache.T(
                     "Zählt nicht: nur {0} Verstecker im Scoreboard, nötig sind {1}", da, min);
+            }
+
+            /* Untergrund: die eigene Zeile stand da, aber ohne lesbare
+               Zahl. Der Server hat dazu NICHTS gespeichert - deshalb darf
+               hier ein Rat stehen, den man auch befolgen kann. Waere die
+               Runde erfasst, wuerde der zweite Screenshot als dieselbe
+               Partie abgewiesen. */
+            a.Untergrund = koerper.IndexOf("\"art\":\"untergrund\"",
+                StringComparison.Ordinal) >= 0;
+            if (a.Untergrund)
+            {
+                a.Hinweis = Sprache.T(
+                    "Deine Zeile steht da, aber die Punktzahl war nicht zu lesen. " +
+                    "Stell dich vor etwas Ruhiges – Himmel oder eine Wand – und " +
+                    "drück nochmal. Kein Wartezimmer, du kannst es sofort " +
+                    "nochmal versuchen.");
             }
 
             /* Wiederholen lohnt nur bei Serverfehlern. Ein falscher Token

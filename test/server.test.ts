@@ -563,6 +563,99 @@ describe('Server - Dubletten', () => {
 });
 
 
+/* --------------------------------------- Eigene Zeile ohne lesbare Zahl */
+
+describe('Server - eigene Zeile da, Punktzahl unlesbar', () => {
+  /** Genug Verstecker, aber Jones' Zahl ist nicht zu entziffern. */
+  const OHNE_ZAHL = JSON.stringify({
+    zeilen: [
+      { name: 'Jones', rohPunkte: '' },
+      { name: 'mj', rohPunkte: '2000' },
+      { name: 'TREV', rohPunkte: '1500' },
+      { name: 'Vier', rohPunkte: '1000' },
+      { name: 'Fuenf', rohPunkte: '500' },
+      { name: 'Sechs', rohPunkte: '300' }
+    ]
+  });
+
+  test('sagt es als eigenen Fall, nicht als Ablehnung', async () => {
+    minSpielerTest = 6;
+    leserAntwort = OHNE_ZAHL;
+
+    const { code, body } = await lade(bild('untergrund-1'),
+      { 'X-MC-Token': zuschauerToken });
+
+    assert.equal(code, 422);
+    assert.equal(body.art, 'untergrund');
+    assert.match(String(body.hinweis), /Hintergrund|ruhigen/);
+  });
+
+  test('speichert NICHTS - sonst sperrt die Partie-Kennung den zweiten Versuch', async () => {
+    /* Der Kern der Sache. Waere die Runde erfasst, traege ein neuer
+       Screenshot derselben Rangliste dieselbe Kennung und floege als
+       "schon erfasst" heraus. Der Rat "mach es nochmal mit besserem
+       Hintergrund" liefe dann gegen eine Sperre, die wir selbst gesetzt
+       haben. */
+    minSpielerTest = 6;
+    leserAntwort = OHNE_ZAHL;
+
+    await lade(bild('untergrund-2'), { 'X-MC-Token': zuschauerToken });
+
+    assert.equal(freigabe.offene().length, 0, 'nichts in der Freigabeliste');
+    assert.equal(eingetragen.length, 0, 'nichts eingetragen');
+  });
+
+  test('kein langer Abstand - es darf sofort nochmal probiert werden', async () => {
+    /* Wer nichts bekommen hat, soll nicht drei Minuten warten, bis er es
+       besser machen darf. Bis dahin ist die Lobby weiter. */
+    minSpielerTest = 6;
+    leserAntwort = OHNE_ZAHL;
+
+    const vorher = Date.now();
+    await lade(bild('untergrund-3'), { 'X-MC-Token': zuschauerToken });
+
+    const t = tokens.finde(zuschauerToken);
+    assert.ok(t, 'Token muss es geben');
+    const wartet = (t.sperreBis ?? 0) - vorher;
+    assert.ok(wartet <= ABSTAND_FEHLSCHLAG_MS + 2000,
+      'nur der kurze Abstand, nicht die drei Minuten - es sind aber ' +
+      Math.round(wartet / 1000) + ' s');
+  });
+
+  test('eine LESBARE Zahl geht weiter ihren Weg', async () => {
+    // Die Gegenprobe: der neue Fall darf nicht alles einfangen.
+    minSpielerTest = 6;
+    leserAntwort = JSON.stringify({
+      zeilen: [
+        { name: 'Jones', rohPunkte: '2771' },
+        { name: 'mj', rohPunkte: '2000' },
+        { name: 'TREV', rohPunkte: '1500' },
+        { name: 'Vier', rohPunkte: '1000' },
+        { name: 'Fuenf', rohPunkte: '500' },
+        { name: 'Sechs', rohPunkte: '300' }
+      ]
+    });
+
+    const { code, body } = await lade(bild('untergrund-4'),
+      { 'X-MC-Token': zuschauerToken });
+
+    assert.equal(code, 200);
+    assert.equal(body.status, 'offen');
+  });
+
+  test('gilt nicht fuer den eigenen Rechner', async () => {
+    /* Dort wird die ganze Lobby erfasst, und eine unlesbare Zeile unter
+       vielen ist der Normalfall - sie wird zur Rueckfrage, mehr nicht. */
+    minSpielerTest = 6;
+    leserAntwort = OHNE_ZAHL;
+
+    const { code } = await lade(bild('untergrund-5'),
+      { 'X-MC-Token': eigenerToken });
+
+    assert.equal(code, 200);
+  });
+});
+
 /* ------------------------------------------------- Hinweis bei zu wenig */
 
 describe('Server - was der Zuschauer bei zu wenigen Zeilen erfaehrt', () => {

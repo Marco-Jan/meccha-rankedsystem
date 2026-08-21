@@ -45,6 +45,20 @@ import type { RohZeile } from './parse.js';
 export const MAX_BILD = 8 * 1024 * 1024;
 
 /**
+ * Der Rat, wenn ein Bild am UNTERGRUND gescheitert ist.
+ *
+ * An einer Stelle, weil ihn zwei Faelle brauchen: eine Rangliste, von der
+ * fast nichts lesbar war, und eine, bei der ausgerechnet die eigene Zeile
+ * keine Zahl hergab. Beide Male ist die Ursache dieselbe - die Schrift
+ * liegt halbtransparent ueber der Spielwelt.
+ */
+const RAT_UNTERGRUND =
+  'Druecke am ENDE der Runde, wenn die Rangliste vollstaendig steht, und ' +
+  'schau dabei auf einen ruhigen Hintergrund - Himmel oder eine Wand statt ' +
+  'buntem Boden. Die Schrift ist durchsichtig; ueber Bonbons und Wiese ' +
+  'verschwindet sie.';
+
+/**
  * Mindestzahl Verstecker im Scoreboard, damit eine Zuschauer-Runde zaehlt.
  *
  * Im Scoreboard von MECCHA CHAMELEON stehen nur die Verstecker, keine
@@ -752,10 +766,7 @@ async function bearbeite(
         'noetig sind ' + minAktiv,
       hinweis: wohlLesefehler
         ? 'So wenige Zeilen deuten eher auf ein schwer lesbares Bild als auf eine ' +
-          'kleine Runde. Druecke am ENDE der Runde, wenn die Rangliste vollstaendig ' +
-          'steht, und schau dabei auf einen ruhigen Hintergrund - Himmel oder eine ' +
-          'Wand statt buntem Boden. Die Schrift ist durchsichtig; ueber Bonbons und ' +
-          'Wiese verschwindet sie.'
+          'kleine Runde. ' + RAT_UNTERGRUND
         : 'Die Runde war einfach zu klein. Ab ' + minAktiv + ' Versteckern zaehlt es.',
       zeilen: zeilen.map((z) => ({ rohName: z.rohName, rohPunkte: z.rohPunkte }))
     });
@@ -854,6 +865,51 @@ async function bearbeite(
       return sendeJson(res, 422, {
         ok: false,
         fehler: 'Dein Name kommt mehrfach in der Rangliste vor - bitte im Discord bei einem Admin melden'
+      });
+    }
+
+    /*
+       DEINE ZEILE STEHT DA, ABER OHNE ZAHL.
+
+       Fast immer der Untergrund: die Schrift liegt halbtransparent ueber
+       der Spielwelt, und ueber hellem Boden behaelt der Farbfilter den
+       Untergrund statt der Ziffern. Der Name ueberlebt das oefter als die
+       Zahl - er ist laenger und hat mehr Kanten.
+
+       Warum das hier endet und NICHT in der Freigabeliste:
+
+       Es gibt nichts zu entscheiden. Ohne Ziffern kann auch ein Mensch am
+       Bild nichts ablesen - anders als bei "unsicher" (1O579), wo die Zahl
+       dasteht und nur die Deutung wackelt. Solche Zeilen gehen weiter in
+       die Rueckfrage.
+
+       Vor allem aber wuerde ein Eintrag den zweiten Versuch VERBAUEN. Die
+       Partie-Kennung entsteht aus den Punktzahlen der Runde; ein neuer
+       Screenshot derselben Rangliste traegt dieselbe Kennung und floege als
+       "schon erfasst" heraus. Der Rat "mach es nochmal mit besserem
+       Hintergrund" liefe dann gegen eine Sperre, die wir selbst gesetzt
+       haben.
+
+       Und deshalb auch kein angenommen(): es bleibt beim kurzen Abstand
+       aus pruefen(). Wer nichts bekommen hat, soll nicht drei Minuten
+       warten, bis er es besser machen darf - bis dahin ist die Lobby
+       weiter.
+    */
+    const meine = zuWerten[0]!;
+    if (meine.punkte === null) {
+      console.log('  ' + token.name + ': eigene Zeile ohne lesbare Punkte ("' +
+        meine.rohPunkte + '") - Untergrund');
+      return sendeJson(res, 422, {
+        ok: false,
+        art: 'untergrund',
+        fehler: 'Deine Zeile steht in der Rangliste, aber die Punktzahl war nicht ' +
+          'zu lesen.',
+        hinweis: RAT_UNTERGRUND,
+        /* Was DA stand, gehoert dazu: leer heisst "gar nichts erkannt",
+           ein "1230?1250" heisst "zwei Durchgaenge, zwei Meinungen". Das
+           ist ein Unterschied, den der Absender sehen soll. */
+        rohPunkte: meine.rohPunkte,
+        zeilen: zeilen.map((z) => ({ rohName: z.rohName, rohPunkte: z.rohPunkte }))
       });
     }
   }

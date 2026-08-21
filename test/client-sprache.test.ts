@@ -169,8 +169,21 @@ describe('Client - Oberflaeche', () => {
     const kern = readFileSync(path.join(CLIENT, 'Kern.cs'), 'utf8');
     assert.match(kern, /art.*zu-wenige-spieler/);
     assert.match(kern, /public bool ZuWenige/);
-    assert.match(fenster, /a\.ZuWenige/);
+    assert.match(fenster, /a\.Mild/);
     assert.match(fenster, /zuWenige \? Farben\.Gelb/);
+  });
+
+  test('der Untergrund-Fall ist genauso mild', () => {
+    /* Die eigene Zeile stand da, nur die Punktzahl war nicht lesbar -
+       fast immer der Untergrund. Auch dafuer kann der Absender nichts,
+       also gelb und ein eigener Satz statt "Abgelehnt:".
+
+       Mild fasst beide Faelle zusammen. Ohne das waere der neue Fall rot
+       durchgerutscht - er ist ja kein ZuWenige. */
+    const kern = readFileSync(path.join(CLIENT, 'Kern.cs'), 'utf8');
+    assert.match(kern, /art.*untergrund/);
+    assert.match(kern, /public bool Untergrund/);
+    assert.match(kern, /ZuWenige \|\| Untergrund/);
   });
 
   test('uebersetzt die Zu-wenige-Meldung', () => {
