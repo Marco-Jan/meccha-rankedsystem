@@ -565,6 +565,36 @@ export function kontoSeite(): string {
     color:var(--leise); font-size:13.5px;
   }
   .fuss b { color:var(--text); font-weight:600; }
+  /* ---- Willkommen: nur fuer Abgemeldete ---- */
+  .willkommen {
+    background:var(--flaeche); border:1px solid var(--kante);
+    border-radius:14px; padding:26px 28px; margin:0 0 22px;
+  }
+  .willkommen h2 { font-size:21px; margin:0 0 8px; }
+  .willkommen .satz {
+    color:var(--leise); max-width:var(--lesbar); margin:0 0 18px;
+  }
+  .wk-knoepfe { display:flex; gap:12px; flex-wrap:wrap; align-items:center; }
+  .wk-steam {
+    display:inline-flex; align-items:center; gap:10px;
+    background:var(--akzent); color:#06121c; text-decoration:none;
+    font-weight:700; font-size:15px; padding:13px 24px; border-radius:10px;
+  }
+  .wk-steam:hover { filter:brightness(1.08); }
+  .wk-mehr { font-size:14px; color:var(--leise); background:none; border:0;
+             cursor:pointer; padding:8px 4px; font:inherit; }
+  .wk-mehr:hover { color:var(--akzent); }
+  /* Das Kleingedruckte, das hier gross gehoert: es nimmt die Sorge weg,
+     die den meisten den Klick verhagelt. */
+  .wk-ruhig { margin-top:12px; font-size:12.5px; color:var(--leise); }
+  .wk-zahlen {
+    display:flex; gap:22px; flex-wrap:wrap; margin-top:20px;
+    padding-top:16px; border-top:1px solid var(--kante);
+  }
+  .wk-zahl { display:flex; flex-direction:column; gap:2px; }
+  .wk-zahl b { font-size:17px; color:var(--zahl); font-variant-numeric:tabular-nums; }
+  .wk-zahl span { font-size:12px; color:var(--leise); }
+
   .recht { margin-top:18px; font-size:12.5px; }
   .recht a { color:var(--leise); text-decoration:none; margin:0 9px; }
   .recht a:hover { color:var(--akzent); text-decoration:underline; }
@@ -674,6 +704,27 @@ export function kontoSeite(): string {
   </div>
 </div>
 <div class="huelle">
+  <!-- Die Einladung. Steht vor der Rangliste, weil ein Neuling sonst
+       eine Tabelle mit fremden Namen sieht und nicht weiss, was das
+       soll. Verschwindet, sobald jemand angemeldet ist - siehe
+       zeigeWillkommen(). -->
+  <div class="willkommen" id="willkommen" style="display:none">
+    <h2 data-t="Spiel mit, deine Runden zählen.">Spiel mit, deine Runden zählen.</h2>
+    <p class="satz" data-t="Eine Rangliste für die Zuschauer dieses Streams. Du drückst am Ende der Runde F9 – den Rest macht der Server: er liest deine Punkte aus dem Bild und trägt sie ein.">Eine Rangliste für die Zuschauer dieses Streams. Du drückst am Ende der Runde F9 – den Rest macht der Server: er liest deine Punkte aus dem Bild und trägt sie ein.</p>
+
+    <div class="wk-knoepfe">
+      <a class="wk-steam" id="wk-anmelden" href="/anmelden">
+        <span>⬤</span>
+        <span data-t="Mit Steam anmelden">Mit Steam anmelden</span>
+      </a>
+      <button class="wk-mehr" id="wk-mehr" data-t="Wie es funktioniert →">Wie es funktioniert →</button>
+    </div>
+
+    <p class="wk-ruhig" data-t="Anmelden ist zugleich das Anlegen deines Kontos – etwas anderes gibt es nicht. Kein Passwort, keine Mailadresse: Steam bestätigt nur, dass du du bist.">Anmelden ist zugleich das Anlegen deines Kontos – etwas anderes gibt es nicht. Kein Passwort, keine Mailadresse: Steam bestätigt nur, dass du du bist.</p>
+
+    <div class="wk-zahlen" id="wk-zahlen"></div>
+  </div>
+
   <div class="reiter" id="reiter">
     <button data-tafel="t-rang" class="aktiv" data-t="Rangliste">Rangliste</button>
     <button data-tafel="t-konto" data-t="Dein Zugang">Dein Zugang</button>
@@ -762,6 +813,20 @@ export function kontoSeite(): string {
       'Herunterladen und einrichten': 'Download and set up',
       'Alle Regeln': 'All rules →',
       'Regeln': 'Rules',
+      'Spiel mit, deine Runden zählen.':
+        'Join in — your rounds count.',
+      'Eine Rangliste für die Zuschauer dieses Streams. Du drückst am Ende der Runde F9 – den Rest macht der Server: er liest deine Punkte aus dem Bild und trägt sie ein.':
+        'A leaderboard for the viewers of this stream. You press F9 at the end of the round — the server does the rest: it reads your score from the image and records it.',
+      'Wie es funktioniert →':
+        'How it works →',
+      'Anmelden ist zugleich das Anlegen deines Kontos – etwas anderes gibt es nicht. Kein Passwort, keine Mailadresse: Steam bestätigt nur, dass du du bist.':
+        'Signing in also creates your account — there is nothing else to do. No password, no email address: Steam only confirms that you are you.',
+      'Runden zählen für deinen Schnitt':
+        'rounds count towards your average',
+      'Runden, bis du in der Wertung stehst':
+        'rounds until you are ranked',
+      'Verstecker mindestens im Scoreboard':
+        'hiders minimum on the scoreboard',
       'letzte Runden über dem eigenen Schnitt': 'recent rounds above own average',
       'letzte Runden darunter': 'recent rounds below it',
       'bei GitHub': 'on GitHub',
@@ -938,6 +1003,20 @@ export function kontoSeite(): string {
       'Herunterladen und einrichten': '下载并设置',
       'Alle Regeln': '全部规则 →',
       'Regeln': '规则',
+      'Spiel mit, deine Runden zählen.':
+        '一起来，你的每一局都算数。',
+      'Eine Rangliste für die Zuschauer dieses Streams. Du drückst am Ende der Runde F9 – den Rest macht der Server: er liest deine Punkte aus dem Bild und trägt sie ein.':
+        '这是本频道观众的排行榜。回合结束时按 F9，其余交给服务器：它会从截图中识别你的分数并记录下来。',
+      'Wie es funktioniert →':
+        '运作方式 →',
+      'Anmelden ist zugleich das Anlegen deines Kontos – etwas anderes gibt es nicht. Kein Passwort, keine Mailadresse: Steam bestätigt nur, dass du du bist.':
+        '登录同时就完成了账号创建 — 没有别的步骤。无需密码，无需邮箱：Steam 只是确认你就是你。',
+      'Runden zählen für deinen Schnitt':
+        '局计入你的平均分',
+      'Runden, bis du in der Wertung stehst':
+        '局之后你才会进入排名',
+      'Verstecker mindestens im Scoreboard':
+        '名躲藏者是记分板的最低要求',
       'letzte Runden über dem eigenen Schnitt': '最近几局高于自己的平均分',
       'letzte Runden darunter': '最近几局低于平均分',
       'bei GitHub': '在 GitHub 上',
@@ -1130,6 +1209,20 @@ export function kontoSeite(): string {
         'すべてのルール →',
       'Regeln':
         'ルール',
+      'Spiel mit, deine Runden zählen.':
+        '参加しよう — あなたのラウンドが記録されます。',
+      'Eine Rangliste für die Zuschauer dieses Streams. Du drückst am Ende der Runde F9 – den Rest macht der Server: er liest deine Punkte aus dem Bild und trägt sie ein.':
+        'この配信の視聴者のためのランキングです。ラウンドの最後に F9 を押すだけ — あとはサーバーが画像からスコアを読み取って記録します。',
+      'Wie es funktioniert →':
+        '仕組みを見る →',
+      'Anmelden ist zugleich das Anlegen deines Kontos – etwas anderes gibt es nicht. Kein Passwort, keine Mailadresse: Steam bestätigt nur, dass du du bist.':
+        'ログインすると同時にアカウントが作られます — ほかに手続きはありません。パスワードもメールアドレスも不要で、Steam があなた本人であることを確認するだけです。',
+      'Runden zählen für deinen Schnitt':
+        'ラウンドが平均に反映されます',
+      'Runden, bis du in der Wertung stehst':
+        'ラウンドでランキングに載ります',
+      'Verstecker mindestens im Scoreboard':
+        '人以上の隠れる側がスコアボードに必要です',
       'letzte Runden über dem eigenen Schnitt':
         '直近のラウンドが自分の平均を上回っています',
       'letzte Runden darunter':
@@ -1722,6 +1815,41 @@ export function kontoSeite(): string {
   }
 
   /* ------------------------------------------------- nicht angemeldet */
+
+  /**
+   * Die Einladung zeigen oder wegnehmen.
+   *
+   * Wer angemeldet ist, will die Rangliste sehen und nicht jedes Mal
+   * erklaert bekommen, wo er schon dabei ist.
+   *
+   * Die drei Zahlen kommen aus der Wertung selbst, nicht aus dem Text:
+   * eine Regelseite, die etwas anderes sagt als der Server, ist
+   * schlimmer als keine. Steht noch keine Rangliste bereit, bleibt der
+   * Streifen leer statt zu raten.
+   */
+  function zeigeWillkommen(an) {
+    var w = $('willkommen');
+    if (!w) return;
+    w.style.display = an ? 'block' : 'none';
+    if (!an) return;
+
+    var ziel = $('wk-zahlen');
+    if (!ziel) return;
+    ziel.innerHTML = '';
+
+    /* ranglistenKopf, nicht kopfDaten: kopfDaten gibt es nur INNERHALB
+       von baueRangliste. Genau dieser Griff hat die Rangliste schon
+       zweimal geleert - ein ReferenceError, den der catch schluckte. */
+    [[String(ranglistenKopf.fenster), t('Runden zählen für deinen Schnitt')],
+     [String(ranglistenKopf.voll), t('Runden, bis du in der Wertung stehst')],
+     [String(minSpieler), t('Verstecker mindestens im Scoreboard')]
+    ].forEach(function (paar) {
+      var z = el('div', 'wk-zahl');
+      z.appendChild(el('b', null, paar[0]));
+      z.appendChild(el('span', null, paar[1]));
+      ziel.appendChild(z);
+    });
+  }
 
   function baueAnmeldung() {
     var ziel = $('inhalt');
@@ -2319,6 +2447,17 @@ export function kontoSeite(): string {
       }
     }).catch(function () { /* Regel bleibt bei 6 */ });
 
+    /* "Wie es funktioniert" fuehrt zum Reiter, wo die drei Schritte
+       stehen. Sie hier zu wiederholen waeren zwei Stellen fuer dieselbe
+       Sache - und die laufen auseinander. */
+    var mehr = $('wk-mehr');
+    if (mehr) {
+      mehr.addEventListener('click', function () {
+        var knopf = document.querySelector('[data-tafel="t-konto"]');
+        if (knopf) knopf.click();
+      });
+    }
+
     ladeRangliste();
 
     /* Sofort, ohne auf das Konto zu warten - die Angaben unter dem Knopf
@@ -2328,11 +2467,12 @@ export function kontoSeite(): string {
 
     fetch('/api/konto').then(function (r) { return r.json(); }).then(function (a) {
       if (!a.ok) { $('untertitel').textContent = t('Fehler beim Laden.'); return; }
-      if (!a.angemeldet) { baueAnmeldung(); return; }
+      if (!a.angemeldet) { baueAnmeldung(); zeigeWillkommen(true); return; }
       stand = a.konto;
       letzteRunden = a.runden || [];
       wertung = a.wertung || { gewertet: 0, voll: 10 };
       baueKonto(stand);
+      zeigeWillkommen(false);
       zeigeClientKnopf();
     }).catch(function (e) {
       $('untertitel').textContent = t('Server nicht erreichbar.');

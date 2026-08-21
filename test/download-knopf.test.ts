@@ -76,6 +76,66 @@ function unterDemKnopf(seite: Seite): string {
   return k.textContent;
 }
 
+describe('Willkommen', () => {
+  /* Wer meccha-ranked.com zum ersten Mal aufruft, sah eine Tabelle mit
+     fremden Namen. Was das ist und wie man mitmacht, stand im Reiter
+     "Dein Zugang" - dort sucht es niemand. */
+
+  test('Abgemeldete bekommen die Einladung', async () => {
+    const seite = await zeichne({ ok: true, angemeldet: false });
+    const w = seite.hole('willkommen');
+    assert.ok(w, 'der Block fehlt');
+    assert.notEqual(w.style.display, 'none', 'er muss sichtbar sein');
+  });
+
+  test('Angemeldete nicht', async () => {
+    /* Wer dabei ist, will die Rangliste sehen und nicht jedes Mal
+       erklaert bekommen, wo er schon mitmacht. */
+    const seite = await zeichne(angemeldetMit('0.7.0'));
+    const w = seite.hole('willkommen');
+    assert.ok(w);
+    assert.equal(w.style.display, 'none');
+  });
+
+  test('der Steam-Knopf fuehrt zur Anmeldung', () => {
+    /* Am Quelltext, nicht am gefaelschten DOM: das kennt nur die IDs,
+       nicht die Attribute aus dem HTML. */
+    assert.match(HTML, /<a[^>]*id="wk-anmelden"[^>]*href="\/anmelden"/);
+  });
+
+  test('die Zahlen kommen aus der Wertung, nicht aus dem Text', async () => {
+    /* Ein Text, der etwas anderes sagt als der Server, ist schlimmer
+       als keiner. Und ausdruecklich ueber ranglistenKopf - kopfDaten
+       gibt es nur INNERHALB von baueRangliste, dieser Griff hat die
+       Liste schon zweimal geleert. */
+    const seite = new Seite(
+      {
+        '/api/status': { ok: true, offen: 0, maxBild: 8388608, minSpieler: 7 },
+        '/api/client': CLIENT,
+        '/api/rangliste': { ok: true, fenster: 12, voll: 9, listen: [] },
+        '/api/konto': { ok: true, angemeldet: false }
+      },
+      idsAus(HTML)
+    );
+    await fuehreAus(HTML, seite);
+
+    const text = seite.hole('wk-zahlen')!.textContent;
+    assert.match(text, /12/, 'das Fenster fehlt');
+    assert.match(text, /9/, 'die Zahl bis zur Wertung fehlt');
+    assert.match(text, /7/, 'die Mindestzahl fehlt');
+  });
+
+  test('sagt, dass Anmelden zugleich das Anlegen ist', () => {
+    /* Der Nutzer sucht sonst einen Registrieren-Knopf, den es nicht
+       gibt - konten.anmelden() legt beim ersten Mal selbst an. Wer das
+       nicht sagt, laesst ihn suchen. */
+    assert.match(HTML, /Anlegen deines Kontos/);
+    assert.match(HTML, /Kein Passwort, keine Mailadresse/);
+    // Und uebersetzt, nicht nur auf Deutsch.
+    assert.match(HTML, /Signing in also creates your account/);
+  });
+});
+
 describe('Download-Knopf', () => {
   test('zeigt Fassung, Baudatum und die Quelle', async () => {
     /* Die GROESSE stand hier auch einmal. Sie kam aus der Datei, die
