@@ -556,6 +556,9 @@ export function kontoSeite(): string {
     color:var(--leise); font-size:13.5px;
   }
   .fuss b { color:var(--text); font-weight:600; }
+  .recht { margin-top:18px; font-size:12.5px; }
+  .recht a { color:var(--leise); text-decoration:none; margin:0 9px; }
+  .recht a:hover { color:var(--akzent); text-decoration:underline; }
   .discord {
     display:inline-flex; align-items:center; gap:8px; margin-left:10px;
     padding:8px 14px; border-radius:9px; text-decoration:none;
@@ -695,6 +698,12 @@ export function kontoSeite(): string {
         d="M20.3 1.6A19.8 19.8 0 0 0 15.4.2l-.3.5c1.7.4 2.9 1 4 1.7a15.7 15.7 0 0 0-11.9 0c1.1-.7 2.4-1.3 4-1.7L10.9.2A19.8 19.8 0 0 0 6 1.6C2.8 6.3 2 10.9 2.4 15.4a19.9 19.9 0 0 0 6 3l1.3-2c-.7-.2-1.4-.6-2-1l.5-.4a14.2 14.2 0 0 0 12 0l.5.4c-.6.4-1.3.7-2 1l1.3 2a19.9 19.9 0 0 0 6-3c.5-5.2-.8-9.8-3.7-13.8ZM9.7 12.6c-1.2 0-2.1-1.1-2.1-2.4S8.5 7.7 9.7 7.7s2.1 1.1 2.1 2.4-.9 2.5-2.1 2.5Zm6.6 0c-1.2 0-2.1-1.1-2.1-2.4s.9-2.5 2.1-2.5 2.1 1.1 2.1 2.4-.9 2.5-2.1 2.5Z"/></svg>
       <span data-t="Discord öffnen">Discord öffnen</span>
     </a>` : ''}
+    <!-- Pflichtangaben. Klein und unten, aber von JEDER Seite aus in
+         einem Klick erreichbar - genau das verlangt der Zweck. -->
+    <div class="recht">
+      <a href="/impressum" data-t="Impressum">Impressum</a>
+      <a href="/datenschutz" data-t="Datenschutz">Datenschutz</a>
+    </div>
   </div>
 </div>
 <div id="meldung"></div>
@@ -744,6 +753,8 @@ export function kontoSeite(): string {
       'Herunterladen und einrichten': 'Download and set up',
       'Alle Regeln': 'All rules →',
       'Regeln': 'Rules',
+      'Impressum': 'Legal notice',
+      'Datenschutz': 'Privacy',
       'Programm herunterladen': 'Download the app',
       'Warum warnt mein Browser?': 'Why does my browser warn me?',
       'Fassung {0}': 'version {0}',
@@ -913,6 +924,8 @@ export function kontoSeite(): string {
       'Herunterladen und einrichten': '下载并设置',
       'Alle Regeln': '全部规则 →',
       'Regeln': '规则',
+      'Impressum': '法律声明',
+      'Datenschutz': '隐私说明',
       'Programm herunterladen': '下载客户端',
       'Warum warnt mein Browser?': '浏览器为什么提醒？',
       'Fassung {0}': '版本 {0}',
@@ -1098,6 +1111,10 @@ export function kontoSeite(): string {
         'すべてのルール →',
       'Regeln':
         'ルール',
+      'Impressum':
+        '運営者情報',
+      'Datenschutz':
+        'プライバシー',
       'Programm herunterladen':
         'クライアントをダウンロード',
       'Warum warnt mein Browser?':

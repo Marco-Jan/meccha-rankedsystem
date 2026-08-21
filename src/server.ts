@@ -34,6 +34,7 @@ import { bearbeiteFreigabe } from './freigabe-api.js';
 import { bearbeiteKonto } from './konto-api.js';
 import { kontoSeite } from './konto-seite.js';
 import { regelnSeite } from './regeln-seite.js';
+import { impressumSeite, datenschutzSeite } from './rechtliches-seite.js';
 import { downloadSeite, clientstand } from './download-seite.js';
 import type { Kontenliste } from './konten.js';
 import type { Wertungsstand } from './wertung.js';
@@ -308,6 +309,18 @@ async function bearbeite(
       'Cache-Control': 'public, max-age=600'
     });
     res.end(regelnSeite({ minSpieler: o.minSpieler ?? MIN_SPIELER }));
+    return;
+  }
+
+  /* Impressum und Datenschutz. Erreichbar OHNE Anmeldung und ohne
+     Umweg - beides muss von jeder Seite aus in zwei Klicks zu finden
+     sein, sonst erfuellt es seinen Zweck nicht. */
+  if (pfad === '/impressum' || pfad === '/datenschutz') {
+    res.writeHead(200, {
+      'Content-Type': 'text/html; charset=utf-8',
+      'Cache-Control': 'public, max-age=600'
+    });
+    res.end(pfad === '/impressum' ? impressumSeite() : datenschutzSeite());
     return;
   }
 
