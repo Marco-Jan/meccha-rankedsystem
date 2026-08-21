@@ -91,6 +91,40 @@ export interface Token {
   clientVersion?: string;
   /** Seit wann sich genau diese Fassung meldet. */
   clientSeit?: number;
+  /**
+   * Die letzte Einreichung laesst sich kurz zurueckholen.
+   *
+   * Der Absender sieht erst NACH dem Absenden, was der Leser aus seinem
+   * Bild gemacht hat. Stimmt es nicht, half bisher nur warten: drei
+   * Minuten, und die Lobby ist weiter. Ein kurzes Fenster loest das,
+   * ohne die Sperre aufzuweichen - danach gelten die drei Minuten
+   * wieder.
+   */
+  ruecknahme?: {
+    /** Die Runde in der Freigabeliste. */
+    readonly rundeId: string;
+    /** Bis wann. */
+    readonly bis: number;
+    /** Ranglisten-Eintraege, falls sie direkt gewertet wurde. */
+    readonly eintraege: readonly string[];
+    /** Kennung der Partie - fuer die Regel "einmal je Partie". */
+    readonly kennung?: string;
+  };
+  /**
+   * Partien, die diese Person schon einmal zurueckgeholt hat.
+   *
+   * DIE Regel gegen den Missbrauch. Ohne sie koennte jemand dieselbe
+   * Runde immer wieder einschicken und zurueckholen, bis die
+   * Zeichenerkennung ihm einmal eine hoehere Zahl liest - eine
+   * Wuerfelbude, bei der nur die guten Wuerfe stehen bleiben.
+   *
+   * Einmal je Partie ist genug: der ehrliche Fall ist ein Lesefehler,
+   * und den sieht man beim ersten Mal.
+   *
+   * Mit Zeitpunkt, damit auffaellt, wer es HAEUFIG tut. Einmal ist ein
+   * Lesefehler, dreimal an einem Tag ist ein Muster.
+   */
+  zurueckgeholt?: Array<{ readonly kennung: string; readonly ts: number }>;
 }
 
 interface TokenDatei {
@@ -120,6 +154,29 @@ export const ABSTAND_ANGENOMMEN_MS = Number(process.env.MC_ABSTAND_ANGENOMMEN ||
 
 /** Nach allem anderen - unlesbares Bild, zu kleine Lobby, Dublette. */
 export const ABSTAND_FEHLSCHLAG_MS = Number(process.env.MC_ABSTAND_FEHLSCHLAG || 30 * 1000);
+
+/**
+ * Wie lange sich eine Einreichung zurueckholen laesst.
+ *
+ * Kurz genug, dass niemand in Ruhe ueberlegt, ob ihm das Ergebnis
+ * gefaellt - lang genug, um die gelesene Zeile anzusehen und zu
+ * erkennen, dass da Unsinn steht. Die Frist laeuft ab der ANTWORT, nicht
+ * ab dem Tastendruck.
+ */
+export const RUECKNAHME_MS = Number(process.env.MC_RUECKNAHME || 15 * 1000);
+
+/**
+ * Ab so vielen Ruecknahmen im Rueckschaufenster wird es auffaellig.
+ *
+ * Einmal ist ein Lesefehler - die passieren, dafuer gibt es die
+ * Ruecknahme ueberhaupt. Dreimal an einem Tag ist etwas anderes: dann
+ * sucht jemand nach dem Ergebnis, das ihm passt.
+ */
+export const RUECKNAHME_HAEUFIG = Number(process.env.MC_RUECKNAHME_HAEUFIG || 3);
+
+/** Wie weit dabei zurueckgeschaut wird. */
+export const RUECKNAHME_FENSTER_MS =
+  Number(process.env.MC_RUECKNAHME_FENSTER || 24 * 60 * 60 * 1000);
 
 function lesen(datei: string): Token[] {
   let roh: string;
@@ -371,6 +428,89 @@ export class Tokenliste {
     if (!treffer) return;
     treffer.sperreBis = jetzt + ABSTAND_ANGENOMMEN_MS;
     this.speichern();
+  }
+
+  /**
+   * Merkt sich, was gerade zurueckgeholt werden koennte.
+   *
+   * Die Frist beginnt JETZT, also wenn der Absender die Antwort
+   * bekommt - nicht, als er gedrueckt hat. Das Lesen dauert ein paar
+   * Sekunden, und die sollen ihm nicht von seiner Bedenkzeit abgehen.
+   */
+  merkeRuecknahme(
+    token: string,
+    rundeId: string,
+    eintraege: readonly string[],
+    kennung: string | undefined,
+    jetzt = Date.now()
+  ): void {
+    const treffer = this.finde(token);
+    if (!treffer) return;
+
+    // Schon einmal zurueckgeholt: kein zweites Mal fuer dieselbe Partie.
+    if (kennung && (treffer.zurueckgeholt ?? []).some((z) => z.kennung === kennung)) {
+      delete treffer.ruecknahme;
+      this.speichern();
+      return;
+    }
+
+    treffer.ruecknahme = {
+      rundeId,
+      bis: jetzt + RUECKNAHME_MS,
+      eintraege: [...eintraege],
+      ...(kennung ? { kennung } : {})
+    };
+    this.speichern();
+  }
+
+  /**
+   * Darf jetzt zurueckgeholt werden? Gibt zurueck, WAS - oder warum nicht.
+   *
+   * Die Pruefung und das Aufraeumen stecken zusammen hier, damit es
+   * keinen Zustand gibt, in dem etwas geprueft, aber nicht verbraucht
+   * wurde. Ein zweiter Klick soll ins Leere gehen, nicht ein zweites Mal
+   * wirken.
+   */
+  holeZurueck(token: string, jetzt = Date.now()):
+    | { ok: true; rundeId: string; eintraege: readonly string[] }
+    | { ok: false; grund: 'nichts' | 'zu-spaet' } {
+    const treffer = this.finde(token);
+    const r = treffer?.ruecknahme;
+    if (!treffer || !r) return { ok: false, grund: 'nichts' };
+
+    if (jetzt > r.bis) {
+      delete treffer.ruecknahme;
+      this.speichern();
+      return { ok: false, grund: 'zu-spaet' };
+    }
+
+    if (r.kennung) {
+      treffer.zurueckgeholt =
+        [...(treffer.zurueckgeholt ?? []), { kennung: r.kennung, ts: jetzt }].slice(-50);
+    }
+    delete treffer.ruecknahme;
+
+    /* Sofort wieder frei: der Zweck der Ruecknahme ist der zweite
+       Versuch, und der ist nach drei Minuten sinnlos. */
+    treffer.sperreBis = jetzt;
+    this.speichern();
+
+    return { ok: true, rundeId: r.rundeId, eintraege: r.eintraege };
+  }
+
+  /**
+   * Wie oft hat diese Person zuletzt zurueckgeholt?
+   *
+   * Der Server haengt das Ergebnis als Auffaelligkeit an die naechste
+   * Runde. Nicht als Sperre: wer haeufig zurueckholt, kann auch nur
+   * einen schlechten Bildschirm haben. Aber dann sieht ein Mensch drauf
+   * und das Bild bleibt liegen, statt dass es lautlos durchgeht.
+   */
+  ruecknahmenZuletzt(token: string, jetzt = Date.now()): number {
+    const treffer = this.finde(token);
+    if (!treffer) return 0;
+    const grenze = jetzt - RUECKNAHME_FENSTER_MS;
+    return (treffer.zurueckgeholt ?? []).filter((z) => z.ts > grenze).length;
   }
 
   /**

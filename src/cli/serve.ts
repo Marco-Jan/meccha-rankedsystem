@@ -124,7 +124,8 @@ async function main(): Promise<void> {
     listen,
     oeffentlicheUrl: OEFFENTLICHE_URL,
     holeStand: () => wertung.stand(),
-    eintragen: (kontoId, punkte) => { wertung.eintragen(kontoId, punkte); }
+    eintragen: (kontoId, punkte) => wertung.eintragenMitKennungen(kontoId, punkte),
+    zuruecknehmen: (ids) => { wertung.entfernen(ids); }
   });
 
   server.listen(port, host, () => {

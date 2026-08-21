@@ -184,9 +184,29 @@ export class Wertung {
    * falls gar keine da ist.
    */
   eintragen(kontoId: string, punkte: number): number {
-    const ziele = this.listen.aktive();
-    for (const l of ziele) this.rangliste.eintragen(l.id, kontoId, punkte);
-    return ziele.length;
+    return this.eintragenMitKennungen(kontoId, punkte).length;
+  }
+
+  /**
+   * Wie eintragen, gibt aber die Kennungen der angelegten Eintraege
+   * zurueck.
+   *
+   * Gebraucht fuer die Ruecknahme: eine Runde wird in JEDE aktive Liste
+   * geschrieben, also entstehen mehrere Eintraege. Wer sie
+   * zurueckholen will, muss wissen welche - sie hinterher am Zeitpunkt
+   * zu suchen waere geraten, und bei zwei Leuten in derselben Sekunde
+   * falsch geraten.
+   */
+  eintragenMitKennungen(kontoId: string, punkte: number): string[] {
+    return this.listen.aktive()
+      .map((l) => this.rangliste.eintragen(l.id, kontoId, punkte).id);
+  }
+
+  /** Nimmt Eintraege zurueck. Gibt zurueck, wie viele es wirklich gab. */
+  entfernen(ids: readonly string[]): number {
+    let weg = 0;
+    for (const id of ids) if (this.rangliste.entfernen(id)) weg++;
+    return weg;
   }
 
   /**

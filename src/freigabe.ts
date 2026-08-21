@@ -385,6 +385,22 @@ export class Freigabeliste {
     return weg;
   }
 
+  /**
+   * Nimmt eine Runde ganz aus der Liste.
+   *
+   * Nicht "abgelehnt setzen": eine zurueckgenommene Runde soll auch
+   * ihre PARTIE-KENNUNG mitnehmen. Bliebe sie stehen, wuerde der zweite
+   * Versuch als "diese Partie ist schon erfasst" abgewiesen - und genau
+   * der zweite Versuch ist der Zweck der Ruecknahme.
+   */
+  entfernen(id: string): boolean {
+    const vorher = this.runden.length;
+    this.runden = this.runden.filter((r) => r.id !== id);
+    if (this.runden.length === vorher) return false;
+    this.speichern();
+    return true;
+  }
+
   /** Aufraeumen: bearbeitete Runden, die aelter sind als N Tage. */
   aufraeumen(tage = 30): number {
     const grenze = Date.now() - tage * 24 * 60 * 60 * 1000;

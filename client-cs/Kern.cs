@@ -29,7 +29,7 @@ namespace MecchaRanked
     static class Info
     {
         public const string Projekt = "Meccha Ranked";
-        public const string Version = "0.15.0";
+        public const string Version = "0.16.0";
         public const string Entwickler = "Baloou";
 
         /* Wird beim Bauen ersetzt - siehe baue.ps1 und
@@ -328,6 +328,15 @@ namespace MecchaRanked
         public bool Untergrund;
         /** Gelb statt rot: der Absender hat nichts falsch gemacht. */
         public bool Mild { get { return ZuWenige || Untergrund; } }
+        /**
+         * Wie lange sich diese Einreichung zurueckholen laesst, in
+         * Millisekunden. 0 = gar nicht.
+         *
+         * Die Zahl kommt vom Server, nicht aus einer Konstante hier:
+         * sonst zaehlt der Client eine Frist herunter, die drueben
+         * laengst abgelaufen ist.
+         */
+        public long RuecknahmeMs;
         public List<string> Zeilen = new List<string>();
     }
 
@@ -551,6 +560,50 @@ namespace MecchaRanked
             return long.TryParse(json.Substring(i, stop - i), out wert) ? wert : 0;
         }
 
+        /// <summary>
+        /// Holt die letzte Einreichung zurueck. Gibt den Fehlertext
+        /// zurueck, oder null wenn es geklappt hat.
+        /// </summary>
+        public string HoleZurueck(Einstellungen e)
+        {
+            try
+            {
+                HttpWebRequest anfrage = (HttpWebRequest)WebRequest.Create(
+                    e.Server.TrimEnd('/') + "/api/ruecknahme");
+                anfrage.Method = "POST";
+                anfrage.Headers["X-MC-Token"] = e.Token;
+                anfrage.Headers["X-MC-Client"] = Info.Version;
+                anfrage.ContentLength = 0;
+                anfrage.Timeout = 15000;
+
+                using (HttpWebResponse antwort = (HttpWebResponse)anfrage.GetResponse())
+                using (StreamReader leser = new StreamReader(antwort.GetResponseStream()))
+                {
+                    leser.ReadToEnd();
+                    return null;
+                }
+            }
+            catch (WebException w)
+            {
+                /* Der Server sagt im Koerper, WARUM - "zu spaet" ist
+                   etwas anderes als "keine Verbindung", und der
+                   Zuschauer soll den Unterschied sehen. */
+                try
+                {
+                    using (StreamReader leser = new StreamReader(w.Response.GetResponseStream()))
+                    {
+                        string koerper = leser.ReadToEnd();
+                        string art = Feld(koerper, "art") ?? "";
+                        if (art == "zu-spaet")
+                            return Sprache.T("Zu spät – die Runde bleibt stehen.");
+                        return Sprache.T("Da ist gerade nichts zurückzuholen.");
+                    }
+                }
+                catch { return Sprache.T("Server nicht erreichbar."); }
+            }
+            catch (Exception ex) { return ex.Message; }
+        }
+
         public Antwort Senden(byte[] bild, Einstellungen e)
         {
             Antwort a = new Antwort();
@@ -635,6 +688,8 @@ namespace MecchaRanked
                Antwort - er ist die Rueckfallebene fuer eine Kennung, die
                dieser Client noch nicht kennt.
             */
+            a.RuecknahmeMs = Zahl(koerper, "ruecknahmeMs");
+
             string art = Feld(koerper, "art") ?? "";
 
             a.ZuWenige = art == "zu-wenige-spieler";

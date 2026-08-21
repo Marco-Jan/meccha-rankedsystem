@@ -49,6 +49,20 @@ namespace MecchaRanked
         string kastenAblehnung = "";
         string kastenNeueFassung = "";
         Button knopfSenden, knopfEinstellungen, knopfAktualisieren, knopfBeenden;
+        /*
+           Die letzte Einreichung kurz zurueckholen.
+
+           Der Absender sieht erst NACH dem Absenden, was der Leser aus
+           seinem Bild gemacht hat. Steht dort Unsinn, half bisher nur
+           warten - drei Minuten, und die Lobby ist weiter.
+
+           Der Knopf zaehlt herunter und verschwindet dann. Eine Frist,
+           die man nicht ablaufen sieht, ist keine Frist, sondern eine
+           Ueberraschung.
+        */
+        Button knopfZurueck;
+        readonly System.Windows.Forms.Timer ruecknahmeUhr = new System.Windows.Forms.Timer();
+        DateTime ruecknahmeBis = DateTime.MinValue;
         ToolStripItem punktZeigen, punktBeenden;
         TextBox feldToken;
         Button knopfTokenAendern;
@@ -211,6 +225,22 @@ namespace MecchaRanked
             knopfSenden.FlatAppearance.BorderSize = 0;
             knopfSenden.Click += (a, b) => EineRunde();
 
+            knopfZurueck = new Button
+            {
+                Dock = DockStyle.Bottom,
+                Height = 30,
+                Visible = false,
+                FlatStyle = FlatStyle.Flat,
+                BackColor = Farben.Kante,
+                ForeColor = Farben.Gelb,
+                Cursor = Cursors.Hand
+            };
+            knopfZurueck.FlatAppearance.BorderSize = 0;
+            knopfZurueck.Click += (a, b) => NimmZurueck();
+
+            ruecknahmeUhr.Interval = 250;
+            ruecknahmeUhr.Tick += (a, b) => ZeichneRuecknahme();
+
             /*
                Beenden gehoert ins Fenster.
 
@@ -287,6 +317,7 @@ namespace MecchaRanked
                ohne das bliebe die Hoehe von vorhin stehen. */
             Resize += (a, b) => ZeigeInfoKasten();
             Controls.Add(knopfSenden);
+            Controls.Add(knopfZurueck);
             Controls.Add(fussLeiste);
             Controls.Add(kopfLeiste);
 
@@ -852,6 +883,62 @@ namespace MecchaRanked
             });
         }
 
+        /* ------------------------------------------------- Ruecknahme */
+
+        void StarteRuecknahme(long ms)
+        {
+            if (ms <= 0) { BeendeRuecknahme(); return; }
+            ruecknahmeBis = DateTime.UtcNow.AddMilliseconds(ms);
+            knopfZurueck.Visible = true;
+            ruecknahmeUhr.Start();
+            ZeichneRuecknahme();
+        }
+
+        void BeendeRuecknahme()
+        {
+            ruecknahmeUhr.Stop();
+            ruecknahmeBis = DateTime.MinValue;
+            knopfZurueck.Visible = false;
+            knopfZurueck.Enabled = true;
+        }
+
+        void ZeichneRuecknahme()
+        {
+            double rest = (ruecknahmeBis - DateTime.UtcNow).TotalSeconds;
+            if (rest <= 0) { BeendeRuecknahme(); return; }
+            knopfZurueck.Text = Sprache.T("Rückgängig ({0})",
+                ((int)Math.Ceiling(rest)).ToString());
+        }
+
+        void NimmZurueck()
+        {
+            /* Sofort abschalten, nicht erst nach der Antwort: sonst
+               klickt jemand dreimal, und der zweite Klick geht schon
+               ins Leere, waehrend der erste noch laeuft. */
+            knopfZurueck.Enabled = false;
+            ruecknahmeUhr.Stop();
+            Einstellungen kopie = e;
+
+            ThreadPool.QueueUserWorkItem(delegate
+            {
+                string fehler = sender.HoleZurueck(kopie);
+                BeginInvoke((MethodInvoker)delegate
+                {
+                    BeendeRuecknahme();
+                    if (fehler == null)
+                    {
+                        Melde(Sprache.T("Zurückgeholt – du kannst es sofort nochmal versuchen."));
+                        /* Die Zeile aus dem Verlauf nehmen: die Runde
+                           gibt es nicht mehr, und eine Zeile zu einer
+                           Runde, die es nicht gibt, ist eine Luege. */
+                        if (verlauf.Items.Count > 0) verlauf.Items.RemoveAt(0);
+                        HoleRueckmeldungen();
+                    }
+                    else Melde(fehler);
+                });
+            });
+        }
+
         void Fertig(bool ok, string text, Antwort a)
         {
             laeuft = false;
@@ -876,6 +963,12 @@ namespace MecchaRanked
 
                Fehlschlaege bleiben stehen: zu ihnen gibt es keine Runde
                beim Server, und sie sollen nicht lautlos verschwinden. */
+            /* Nur was WIRKLICH entstanden ist, laesst sich zurueckholen.
+               Der Server sagt es mit ruecknahmeMs - war es dasselbe Bild
+               noch einmal, steht dort nichts. */
+            if (ok && a != null) StarteRuecknahme(a.RuecknahmeMs);
+            else BeendeRuecknahme();
+
             Zeilendaten frisch = new Zeilendaten();
             frisch.Art = ok ? "runde" : "senden";
             frisch.Zeit = JetztMs();

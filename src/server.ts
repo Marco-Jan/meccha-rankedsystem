@@ -22,7 +22,7 @@ import { writeFileSync, mkdirSync, readFileSync, existsSync } from 'node:fs';
 import path from 'node:path';
 
 import { Freigabeliste, rundenKennung } from './freigabe.js';
-import { Tokenliste, brauchtFreigabe } from './tokens.js';
+import { Tokenliste, brauchtFreigabe, RUECKNAHME_HAEUFIG, RUECKNAHME_MS } from './tokens.js';
 import { leseListe, ModellAntwortUnbrauchbar, type ModellFrage } from './leser.js';
 import { waehleLeser } from './leser-wahl.js';
 import { bewerteRunde, teileAuf, personVon } from './runde.js';
@@ -121,7 +121,18 @@ export interface ServerOptionen {
    * Herausgezogen, damit Tests beobachten koennen, was eingetragen
    * wuerde, ohne eine echte Rangliste anzulegen.
    */
-  readonly eintragen: (kontoId: string, punkte: number) => void;
+  /**
+   * Gibt die Kennungen der angelegten Eintraege zurueck - oder nichts.
+   *
+   * Nichts ist erlaubt, damit Tests weiterhin einfach mitschreiben
+   * koennen. Ohne Kennungen laesst sich eine direkt gewertete Runde
+   * nur nicht mehr zurueckholen; sie hinterher am Zeitpunkt zu suchen
+   * waere geraten, und bei zwei Leuten in derselben Sekunde falsch
+   * geraten.
+   */
+  readonly eintragen: (kontoId: string, punkte: number) => readonly string[] | void;
+  /** Nimmt Ranglisten-Eintraege zurueck. Siehe /api/ruecknahme. */
+  readonly zuruecknehmen?: (ids: readonly string[]) => void;
   /**
    * Schluessel fuer die Freigabe-Endpunkte. LEER heisst gesperrt, nicht
    * offen - wer die Einrichtung vergisst, soll keine Freigabe haben,
@@ -502,6 +513,54 @@ async function bearbeite(
     });
     res.end(downloadSeite());
     return;
+  }
+
+  /*
+     DIE LETZTE EINREICHUNG ZURUECKHOLEN.
+
+     Der Absender sieht erst NACH dem Absenden, was der Leser aus seinem
+     Bild gemacht hat. Steht dort Unsinn, half bisher nur warten - drei
+     Minuten, und die Lobby ist weiter. Ein kurzes Fenster loest das,
+     ohne die Sperre aufzuweichen.
+
+     Die Runde wird ganz ENTFERNT, nicht abgelehnt. Sie muss ihre
+     Partie-Kennung mitnehmen: bliebe die stehen, floege der zweite
+     Versuch als "diese Partie ist schon erfasst" heraus - und genau der
+     zweite Versuch ist der Zweck.
+
+     Gegen die Wuerfelbude sorgt tokens.ts: einmal je Partie, und wer es
+     haeufig tut, bekommt seine naechsten Runden geflaggt.
+  */
+  if (pfad === '/api/ruecknahme') {
+    if (req.method !== 'POST') {
+      return sendeJson(res, 405, { ok: false, fehler: 'Nur POST' });
+    }
+    const roh = req.headers['x-mc-token'];
+    if (!o.tokens.finde(roh)) {
+      return sendeJson(res, 401, { ok: false, fehler: 'Token unbekannt' });
+    }
+
+    const zurueck = o.tokens.holeZurueck(String(roh));
+    if (!zurueck.ok) {
+      return sendeJson(res, 409, {
+        ok: false,
+        art: zurueck.grund,
+        fehler: zurueck.grund === 'zu-spaet'
+          ? 'Zu spaet - die Runde bleibt stehen.'
+          : 'Da ist gerade nichts zurueckzuholen.'
+      });
+    }
+
+    if (zurueck.eintraege.length > 0 && o.zuruecknehmen) {
+      o.zuruecknehmen(zurueck.eintraege);
+    }
+    const weg = o.freigabe.entfernen(zurueck.rundeId);
+
+    console.log('  Ruecknahme: Runde ' + zurueck.rundeId +
+      (weg ? '' : ' (war schon weg)') +
+      (zurueck.eintraege.length ? ', ' + zurueck.eintraege.length + ' Eintrag/Eintraege' : ''));
+
+    return sendeJson(res, 200, { ok: true, entfernt: weg });
   }
 
   /* Fassung und Bezugsquelle als JSON - die Kontoseite beschriftet damit
@@ -983,6 +1042,23 @@ async function bearbeite(
     auffaellig.push('Dieselben Zeilen wie in ' + gleiche.length + ' frueheren Runde(n)');
   }
 
+  /*
+     HAEUFIGES ZURUECKHOLEN.
+
+     Einmal ist ein Lesefehler - dafuer gibt es die Ruecknahme
+     ueberhaupt. Mehrfach an einem Tag ist etwas anderes: dann sucht
+     jemand nach dem Ergebnis, das ihm passt, und laesst nur das
+     stehen.
+
+     Keine Sperre, sondern ein Flag. Wer haeufig zurueckholt, kann auch
+     nur einen unruhigen Bildschirm haben - aber dann sieht ein Mensch
+     drauf, und das Bild bleibt liegen, statt lautlos durchzugehen.
+  */
+  const ruecknahmen = o.tokens.ruecknahmenZuletzt(token.token);
+  if (ruecknahmen >= RUECKNAHME_HAEUFIG) {
+    auffaellig.push(ruecknahmen + ' Ruecknahmen in den letzten 24 Stunden');
+  }
+
   /* --------------------------------------- ohne Freigabe: direkt in die Liste
      Frueher hing das an token.vertraut - damit konnte ein Zuschauer
      entweder gar nicht ohne Freigabe laufen, oder er haette gleich die
@@ -1024,10 +1100,12 @@ async function bearbeite(
     o.freigabe.entscheiden(eigene.runde.id, 'freigegeben', token.name);
 
     let geschrieben = 0;
+    const kennungen: string[] = [];
     for (const e of bericht.einzutragen) {
       // Konto-Kennung, nicht der gelesene Name - die Zuordnung ist oben
       // schon passiert und soll hier nicht wieder aufgemacht werden.
-      o.eintragen(personVon(e)!.id, e.zeile.punkte!.punkte);
+      const neue = o.eintragen(personVon(e)!.id, e.zeile.punkte!.punkte);
+      if (neue) kennungen.push(...neue);
       geschrieben++;
     }
     console.log('  ' + token.name + ' (' + (token.vertraut ? 'vertraut' : 'ohne Freigabe') +
@@ -1038,10 +1116,17 @@ async function bearbeite(
        geschlossen hielt. */
     if (!ohneAbstand) o.tokens.angenommen(token.token);
 
+    /* Kurz zurueckholbar - siehe /api/ruecknahme. Erst JETZT gesetzt,
+       also wenn die Antwort rausgeht: das Lesen hat ein paar Sekunden
+       gedauert, und die sollen dem Absender nicht von seiner
+       Bedenkzeit abgehen. */
+    o.tokens.merkeRuecknahme(token.token, eigene.runde.id, kennungen, kennung);
+
     return sendeJson(res, 200, {
       ok: true,
       neu: true,
       direkt: true,
+      ruecknahmeMs: RUECKNAHME_MS,
       geschrieben,
       eingetragen: bericht.einzutragen.map((e) => ({
         name: personVon(e)!.name,
@@ -1099,12 +1184,20 @@ async function bearbeite(
      wer versehentlich zweimal drueckt, soll nicht drei Minuten buessen. */
   if (!ohneAbstand && neuAngelegt) o.tokens.angenommen(token.token);
 
+  /* Kurz zurueckholbar. Nur bei einer WIRKLICH neuen Runde: war es
+     dasselbe Bild noch einmal, ist nichts entstanden, was man
+     zurueckholen koennte. */
+  if (neuAngelegt) {
+    o.tokens.merkeRuecknahme(token.token, runde.id, [], kennung);
+  }
+
   return sendeJson(res, 200, {
     ok: true,
     neu: neuAngelegt,
     id: runde.id,
     status: runde.status,
     art: 'zur-freigabe',
+    ...(neuAngelegt ? { ruecknahmeMs: RUECKNAHME_MS } : {}),
     hinweis: 'Zur Freigabe eingereicht - gewertet wird erst nach Pruefung',
     zeilen: zuWerten.map((z) => ({ rohName: z.rohName, rohPunkte: z.rohPunkte })),
     inhaltsgleich: aehnlich.length,
