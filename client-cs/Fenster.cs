@@ -840,7 +840,7 @@ namespace MecchaRanked
                nicht" (Lobby zu klein - kein Fehler des Zuschauers), rot
                abgelehnt. Das Zeichen in der zweiten Spalte zieht mit. */
             bool zuWenige = a != null && a.Mild;
-            ListViewItem eintrag = new ListViewItem(DateTime.Now.ToString("HH:mm"));
+            ListViewItem eintrag = new ListViewItem(PfeilZu + DateTime.Now.ToString("HH:mm"));
             eintrag.SubItems.Add(ok ? "OK" : (zuWenige ? "–" : "!"));
             eintrag.SubItems.Add(text);
             eintrag.SubItems.Add("");
@@ -855,7 +855,13 @@ namespace MecchaRanked
                beim Server, und sie sollen nicht lautlos verschwinden. */
             Zeilendaten frisch = new Zeilendaten();
             frisch.Art = ok ? "runde" : "senden";
+            frisch.Zeit = JetztMs();
+            frisch.Volltext = text;
+            if (a != null && a.Zeilen.Count > 0) frisch.Gelesen = a.Zeilen;
             eintrag.Tag = frisch;
+            /* Ganz oben - hier stimmt das auch, denn gerade eben ist das
+               Juengste. Beim naechsten Aktualisieren wird die Zeile mit
+               den Server-Runden zusammen nach der Zeit einsortiert. */
             verlauf.Items.Insert(0, eintrag);
 
             /* Hier wurden frueher ALLE gelesenen Zeilen flach in die
@@ -954,6 +960,26 @@ namespace MecchaRanked
             /// <summary>Null bei reinen Sende-Meldungen.</summary>
             public MeineRunde Runde;
             public bool Offen;
+            /// <summary>
+            /// Wann das hier passiert ist, in Millisekunden wie beim Server.
+            ///
+            /// Noetig, weil eigene Sende-Meldungen und Server-Runden in
+            /// EINER Liste stehen und nach der Zeit sortiert werden. Ohne
+            /// das blieben die eigenen oben kleben - eine Ablehnung von
+            /// 15:38 stand ueber einer Runde von 15:52.
+            /// </summary>
+            public long Zeit;
+            /// <summary>
+            /// Der ungekuerzte Text einer eigenen Sende-Meldung.
+            ///
+            /// In der Spalte ist er abgeschnitten ("Abgelehnt: Dein Name
+            /// Baloou steht so nicht in dieser Ran..."), und ausgerechnet
+            /// bei einer Ablehnung steht der Grund hinten. Beim
+            /// Aufklappen steht er ganz da.
+            /// </summary>
+            public string Volltext;
+            /// <summary>Was der Leser im Bild gesehen hat, Name und Punkte.</summary>
+            public List<string> Gelesen;
         }
 
         const string PfeilZu = "▸ ";     // kleines Dreieck nach rechts
@@ -981,17 +1007,31 @@ namespace MecchaRanked
                Ausgang haben, und eine offene Detailzeile mit veralteten
                Angaben waere schlimmer als eine geschlossene.
             */
+            /* Die eigenen Sende-Meldungen herausnehmen und aufheben - sie
+               haengen an keiner Runde beim Server und wuerden sonst
+               verschwinden. Alles andere faellt weg und entsteht neu. */
+            List<ListViewItem> eigene = new List<ListViewItem>();
             for (int i = verlauf.Items.Count - 1; i >= 0; i--)
             {
                 Zeilendaten d = verlauf.Items[i].Tag as Zeilendaten;
-                if (d == null || d.Art == "runde" || d.Art == "detail")
-                {
-                    verlauf.Items.RemoveAt(i);
-                }
+                if (d != null && d.Art == "senden") eigene.Add(verlauf.Items[i]);
+                verlauf.Items.RemoveAt(i);
             }
 
             int offene = 0;
             string letzteAblehnung = "";
+
+            /* EINE Liste, am Ende nach der Zeit sortiert.
+
+               Vorher wurden die Server-Runden hinten angehaengt, waehrend
+               die eigenen Meldungen oben stehen blieben. Damit stand eine
+               Ablehnung von 15:38 ueber einer Runde von 15:52 - und es
+               sah aus, als wuerden Ablehnungen grundsaetzlich nach oben
+               sortiert. Genau so gemeldet.
+
+               Es sind zwei Quellen, aber ein Verlauf: was der Zuschauer
+               wann gedrueckt hat. */
+            List<ListViewItem> alle = new List<ListViewItem>(eigene);
 
             foreach (MeineRunde m in runden)
             {
@@ -1037,14 +1077,27 @@ namespace MecchaRanked
                 Zeilendaten daten = new Zeilendaten();
                 daten.Art = "runde";
                 daten.Runde = m;
+                daten.Zeit = zeit;
                 eintrag.Tag = daten;
-                verlauf.Items.Add(eintrag);
+                alle.Add(eintrag);
 
                 /* Eine frische Ablehnung soll auffallen, auch wenn das
                    Fenster zu ist - aber nur einmal. */
                 if (m.Status == "abgelehnt" && m.BearbeitetAm > gesehen) Melde(text);
                 if (m.BearbeitetAm > neuestes) neuestes = m.BearbeitetAm;
             }
+
+            /* Das Juengste oben. Stabil sortieren waere hier egal - zwei
+               Eintraege in derselben Millisekunde gibt es nicht. */
+            alle.Sort(delegate (ListViewItem a, ListViewItem b)
+            {
+                long za = ((Zeilendaten)a.Tag).Zeit;
+                long zb = ((Zeilendaten)b.Tag).Zeit;
+                return zb.CompareTo(za);
+            });
+            foreach (ListViewItem it in alle) verlauf.Items.Add(it);
+
+            while (verlauf.Items.Count > 60) verlauf.Items.RemoveAt(verlauf.Items.Count - 1);
 
             kastenOffene = offene;
             kastenAblehnung = letzteAblehnung;
@@ -1157,7 +1210,11 @@ namespace MecchaRanked
             ListViewItem gewaehlt = verlauf.SelectedItems[0];
 
             Zeilendaten d = gewaehlt.Tag as Zeilendaten;
-            if (d == null || d.Runde == null) return;   // Sende-Meldung, nichts zu zeigen
+            if (d == null) return;
+            /* Detailzeilen selbst klappen nicht - und eine Meldung ohne
+               Runde UND ohne Text hat wirklich nichts zu zeigen. */
+            if (d.Art == "detail") return;
+            if (d.Runde == null && string.IsNullOrEmpty(d.Volltext)) return;
 
             int wo = gewaehlt.Index;
 
@@ -1175,7 +1232,7 @@ namespace MecchaRanked
             }
 
             int eingefuegt = 0;
-            foreach (string[] paar in Auskuenfte(d.Runde))
+            foreach (string[] paar in (d.Runde != null ? Auskuenfte(d.Runde) : EigeneAuskuenfte(d)))
             {
                 ListViewItem zeile = new ListViewItem("");
                 zeile.SubItems.Add("");
@@ -1202,6 +1259,54 @@ namespace MecchaRanked
         /// sich beim Ingame-Namen vertippt hat, erkennt es hier und
         /// nirgends sonst.
         /// </summary>
+        /// <summary>
+        /// Was unter einer aufgeklappten EIGENEN Meldung steht.
+        ///
+        /// Zu ihr gibt es keine Runde beim Server - sie kam gar nicht so
+        /// weit. Zu zeigen ist deshalb genau zweierlei: der ungekuerzte
+        /// Grund, der in der Spalte abgeschnitten ist, und was der Leser
+        /// im Bild gesehen hat. Gerade bei "dein Name steht so nicht in
+        /// dieser Rangliste" ist das Zweite die eigentliche Auskunft.
+        /// </summary>
+        List<string[]> EigeneAuskuenfte(Zeilendaten d)
+        {
+            List<string[]> raus = new List<string[]>();
+
+            /* Der Text kann laenger sein als die Spalte. Eine ListView
+               bricht nicht um, also wird hier umgebrochen - lieber drei
+               Zeilen als ein abgeschnittener Satz. */
+            foreach (string stueck in Umbrechen(d.Volltext ?? "", 58))
+                raus.Add(new string[] { "", stueck });
+
+            if (d.Gelesen != null)
+            {
+                foreach (string z in d.Gelesen)
+                {
+                    string[] teile = z.Split('\t');
+                    raus.Add(new string[] {
+                        teile.Length > 0 ? teile[0] : "",
+                        teile.Length > 1 ? teile[1] : ""
+                    });
+                }
+            }
+            return raus;
+        }
+
+        /// <summary>Bricht an Wortgrenzen um, ohne Wort zu zerreissen.</summary>
+        static List<string> Umbrechen(string text, int breite)
+        {
+            List<string> raus = new List<string>();
+            string zeile = "";
+            foreach (string wort in text.Split(' '))
+            {
+                if (zeile.Length == 0) { zeile = wort; continue; }
+                if (zeile.Length + 1 + wort.Length > breite) { raus.Add(zeile); zeile = wort; }
+                else zeile += " " + wort;
+            }
+            if (zeile.Length > 0) raus.Add(zeile);
+            return raus;
+        }
+
         List<string[]> Auskuenfte(MeineRunde m)
         {
             List<string[]> raus = new List<string[]>();
@@ -1251,6 +1356,13 @@ namespace MecchaRanked
         }
 
         /// <summary>Zeitstempel des Servers als Uhrzeit, notfalls jetzt.</summary>
+        /// <summary>Jetzt, in derselben Einheit wie die Zeiten vom Server.</summary>
+        static long JetztMs()
+        {
+            return (long)(DateTime.UtcNow -
+                new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalMilliseconds;
+        }
+
         static string Uhrzeit(long ms)
         {
             if (ms <= 0) return DateTime.Now.ToString("HH:mm");

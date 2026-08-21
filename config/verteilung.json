@@ -4,7 +4,7 @@
   "server": "https://meccha-ranked.com",
 
   "_version": "Fassung der ausgelieferten .exe. Wird beim Bauen in den Client geschrieben UND vom Server gemeldet - laeuft bei jemandem eine aeltere, sagt sein Client es ihm.",
-  "clientVersion": "0.12.0",
+  "clientVersion": "0.13.0",
 
   "_discord": "Einladungslink. Steht auf der Kontoseite - dort melden sich Zuschauer bei Admins und Mods, nicht beim Streamer persoenlich.",
   "discord": "https://discord.gg/W7tHtSu4p",

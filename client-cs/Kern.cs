@@ -29,7 +29,7 @@ namespace MecchaRanked
     static class Info
     {
         public const string Projekt = "Meccha Ranked";
-        public const string Version = "0.12.0";
+        public const string Version = "0.13.0";
         public const string Entwickler = "Baloou";
 
         /* Wird beim Bauen ersetzt - siehe baue.ps1 und
