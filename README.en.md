@@ -359,3 +359,30 @@ Tests that grep the source check *that* something is there, not whether it works
 | `python/lies_rangliste.py` | The RapidOCR part |
 | `UMZUG.md` | Server setup (German) |
 | `UMBAU.md` | How an add-on became a standalone system (German) |
+
+---
+
+## The thresholds in the code are defaults
+
+The anti-cheat is out in the open — deliberately. A check that only works while
+nobody knows about it is not a check.
+
+Its **numbers**, however, are configurable, and in production they differ:
+
+| | |
+|---|---|
+| `MC_VERDACHT_AB` | the score from which a repeat stands out |
+| `MC_VERDACHT_TAGE` | how far back to look |
+| `MC_MIN_SPIELER` | minimum number of hiders |
+| `MC_ABSTAND_ANGENOMMEN` · `MC_ABSTAND_FEHLSCHLAG` | the cooldowns |
+
+So reading `1000` and `30` here does not tell you where the bar actually sits.
+
+---
+
+## Licence
+
+MIT — see [LICENSE](LICENSE). Take it, change it, run your own leaderboard.
+
+MECCHA CHAMELEON belongs to its respective owners. This project is not affiliated
+with the developers of the game, nor with Valve, Steam, Twitch or Discord.

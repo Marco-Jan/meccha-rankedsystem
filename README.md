@@ -367,3 +367,30 @@ Quelltext nach Mustern suchen, prüfen *dass* etwas dasteht, nicht ob es läuft.
 | `python/lies_rangliste.py` | RapidOCR-Teil |
 | `UMZUG.md` | Einrichtung auf dem Server |
 | `UMBAU.md` | Wie aus einem Anbau ein eigenständiges System wurde |
+
+---
+
+## Die Schwellen im Code sind Vorgaben
+
+Die Betrugsprüfung steht offen da — das ist Absicht. Eine Prüfung, die nur wirkt,
+solange niemand sie kennt, ist keine.
+
+Ihre **Zahlen** sind aber einstellbar und im Betrieb andere:
+
+| | |
+|---|---|
+| `MC_VERDACHT_AB` | ab welcher Punktzahl eine Wiederholung auffällt |
+| `MC_VERDACHT_TAGE` | wie weit zurückgeschaut wird |
+| `MC_MIN_SPIELER` | Mindestzahl Verstecker |
+| `MC_ABSTAND_ANGENOMMEN` · `MC_ABSTAND_FEHLSCHLAG` | die Pausen |
+
+Wer hier `1000` und `30` liest, weiß deshalb noch nicht, wo die Latte wirklich liegt.
+
+---
+
+## Lizenz
+
+MIT — siehe [LICENSE](LICENSE). Nimm es, ändere es, betreib deine eigene Liste.
+
+MECCHA CHAMELEON gehört seinen Rechteinhabern. Dieses Projekt steht in keiner
+Verbindung zu den Entwicklern des Spiels, zu Valve, Steam, Twitch oder Discord.
