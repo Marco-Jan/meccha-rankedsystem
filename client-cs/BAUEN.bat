@@ -39,6 +39,17 @@ if errorlevel 1 (
   echo   WARNUNG: Vorgabe konnte nicht gesetzt werden, nehme was in Kern.cs steht.
 )
 
+REM  Haelt fest, welche Quellen unter welcher Nummer gebaut wurden - und
+REM  bricht ab, wenn sich der Code geaendert hat, clientVersion aber nicht.
+REM  Sonst meldet der Server dieselbe Zahl, die in der alten .exe steht,
+REM  der Hinweis auf die neue Fassung bleibt aus, und zwei verschiedene
+REM  Dateien heissen gleich. Genau das ist beim Japanisch-Umbau passiert.
+node "%~dp0stempeln.cjs"
+if errorlevel 1 (
+  pause
+  exit /b 1
+)
+
 echo.
 echo   Uebersetze ...
 REM  -codepage:65001 ist Pflicht: ohne ihn liest csc.exe die Quellen in

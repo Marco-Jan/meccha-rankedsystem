@@ -14,7 +14,8 @@
     "bild": "tsx src/cli/bild.ts",
     "pruefe": "tsx src/cli/pruefe.ts",
     "serve": "tsx src/cli/serve.ts",
-    "testdaten": "tsx src/cli/testdaten.ts"
+    "testdaten": "tsx src/cli/testdaten.ts",
+    "client-stempel": "node client-cs/stempeln.cjs"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",

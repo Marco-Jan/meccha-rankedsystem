@@ -5,8 +5,8 @@
    zeigt, was eingetragen wuerde. Mit --eintragen wird es echt.
 
    Gedacht fuer den Moment, in dem die Rangliste im Spiel sichtbar ist:
-   Alt-Tab raus, Befehl ausloesen, Alt-Tab rein. Spaeter uebernimmt das ein
-   Streamer.bot-Hotkey - bis dahin geht es so.
+   Alt-Tab raus, Befehl ausloesen, Alt-Tab rein. Im Alltag macht das die
+   Wache per F9 - dieser Befehl ist zum Nachsehen und Nachstellen.
 
      npm run runde                    zeigt nur an, schreibt nichts
      npm run runde -- --eintragen     traegt die sicheren Zeilen ein
