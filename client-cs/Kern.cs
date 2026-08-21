@@ -29,13 +29,59 @@ namespace MecchaRanked
     static class Info
     {
         public const string Projekt = "Meccha Ranked";
-        public const string Version = "0.7.0";
+        public const string Version = "0.8.0";
         public const string Entwickler = "Baloou";
 
         /* Wird beim Bauen ersetzt - siehe baue.ps1 und
            config/verteilung.json. Damit braucht ein Serverumzug keine
            Codeaenderung, nur einen Neubau. */
         public const string VorgabeServer = "https://meccha-ranked.com";
+
+        /*
+           Ist die Fassung vom Server NEUER als die eigene?
+
+           Frueher stand hier ein schlichtes "ungleich". Das ging so lange
+           gut, wie der Server immer voraus war - aber es reicht, dass der
+           Server aelter ist als der Client, und schon bekam jeder den
+           Hinweis, er solle auf eine AELTERE Fassung wechseln.
+
+           Genau das ist passiert: die neue .exe lag per scp auf dem
+           Server, das Repo war aber nie gezogen. Der Server nannte 0.5.0,
+           der Client lief mit 0.7.0 - und meldete pflichtschuldig "neue
+           Fassung 0.5.0 verfuegbar".
+
+           Ein unlesbarer Wert zaehlt als "nicht neuer": lieber schweigen
+           als zu einem Wechsel raten, den niemand nachvollziehen kann.
+        */
+        public static bool IstNeuer(string vomServer, string eigene)
+        {
+            int[] a = Teile(vomServer);
+            int[] b = Teile(eigene);
+            if (a == null || b == null) return false;
+
+            for (int i = 0; i < 3; i++)
+            {
+                if (a[i] > b[i]) return true;
+                if (a[i] < b[i]) return false;
+            }
+            return false;
+        }
+
+        /** "0.7.0" zu {0,7,0}. Alles andere zu null. */
+        static int[] Teile(string s)
+        {
+            if (string.IsNullOrEmpty(s)) return null;
+            string[] stuecke = s.Trim().Split('.');
+            if (stuecke.Length != 3) return null;
+
+            int[] zahlen = new int[3];
+            for (int i = 0; i < 3; i++)
+            {
+                if (!int.TryParse(stuecke[i], out zahlen[i])) return null;
+                if (zahlen[i] < 0) return null;
+            }
+            return zahlen;
+        }
     }
 
     /* ==================================================================

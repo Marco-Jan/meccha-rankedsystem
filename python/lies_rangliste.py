@@ -60,7 +60,13 @@ STANDARD_GEOMETRIE = {
     # 995 laesst Luft fuer die Unterlaengen der letzten Zeile. Gewertet
     # werden ohnehin nur die Raenge 1-15 (siehe leser.ts) - der Rest
     # wird gelesen und verworfen.
-    "bereich_y": [465, 995],
+    #
+    # Die Oberkante lag bis zum 21.08.2026 bei 465 und schnitt damit
+    # MITTEN IN DIE KOPFZEILE: an heseder3.JPG und runde-08-37-01
+    # nachgemessen steht die Ueberschrift bei y 450..472, die erste
+    # Ranglistenzeile erst ab 486. Die halbe Kopfzeile stand also als
+    # eigene Zeile im Streifen und verschob die Paarung.
+    "bereich_y": [477, 995],
     "spalten": {
         "name":   [55, 320],
         "punkte": [318, 400]
@@ -113,23 +119,98 @@ def farbfilter(bild):
             r, g, b = px[x, y]
             weiss = r > 175 and g > 175 and b > 175
             rot = r > 130 and g < 110 and b < 110 and (r - max(g, b)) > 55
-            gruen = g > 130 and r < 130 and b < 130 and (g - max(r, b)) > 45
+            # Kein Deckel auf r und b: der entscheidet nicht, ob es gruen
+            # IST, sondern nur, wie hell. An "Baloou" nachgemessen (siehe
+            # bugfest.md) ueberlebten mit r<130 und b<130 nur 109 von 345
+            # gruenen Pixeln - ausgerechnet die hellen Kanten fielen weg,
+            # und der Name zerfiel zu Punkten. Ein weisser Name daneben
+            # behielt 289. Der Abstand zu r und b sagt schon alles: Gelb
+            # (r und g hoch) faellt dadurch weiterhin heraus.
+            gruen = g > 130 and (g - max(r, b)) > 45
             px[x, y] = (0, 0, 0) if (weiss or rot or gruen) else (255, 255, 255)
     return bild
 
 
+def eine_zeile(a, b):
+    """Liegen zwei Kaesten auf derselben Zeile?
+
+    Ueber die senkrechte UEBERLAPPUNG, nicht ueber einen festen Abstand:
+    die Zeilenhoehe haengt an der Aufloesung, die Ueberlappung nicht.
+    Mehr als die halbe Hoehe des kleineren Kastens - darunter sind es
+    zwei Zeilen, die sich nur mit den Unterlaengen beruehren.
+    """
+    o_oben, o_unten = a[0], a[1]
+    b_oben, b_unten = b[0], b[1]
+    ueberlappung = min(o_unten, b_unten) - max(o_oben, b_oben)
+    hoehe = min(o_unten - o_oben, b_unten - b_oben)
+    return hoehe > 0 and ueberlappung > hoehe * 0.5
+
+
 def lies_spalte(ocr, bild, x0, x1, y0, y1, skala):
-    """Liest einen senkrechten Streifen und gibt (y_mitte, text) zurueck."""
+    """Liest einen senkrechten Streifen und gibt (y_mitte, text) zurueck.
+
+    EINE ZEILE ERGIBT EINEN EINTRAG - auch wenn OCR sie in mehrere
+    Kaesten zerlegt hat.
+
+    Der Anlass ist gemessen, nicht vermutet. In der Namensspalte steht
+    die Rangnummer vor dem Namen ("#2 Baloou"), und meistens liest OCR
+    das als einen Kasten. Manchmal aber als zwei:
+
+        y=524  ->  "#2" | "Baloou"
+
+    Frueher wurden daraus ZWEI Eintraege auf derselben Hoehe. paare()
+    laeuft ueber die Namen und nimmt sich je eine Punktzahl: "#2"
+    schnappte sie sich, und fuer "Baloou" war keine mehr da - seine
+    Zeile fiel mit `continue` heraus. Die Lobby hatte damit einen
+    Spieler zu wenig (7 statt 8), und die Punkte hingen an einem
+    Rangzeichen statt an einem Menschen.
+
+    Dasselbe droht in der Punktespalte, wo das Tausender-Trennzeichen
+    die Zahl teilen kann - aus "1 665" wuerden "1" und "665", und
+    uebrig blieben 665. Zusammengefasst mit einem Leerzeichen macht
+    parse.ts daraus wieder 1665: Trennzeichen fallen dort ohnehin weg.
+    """
     streifen = bild.crop((x0, y0, x1, y1))
     streifen = farbfilter(streifen)
     streifen = streifen.resize(
         (streifen.width * skala, streifen.height * skala), Image.NEAREST)
 
     ergebnis, _ = ocr(streifen)
-    treffer = []
+
+    # (oben, unten, links, text) - links entscheidet spaeter die Reihenfolge
+    kaesten = []
     for kasten, text, _konf in (ergebnis or []):
-        y_mitte = (kasten[0][1] + kasten[2][1]) / 2 / skala + y0
-        treffer.append((y_mitte, text.strip()))
+        sauber = text.strip()
+        if not sauber:
+            continue
+        kaesten.append((
+            kasten[0][1] / skala + y0,
+            kasten[2][1] / skala + y0,
+            kasten[0][0] / skala,
+            sauber
+        ))
+
+    gruppen = []
+    for k in sorted(kaesten):
+        fuer = None
+        for gr in gruppen:
+            if eine_zeile(gr[0], k):
+                fuer = gr
+                break
+        if fuer is None:
+            gruppen.append([k])
+        else:
+            fuer.append(k)
+
+    treffer = []
+    for gr in gruppen:
+        # Von links nach rechts - sonst stuende die Rangnummer hinten
+        # und aus "1 665" wuerde "665 1".
+        gr.sort(key=lambda k: k[2])
+        oben = min(k[0] for k in gr)
+        unten = max(k[1] for k in gr)
+        treffer.append(((oben + unten) / 2, " ".join(k[3] for k in gr)))
+
     treffer.sort()
     return treffer
 
@@ -177,6 +258,48 @@ def kann_zahl_sein(text):
     return False
 
 
+#  Ab so vielen Zeilen mit Zahl ist der Zeilenabstand verlaesslich.
+#  Darunter wird gar nichts ergaenzt: aus zwei oder drei Zufallstreffern
+#  laesst sich kein Raster ableiten, und was man daraus ergaenzt, ist
+#  geraten.
+GENUG_FUER_RASTER = 4
+
+
+def passende_rasterstellen(zeilen, ohne_zahl):
+    """Welche Namen ohne Zahl sitzen auf einer freien Rasterstelle?
+
+    Der Zeilenabstand kommt aus den Zeilen, die eine Zahl haben - der
+    Median ihrer Abstaende. Der Median und nicht das Mittel: eine
+    einzelne Luecke von zwei Zeilenhoehen soll ihn nicht verziehen.
+    """
+    if len(zeilen) < GENUG_FUER_RASTER or not ohne_zahl:
+        return []
+
+    ys = sorted(z["y"] for z in zeilen)
+    abstaende = sorted(b - a for a, b in zip(ys, ys[1:]) if b - a > 1)
+    if not abstaende:
+        return []
+    schritt = abstaende[len(abstaende) // 2]
+    if schritt <= 0:
+        return []
+
+    raus = []
+    belegt = list(ys)
+    for y_name, name in sorted(ohne_zahl):
+        if not (ys[0] < y_name < ys[-1]):
+            continue
+        # Auf dem Raster? Der Abstand zur naechsten belegten Zeile muss
+        # ein ganzes Vielfaches des Schritts sein, nicht irgendwas.
+        naechste = min(belegt, key=lambda y: abs(y - y_name))
+        vielfaches = abs(y_name - naechste) / schritt
+        rest = abs(vielfaches - round(vielfaches))
+        if round(vielfaches) < 1 or rest > 0.25:
+            continue
+        raus.append((y_name, name))
+        belegt.append(y_name)
+    return raus
+
+
 def paare(namen, punkte, toleranz):
     """Ordnet Namen und Punkte ueber die Y-Koordinate einander zu.
 
@@ -190,6 +313,7 @@ def paare(namen, punkte, toleranz):
     tragen - ueber den Namen waeren sie nicht auseinanderzuhalten.
     """
     zeilen = []
+    ohne_zahl = []
     # Fremdtext gar nicht erst als Kandidat zulassen.
     offen = [(y, t) for (y, t) in punkte if kann_zahl_sein(t)]
 
@@ -210,6 +334,12 @@ def paare(namen, punkte, toleranz):
             #
             # Eine echte Zeile hat IMMER beides: Name links, Zahl rechts.
             # Fehlt die Zahl, ist es Weltinhalt und kein Ergebnis.
+            #
+            # Meistens. Steht der Name aber MITTEN im Block, zwischen
+            # zwei Zeilen mit Zahl, dann ist es keine Weltdeko - dann war
+            # da ein Mitspieler, dessen Punkte nur nicht lesbar waren.
+            # Weiter unten wird das entschieden, hier nur gemerkt.
+            ohne_zahl.append((y_name, name))
             continue
         zeilen.append({"name": name, "rohPunkte": beste[2], "y": y_name})
         offen.pop(beste[1])
@@ -240,6 +370,38 @@ def paare(namen, punkte, toleranz):
     # ------------------------------------------------------------------
     for y_punkt, text in offen:
         zeilen.append({"name": AUSGESTIEGEN, "rohPunkte": text, "y": y_punkt})
+
+    # ------------------------------------------------------------------
+    #  NAMEN OHNE ZAHL: WER DA WAR, ABER UNLESBAR PUNKTETE
+    #
+    #  Das Gegenstueck zum Aussteiger. Dort fehlt der Name, hier die
+    #  Zahl - und beide Male ist es ein Mitspieler, der mitzaehlen muss.
+    #
+    #  Gemessen an heseder3.JPG: Caspian steht als Rang 3 klar lesbar da,
+    #  seine Punktzahl liegt aber auf hellem Marmor, wo der Farbfilter
+    #  den Untergrund behaelt und die Schrift wegwirft. Seine Zeile fiel
+    #  darum ganz heraus - aus 8 Versteckern wurden 7. Fuer eine Runde
+    #  knapp an der Mindestzahl entscheidet genau das ueber gueltig oder
+    #  nicht, und die Begruendung waere gelogen: es waren genug.
+    #
+    #  "Zwischen der ersten und der letzten Zahl" reicht als Bedingung
+    #  NICHT. Nachgemessen an runde-2026-08-18T10-01-34: dort liegt die
+    #  Rangliste ueber buntem Boden, der Filter laesst Weltinhalt stehen,
+    #  und aus einer gelesenen Zeile wurden acht - sieben davon Unsinn wie
+    #  "EaoouaDE5TP-zkTFFCH". Eine zu kleine Lobby haette damit die
+    #  Mindestzahl gerissen. Das waere schlimmer als die verlorene Zeile.
+    #
+    #  Eine Rangliste ist ein RASTER: gleiche Abstaende, gerade Spalte.
+    #  Weltinhalt ist es nicht. Also wird der Zeilenabstand aus den
+    #  Zeilen MIT Zahl geschaetzt, und ein Name ohne Zahl zaehlt nur,
+    #  wenn er auf einer freien Rasterstelle sitzt.
+    #
+    #  Punkte bekommt die Zeile keine - "" ist nicht lesbar, parse.ts
+    #  macht daraus eine Rueckfrage. Genau richtig: die RUNDE zaehlt, die
+    #  Zeile nicht.
+    # ------------------------------------------------------------------
+    for y_name, name in passende_rasterstellen(zeilen, ohne_zahl):
+        zeilen.append({"name": name, "rohPunkte": "", "y": y_name})
 
     # Von oben nach unten, sonst haengen die Aussteiger hinten dran und
     # die Rangfolge stimmt nicht mehr.

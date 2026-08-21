@@ -1402,6 +1402,49 @@ export function kontoSeite(): string {
     }).catch(function () { loese({ ok: false }); });
   }
 
+  /**
+   * Ist die Fassung vom Server NEUER als die eigene?
+   *
+   * Nicht "ungleich". Ist der Server aelter als der Client - etwa weil
+   * eine .exe hochgeladen, das Repo aber nie gezogen wurde -, hiesse
+   * "ungleich" sonst: "neue Fassung 0.5.0, du hast 0.7.0". Ein Rat zum
+   * Downgrade, den niemand befolgen kann.
+   */
+  function istNeuer(vomServer, eigene) {
+    var a = teile(vomServer);
+    var b = teile(eigene);
+    if (!a || !b) return false;
+
+    for (var i = 0; i < 3; i++) {
+      if (a[i] > b[i]) return true;
+      if (a[i] < b[i]) return false;
+    }
+    return false;
+  }
+
+  /** '0.7.0' zu [0,7,0]. Alles andere zu null. */
+  function teile(s) {
+    if (typeof s !== 'string') return null;
+    var stuecke = s.trim().split('.');
+    if (stuecke.length !== 3) return null;
+
+    /* Von Hand statt mit einem regulaeren Ausdruck: dieses Skript steht
+       in einem Template-Literal, und dort verschwindet der Backslash aus
+       einem \\d, ohne dass es auffaellt. Genau so wurde aus der Pruefung
+       einmal /^d+$/ - die nur noch auf den Buchstaben d passte, womit
+       jede Fassungsnummer als unlesbar galt und der Hinweis ausblieb. */
+    var zahlen = [];
+    for (var i = 0; i < 3; i++) {
+      var s2 = stuecke[i];
+      if (!s2.length) return null;
+      for (var j = 0; j < s2.length; j++) {
+        if (s2[j] < '0' || s2[j] > '9') return null;
+      }
+      zahlen.push(parseInt(s2, 10));
+    }
+    return zahlen;
+  }
+
   /** Tag.Monat.Jahr - die Uhrzeit hilft hier niemandem. */
   function datumKurz(iso) {
     var d = new Date(iso);
@@ -1428,7 +1471,7 @@ export function kontoSeite(): string {
       if (!c.ok) { daten.textContent = t('ohne Installation'); return; }
 
       var meine = stand && stand.clientVersion;
-      var veraltet = !!(meine && c.version && meine !== c.version);
+      var veraltet = !!(meine && istNeuer(c.version, meine));
       if (knopf) knopf.className = veraltet ? 'holen neu' : 'holen';
 
       if (veraltet) {

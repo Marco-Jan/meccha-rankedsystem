@@ -258,16 +258,40 @@ fi
 # -----------------------------------------------------------------------------
 printf '\n%sFertig.%s ' "$gruen" "$klar"
 
-# Die ZIP hat Vorrang - genau so waehlt der Server auch aus.
+# Die .exe hat Vorrang - genau so waehlt serve.ts auch aus. Hier stand
+# frueher die ZIP zuerst, und damit meldete das Skript eine andere Datei
+# als die, die der Server ausliefert.
 paket=""
-for k in Meccha-Ranked.zip Meccha-Ranked.exe; do
+for k in Meccha-Ranked.exe Meccha-Ranked.zip; do
   [[ -f "$WURZEL/mc-ranked/client-cs/$k" ]] && { paket="$k"; break; }
 done
 
 if [[ -n "$paket" ]]; then
   exe_stand="$(date -r "$WURZEL/mc-ranked/client-cs/$paket" '+%d.%m. %H:%M')"
   soll="$(node -p "require('$WURZEL/mc-ranked/config/verteilung.json').clientVersion" 2>/dev/null || echo '?')"
-  printf 'Client %s liegt bereit (%s).\n\n' "$soll" "$exe_stand"
+
+  # ---------------------------------------------------------------------
+  #  Was der LAUFENDE Dienst meldet - nicht, was hier in der Datei steht.
+  #
+  #  Am 21.08.2026 lag die neue .exe per scp auf dem Server, das Repo war
+  #  aber nie gezogen. Der Dienst nannte weiter 0.5.0, jeder Client mit
+  #  0.7.0 bekam "neue Fassung 0.5.0 verfuegbar" - ein Hinweis auf ein
+  #  Downgrade. Die lokale Datei zu lesen haette das nie gezeigt: sie war
+  #  ja richtig. Nur der Dienst hatte sie nie gesehen.
+  # ---------------------------------------------------------------------
+  ist="$(curl -s -m 10 "http://127.0.0.1:$RANKED_PORT/api/client" 2>/dev/null \
+        | node -p "try{JSON.parse(require('fs').readFileSync(0,'utf8')).version||'?'}catch(e){'?'}" \
+        2>/dev/null || echo '?')"
+
+  if [[ "$ist" == "$soll" ]]; then
+    printf 'Client %s liegt bereit (%s).\n\n' "$soll" "$exe_stand"
+  else
+    printf '\n'
+    warn "Der Dienst meldet Fassung '${ist}', in config/verteilung.json steht '${soll}'."
+    warn "Solange das auseinandergeht, bekommen Clients einen falschen"
+    warn "Fassungshinweis. Laeuft der Dienst wirklich auf diesem Stand?"
+    printf '\n'
+  fi
 else
   printf '\n'
   warn "Es liegt kein Client bereit (weder .zip noch .exe) - /client gibt eine 404 zurueck."

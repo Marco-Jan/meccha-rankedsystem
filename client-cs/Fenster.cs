@@ -1078,13 +1078,18 @@ namespace MecchaRanked
             if (kastenAblehnung.Length > 0)
                 saetze.Add(Sprache.T("Zuletzt {0}", kastenAblehnung));
 
-            if (saetze.Count == 0)
-            {
-                infoKasten.Visible = false;
-                infoKasten.Height = 0;
-                infoKasten.Cursor = Cursors.Default;
-                return;
-            }
+            /* Steht IMMER da, als letzte Zeile.
+
+               Die Punktzahl im Scoreboard laeuft bis zum Schluss weiter:
+               wer zu frueh drueckt, schickt einen Zwischenstand ein und
+               bekommt weniger gutgeschrieben, als er gespielt hat. Das
+               faellt niemandem auf - die Zahl ist ja plausibel.
+
+               Ein Hinweis, der nur beim ersten Start erscheint, ist beim
+               zwanzigsten Mal Druecken nicht mehr da. Dieser bleibt. */
+            bool nurHinweis = saetze.Count == 0;
+            saetze.Add(Sprache.T(
+                "Erst am Ende der Runde drücken – die Punkte laufen bis zuletzt weiter."));
 
             infoKasten.Text = string.Join(Environment.NewLine, saetze.ToArray());
             infoKasten.Height = 16 + saetze.Count * 18;
@@ -1092,8 +1097,9 @@ namespace MecchaRanked
             /* Farbe nach dem Dringlichsten: eine veraltete Fassung wiegt
                schwerer als eine wartende Runde, denn sie bedeutet, dass
                gar nichts mehr ankommt. */
-            infoKasten.ForeColor = kastenNeueFassung.Length > 0 ? Farben.Gelb
-                : (kastenAblehnung.Length > 0 ? Farben.Rot : Farben.Gelb);
+            infoKasten.ForeColor = nurHinweis ? Farben.Sehrleise
+                : (kastenNeueFassung.Length > 0 ? Farben.Gelb
+                : (kastenAblehnung.Length > 0 ? Farben.Rot : Farben.Gelb));
 
             /* Anklickbar NUR, wenn es auch etwas zu klicken gibt. Ein
                Handzeiger ueber einem Kasten, der auf nichts reagiert,
@@ -1270,8 +1276,7 @@ namespace MecchaRanked
                ist die Adresse in der alten .exe falsch, und der Zuschauer
                wuerde ewig auf Antworten warten, die nie kommen. */
             bool veraltet = auskunft != null && auskunft.Ok &&
-                auskunft.NeuesteVersion.Length > 0 &&
-                auskunft.NeuesteVersion != Info.Version;
+                Info.IstNeuer(auskunft.NeuesteVersion, Info.Version);
 
             /* Wie weit bis zur Wertung. turnier fuehrt jeden erst ab zehn
                Eintraegen in der Liste - ohne diesen Hinweis wundert sich
