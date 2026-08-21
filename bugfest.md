@@ -1,21 +1,42 @@
 # Projekt-Updates & Known Issues
 
-## 🐛 Bekannte Fehler & Anmerkungen
+## ✅ Erledigt in v.4.1.0 (21.08.2026)
 
-* **1. Spieler-Lobby-Zähler (Off-by-One Error)**
-  * **Problem:** Der Reader zählt eine Person zu wenig (z. B. 7 statt 8 Spieler in der Lobby).
-  * **Vermutete Ursache:** Nullbasierter Index (`0` bis `7` entspricht 8 Spielern, wird aber fälschlicherweise als Gesamtzahl `7` ausgegeben).
+* **1. Spieler-Lobby-Zähler (7 statt 8)** — behoben.
+  * Kein Off-by-One im Index. Zwei andere Ursachen, an `heseder3.JPG` nachgemessen:
+    ein Name **ohne lesbare Zahl** fiel lautlos heraus (traf Caspian, dessen `567`
+    auf hellem Marmor liegt), und OCR zerlegt manchmal `#2 Baloou` in zwei Kästen,
+    worauf sich das Rangzeichen die Punktzahl nahm und der echte Name herausfiel.
+  * Solche Zeilen zählen jetzt mit, aber nur auf einer freien **Rasterstelle** —
+    ohne diese Bedingung wurden aus buntem Boden acht Zeilen Weltinhalt.
 
-* **2. OCR / Score-Erkennung ungenau**
-  * **Problem:** Punkte werden bei manchen Runden unvollständig ausgelesen.
-  * **Beispiel:** Eine führende `1` bei `1665` Punkten wird ignoriert, woraufhin nur `665` erkannt werden.
+* **2. OCR / Score-Erkennung** — teilweise behoben.
+  * Die **Kopfzeile** stand mit im Streifen (liegt bei y 450–472, gelesen wurde ab 465).
+    Jetzt ab 477.
+  * Für die abgeschnittene führende `1` fand sich **kein Beleg**: breiter lesen brachte
+    nur Rauschen. Offen bleibt die **Polarität über hellem Grund** — dort behält der
+    Farbfilter den Untergrund und wirft die Schrift weg. Ein Rasterversuch mit lokalem
+    Schwellwert war insgesamt schlechter als der Farbfilter (6/8) und wurde verworfen.
+  * **Grüner Name** (der des Absenders): von 345 grünen Pixeln in „Baloou" überlebten
+    nur 109 — die Schranken `r<130`/`b<130` warfen die hellen Kanten weg. Ohne sie
+    wird der Name wieder gelesen.
 
-* **3. Falsche Versionsbenachrichtigung im Client**
-  * **Problem:** Der Client zeigt fälschlicherweise an, dass Version `0.5.0` verfügbar sei, obwohl aktuell bereits Version `0.7.0` läuft.
+* **3. Falsche Versionsbenachrichtigung** — behoben.
+  * Der Client verglich mit `!=` statt „neuer als" und riet damit zum Downgrade.
+  * Auslöser war ein stehengebliebener Server: die `.exe` lag per scp oben, das Repo
+    war nie gezogen. `deploy.sh` fragt jetzt den **laufenden Dienst** nach seiner
+    Fassung statt die lokale Datei zu lesen.
 
-* **4. UI-Erweiterung / UX-Hinweis**
-  * **Anforderung:** Eine kleine Info-Box neben dem "Bereit"-Button (F9) im Client hinzufügen.
-  * **Inhalt:** Hinweis an den Nutzer, bis ganz zum Schluss mit dem Einreichen zu warten, da sich die Punktzahl in den letzten Sekunden noch verändern kann.
+* **4. UX-Hinweis im Client** — eingebaut.
+  * „Erst am Ende der Runde drücken – die Punkte laufen bis zuletzt weiter."
+    Dauerhaft im Infokasten, in allen vier Sprachen.
+
+## 🐛 Noch offen
+
+* **Polarität über hellem Untergrund.** Liegt die Rangliste über hellem Boden, kippt
+  der Farbfilter: der Untergrund wird behalten, die Schrift fällt heraus. Betroffene
+  Zeilen werden zur Rückfrage statt still falsch — aber gelesen werden sie nicht.
+  Braucht echte PNGs aus dem Spiel, kein nachkomprimiertes JPG.
 
 ---
 
