@@ -635,6 +635,7 @@ export function kontoSeite(): string {
       <button data-sprache="en">EN</button>
       <button data-sprache="de">DE</button>
       <button data-sprache="zh">中文</button>
+      <button data-sprache="ja">日本語</button>
     </div>
     <div class="ablauf">
       <div class="feld"><span class="gross">F9</span><span class="klein" data-t="im Spiel drücken">im Spiel drücken</span></div>
@@ -1036,13 +1037,249 @@ export function kontoSeite(): string {
       'Übernehmen': '确定',
       'Fehler beim Laden.': '加载失败。',
       'Server nicht erreichbar.': '无法连接服务器。'
+    },
+    ja: {
+      'Deine Runden zählen mit.':
+        'あなたのラウンドが記録されます。',
+      'im Spiel drücken':
+        'ゲーム内で押す',
+      'Server liest ab':
+        'サーバーが読み取る',
+      'Auf dem Sprung':
+        'あと一歩',
+      'Käme mit diesem Schnitt unter die ersten drei.':
+        'この平均なら上位 3 位に入ります。',
+      'noch {0} Runden':
+        'あと {0} 戦',
+      'Alle Regeln nachlesen':
+        'ルールをすべて読む',
+      'mehr':
+        '詳細',
+      'Selbst nachsehen':
+        '自分で確認する',
+      'Fingerabdruck wird geladen \u2026':
+        'フィンガープリントを読み込み中 …',
+      'SHA-256 der Datei:':
+        'ファイルの SHA-256:',
+      'Bei VirusTotal nachschlagen':
+        'VirusTotal で確認する',
+      'Findet VirusTotal nichts, hat die Datei noch niemand hochgeladen \u2013 das kannst du selbst tun, kostenlos.':
+        'VirusTotal に結果がなければ、まだ誰もアップロードしていないだけです。自分で無料でアップロードできます。',
+      'Ausf\u00fchrlich mit Bildern':
+        '画像付きの詳しい説明',
+      'Zurzeit läuft keine Wertung.':
+        '現在進行中のランキングはありません。',
+      'Wann eine Runde zählt':
+        'ラウンドが記録される条件',
+      'Herunterladen und einrichten':
+        'ダウンロードと設定',
+      'Alle Regeln':
+        'すべてのルール →',
+      'Regeln':
+        'ルール',
+      'Programm herunterladen':
+        'クライアントをダウンロード',
+      'Warum warnt mein Browser?':
+        'ブラウザが警告するのはなぜ？',
+      'Fassung {0}':
+        'バージョン {0}',
+      'Hol dir zuerst das Programm – der Knopf steht oben.':
+        'まずクライアントを入手してください。ボタンは上にあります。',
+      'in der Rangliste':
+        'ランキングに',
+      'Fragen oder Probleme? Melde dich im Discord bei einem':
+        '質問や問題がありますか？Discord で',
+      'Admin oder Mod':
+        '管理者またはモデレーター',
+      'Discord öffnen':
+        'Discord を開く',
+      'Ein Tastendruck nach der Runde, den Rest macht der Server. Kein Abtippen, keine Screenshots im Chat.':
+        'ラウンド後にキーを 1 回押すだけ。あとはサーバーが処理します。手入力もチャットへの画像投稿も不要です。',
+      'In drei Schritten dabei':
+        '3 ステップで参加',
+      'Programm herunterladen':
+        'クライアントをダウンロード',
+      'Eine einzige Datei, 32 KB, keine Installation. Sie nimmt auf Tastendruck deinen Bildschirm auf und schickt das Bild hierher.':
+        'ファイル 1 つ、32 KB、インストール不要。キーを押すと画面を撮影し、その画像をここに送ります。',
+      'Mit Steam anmelden':
+        'Steam でログイン',
+      'Du spielst Meccha ohnehin über Steam – ein Klick, fertig. Kein Passwort, keine Mailadresse, keine Anmeldung bei uns.':
+        'Meccha はどのみち Steam で遊びます。クリック 1 回で完了です。パスワードもメールアドレスも、こちらでの登録も不要です。',
+      'Namen eintragen und Token einfügen':
+        '名前を登録してトークンを貼り付け',
+      'Trag ein, wie du in der Rangliste im Spiel stehst, kopier den Token ins Programm – fertig. Ab dann reicht F9.':
+        'ゲーム内ランキングでの表示名を登録し、トークンをクライアントに貼り付けるだけ。あとは F9 で十分です。',
+      'Los geht es':
+        'はじめかた',
+      'REGEL':
+        'ルール',
+      'Eine Runde zählt nur, wenn mindestens {0} Verstecker im Scoreboard stehen.':
+        'スコアボードに隠れる側が {0} 人以上いる場合にのみ記録されます。',
+      '⚠  Windows warnt vor der Datei? Das ist normal – hier steht warum.':
+        '⚠  Windows がファイルを警告しますか？よくあることです – 理由はこちら。',
+      'Das Programm ist nicht digital signiert. Windows und der Browser können deshalb nicht nachsehen, wer es gebaut hat, und warnen vorsichtshalber. Das ist keine Aussage darüber, ob etwas schädlich ist – nur darüber, dass ein Nachweis fehlt.':
+        'このクライアントにはデジタル署名がありません。そのため Windows やブラウザは作成者を確認できず、念のため警告します。危険かどうかを示すものではなく、証明がないというだけです。',
+      'Eine solche Signatur muss man jährlich kaufen. Für ein kostenloses Zuschauer-Werkzeug lohnt sich das nicht, deshalb bleibt die Warnung.':
+        '署名は毎年購入する必要があります。無料の視聴者向けツールには見合わないため、警告はそのままです。',
+      'Beim Herunterladen':
+        'ダウンロードするとき',
+      'Der Browser meldet „Verdächtiger Download blockiert" oder „wird selten heruntergeladen". Wähle im Download-Menü „Beibehalten" – mehr ist es nicht.':
+        'ブラウザが「不審なダウンロードをブロックしました」または「ダウンロード数が少ない」と表示します。ダウンロードメニューで「保存」を選んでください。それだけです。',
+      'Beim ersten Start':
+        '初回起動のとき',
+      'Es erscheint ein blaues Fenster: „Der Computer wurde durch Windows geschützt". Klick auf „Weitere Informationen" und dann auf „Trotzdem ausführen". Das musst du nur einmal machen – danach startet es normal.':
+        '青い画面が表示されます:「WindowsによってPCが保護されました」。「詳細情報」をクリックし、「実行」を選んでください。これは初回だけで、以降は普通に起動します。',
+      'Du willst es selbst prüfen? Lad die Datei bei virustotal.com hoch, das ist kostenlos und lässt sie von über 60 Virenscannern ansehen.':
+        '自分で確認したいですか？virustotal.com にファイルをアップロードすれば、60 以上のウイルス対策ソフトが無料で検査します。',
+      'Windows meldet „Der Computer wurde geschützt"? Auf „Weitere Informationen" klicken, dann „Trotzdem ausführen". Das ist bei unsignierten Programmen normal.':
+        '「WindowsによってPCが保護されました」と出たら、「詳細情報」→「実行」を選んでください。署名のないプログラムではよくあることです。',
+      'und dann':
+        'そのあと',
+      'Danach siehst du hier deinen Token und kannst jederzeit nachsehen, was aus deinen eingeschickten Runden geworden ist.':
+        'その後はここでトークンを確認でき、送信したラウンドがどうなったかもいつでも見られます。',
+      'Angemeldet als {0}':
+        '{0} としてログイン中',
+      'Dein Zugang ist gesperrt':
+        'あなたのアクセスは停止されています',
+      ' – {0}. Melde dich im Discord bei einem Admin oder Mod.':
+        ' – {0}。Discord で管理者またはモデレーターに連絡してください。',
+      'ohne Angabe':
+        '理由なし',
+      'Dein Name im Spiel':
+        'ゲーム内の名前',
+      'Genau so, wie er in der Rangliste steht. Danach wird nur diese eine Zeile aus deinem Screenshot gewertet.':
+        'ランキングに表示されているとおりに入力してください。以降はスクリーンショットのその行だけが記録されます。',
+      'dein Name in der Rangliste':
+        'ランキングでのあなたの名前',
+      'Ändern':
+        '変更',
+      'Speichern':
+        '保存',
+      'Der Name lässt sich erst in {0} Tag(en) wieder ändern. Brauchst du es früher, melde dich im Discord bei einem Admin oder Mod.':
+        '名前はあと {0} 日は変更できません。それより早く必要な場合は、Discord で管理者またはモデレーターに連絡してください。',
+      'Gespeichert.':
+        '保存しました。',
+      'Dein Token':
+        'あなたのトークン',
+      'Trag zuerst deinen Namen im Spiel ein – ohne den gibt es keinen Token.':
+        '先にゲーム内の名前を登録してください。それがないとトークンは発行されません。',
+      'Noch kein Token vorhanden.':
+        'まだトークンがありません。',
+      'Der Token ist persönlich – mit ihm zählt jede Runde auf dein Konto. Gib ihn nicht weiter und zeig ihn nicht im Stream.':
+        'トークンは個人用です。これによってすべてのラウンドがあなたのアカウントに記録されます。他人に渡したり、配信に映したりしないでください。',
+      'Kopieren':
+        'コピー',
+      'Kopiert. Im Programm unter „Token" einfügen.':
+        'コピーしました。クライアントの「トークン」欄に貼り付けてください。',
+      'Markiere den Text und kopiere ihn mit Strg+C.':
+        'テキストを選択し、Ctrl+C でコピーしてください。',
+      'Neuen erzeugen':
+        '新しく発行',
+      'Neuen Token erzeugen?':
+        '新しいトークンを発行しますか？',
+      'Der alte Token wird dabei ungültig – trag den neuen danach im Programm ein, sonst kommt nichts mehr an.':
+        '古いトークンは無効になります。新しいものをクライアントに入力しないと、何も届かなくなります。',
+      'Neuer Token erzeugt – im Programm eintragen.':
+        '新しいトークンを発行しました。クライアントに入力してください。',
+      'Runden werden geprüft':
+        'ラウンドの確認',
+      'ja – der Streamer gibt sie frei':
+        'あり – 配信者が承認します',
+      'nein – zählen sofort':
+        'なし – すぐに記録されます',
+      'Dein Anzeigename':
+        '表示名',
+      'Nur zur Anzeige – hat nichts damit zu tun, welche Zeile gewertet wird.':
+        '表示専用です。どの行が記録されるかとは関係ありません。',
+      'Abmelden':
+        'ログアウト',
+      'Konto löschen':
+        'アカウントを削除',
+      'Dein Zugang gilt danach nicht mehr, und du verschwindest aus der Zuschauerliste. Deine bereits gewerteten Runden bleiben in der Punkteliste – sie gehören zum Turnier. Meldest du dich später wieder über Steam an, ist dein Konto zurück.':
+        'アクセスは無効になり、視聴者一覧からも消えます。すでに記録されたラウンドはランキングに残ります。あとで再び Steam でログインすれば、アカウントは元に戻ります。',
+      'Konto löschen?':
+        'アカウントを削除しますか？',
+      'Dein Token gilt danach nicht mehr. Gewertete Runden bleiben in der Punkteliste. Meldest du dich wieder über Steam an, ist dein Konto zurück.':
+        'トークンは無効になります。記録済みのラウンドはランキングに残ります。再び Steam でログインすれば、アカウントは元に戻ります。',
+      'Löschen':
+        '削除',
+      'Konto gelöscht. Du kannst dich jederzeit wieder anmelden.':
+        'アカウントを削除しました。いつでも再登録できます。',
+      'Hat nicht geklappt.':
+        'うまくいきませんでした。',
+      'Verwaltung':
+        '管理',
+      'Du bist Admin: Runden freigeben, Zugänge und Rollen verwalten.':
+        'あなたは管理者です: ラウンドの承認、アクセスと権限の管理ができます。',
+      'Du bist Mod: Runden freigeben und ablehnen.':
+        'あなたはモデレーターです: ラウンドの承認と却下ができます。',
+      'Zum Dashboard':
+        'ダッシュボードへ',
+      'Programm':
+        'クライアント',
+      'Immer die aktuelle Fassung. Meldet dein Programm „veraltet", hol sie dir hier neu.':
+        '常に最新版です。クライアントが「古い」と表示したら、ここで取得し直してください。',
+      'Deine letzten Runden':
+        '最近のラウンド',
+      'Du bist Anwärter: {0} von {1} gewerteten Runden. Noch {2}, dann stehst du in der Wertung.':
+        '現在は候補者です: {1} 戦中 {0} 戦。あと {2} 戦でランキングに入ります。',
+      'Du stehst in der Wertung – gerechnet wird der Schnitt deiner letzten {0} Runden.':
+        'ランキングに入っています。直近 {0} 戦の平均で計算されます。',
+      'Noch nichts eingeschickt.':
+        'まだ何も送信されていません。',
+      'gewertet':
+        '記録済み',
+      'abgelehnt':
+        '却下',
+      'wartet auf Prüfung':
+        '確認待ち',
+      'Rangliste':
+        'ランキング',
+      'Dein Zugang':
+        'アクセス情報',
+      'Schnitt der letzten {0}':
+        '直近 {0} 戦の平均',
+      'Noch keine Runden gewertet. Sei der Erste – unter „Dein Zugang" steht, wie es geht.':
+        'まだ記録されたラウンドはありません。最初の 1 人になりましょう。方法は「アクセス情報」にあります。',
+      'Spieler':
+        'プレイヤー',
+      'Schnitt':
+        '平均',
+      '{0} Runden':
+        '{0} 戦',
+      '{0} von {1}':
+        '{1} 戦中 {0} 戦',
+      'Grau: noch Anwärter – ab {0} gewerteten Runden zählt der Schnitt.':
+        'グレー: まだ候補者です。{0} 戦から平均が有効になります。',
+      'gerade eben':
+        'たった今',
+      'vor {0} min':
+        '{0} 分前',
+      'vor {0} h':
+        '{0} 時間前',
+      'vor {0} Tagen':
+        '{0} 日前',
+      'Abbrechen':
+        'キャンセル',
+      'Übernehmen':
+        '適用',
+      'Fehler beim Laden.':
+        '読み込みに失敗しました。',
+      'Server nicht erreichbar.':
+        'サーバーに接続できません。'
     }
   };
 
   var sprache = (function () {
     try {
       var gemerkt = localStorage.getItem('mc_sprache');
-      if (gemerkt && (gemerkt === 'de' || gemerkt === 'en' || gemerkt === 'zh')) return gemerkt;
+      if (gemerkt && (gemerkt === 'de' || gemerkt === 'en' ||
+                      gemerkt === 'zh' || gemerkt === 'ja')) return gemerkt;
+
+      /* Noch nichts gewaehlt: aus der Browsersprache raten. Englisch
+         bleibt die Vorgabe - die Zuschauer kommen aus dem Stream. */
+      var kurz = (navigator.language || '').slice(0, 2);
+      if (kurz === 'ja' || kurz === 'zh' || kurz === 'de') return kurz;
     } catch (e) { /* privater Modus */ }
     return 'en';
   })();

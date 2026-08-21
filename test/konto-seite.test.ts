@@ -389,3 +389,62 @@ describe('Kontoseite - kein Zugriff auf Fremdes', () => {
       'kopfDaten ist ein Parameter von baueRangliste und ausserhalb undefiniert');
   });
 });
+
+describe('Kontoseite - vier Sprachen, keine mit Luecken', () => {
+  const quelle = kontoSeite();
+
+  /** Die Schluessel eines Sprachblocks, in Quelltextform. */
+  const schluesselVon = (kennung: string): string[] => {
+    const anfang = quelle.indexOf('    ' + kennung + ': {');
+    assert.ok(anfang > 0, 'der Block ' + kennung + ' fehlt');
+
+    // Bis zum naechsten Block bzw. bis zum Ende der Tabelle
+    const rest = quelle.slice(anfang + 8);
+    const naechster = rest.search(/^ {4}(?:en|zh|ja): \{|^ {2}\};/m);
+    const block = naechster > 0 ? rest.slice(0, naechster) : rest;
+
+    return [...block.matchAll(/^ {6}'((?:[^'\\]|\\.)*)':/gm)].map((m) => m[1]!);
+  };
+
+  test('es gibt einen japanischen Block', () => {
+    assert.ok(quelle.includes('    ja: {'));
+    assert.match(quelle, /data-sprache="ja"/, 'und einen Knopf dafuer');
+  });
+
+  test('Japanisch hat jeden Satz, den Englisch hat', () => {
+    /* Ein fehlender Eintrag faellt still auf Deutsch zurueck. Richtig
+       als Rueckfallebene - aber dann steht auf einer japanischen Seite
+       ploetzlich ein deutscher Satz, und niemand meldet es. */
+    const en = schluesselVon('en');
+    const ja = schluesselVon('ja');
+
+    assert.ok(en.length > 100, 'zu wenige englische Saetze gefunden: ' + en.length);
+
+    const fehlen = en.filter((k) => !ja.includes(k));
+    assert.deepEqual(fehlen.map((f) => f.slice(0, 60)), [],
+      'diese Saetze fehlen auf Japanisch');
+  });
+
+  test('Chinesisch ebenso', () => {
+    const en = schluesselVon('en');
+    const zh = schluesselVon('zh');
+    const fehlen = en.filter((k) => !zh.includes(k));
+    assert.deepEqual(fehlen.map((f) => f.slice(0, 60)), []);
+  });
+
+  test('die japanischen Texte sind wirklich japanisch', () => {
+    // Faengt Buchstabensalat ab, falls doch einmal falsch kodiert wird.
+    const anfang = quelle.indexOf('    ja: {');
+    const block = quelle.slice(anfang);
+    const kana = block.match(/[ぁ-んァ-ン]/g) ?? [];
+    assert.ok(kana.length > 300, 'nur ' + kana.length + ' Kana gefunden');
+  });
+
+  test('die Browsersprache wird als Vorauswahl benutzt', () => {
+    /* Wer aus Japan kommt, soll nicht erst einen Knopf suchen muessen.
+       Englisch bleibt die Rueckfallebene - die Zuschauer kommen aus dem
+       Stream, nicht aus dem Nachbarort. */
+    assert.match(quelle, /navigator\.language/);
+    assert.match(quelle, /kurz === 'ja'/);
+  });
+});
