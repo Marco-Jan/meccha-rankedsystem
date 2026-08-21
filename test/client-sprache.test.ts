@@ -299,8 +299,25 @@ describe('Client - der Update-Hinweis', () => {
        Ablehnung da, mal der Update-Hinweis - je nachdem was zuletzt kam. */
     assert.match(fenster, /kastenOffene = offene/);
     assert.match(fenster, /kastenAblehnung = letzteAblehnung/);
-    assert.equal((fenster.match(/ZeigeInfoKasten\(\);/g) ?? []).length, 2,
-      'genau zwei Aufrufe: einer je Quelle');
+
+    /* Drei Aufrufe: die zwei Quellen - und das Neuzeichnen beim Ziehen
+       am Fenster. Das ist keine dritte Quelle, es kommen keine neuen
+       Angaben dazu; der Kasten rechnet nur seine Hoehe neu, weil ein
+       schmaleres Fenster mehr Zeilen bedeutet. */
+    assert.match(fenster, /Resize \+= .*ZeigeInfoKasten\(\)/);
+    assert.equal((fenster.match(/ZeigeInfoKasten\(\);/g) ?? []).length, 3,
+      'die zwei Quellen und das Neuzeichnen beim Ziehen');
+  });
+
+  test('der Kasten rechnet seine Hoehe aus dem Text', () => {
+    /* Vorher: "16 + Saetze * 18", also eine Zeile je Satz. Sobald ein
+       Satz laenger ist als das Fenster breit - der Hinweis zum
+       Rundenende ist das, auf Englisch und Japanisch erst recht -,
+       bricht das Label um und der Rest wird abgeschnitten. */
+    assert.match(fenster, /TextRenderer\.MeasureText/);
+    assert.match(fenster, /TextFormatFlags\.WordBreak/);
+    assert.doesNotMatch(fenster, /saetze\.Count \* 18/,
+      'die Hoehe darf nicht mehr an der Zahl der Saetze haengen');
   });
 });
 

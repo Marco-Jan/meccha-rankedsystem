@@ -29,7 +29,7 @@ namespace MecchaRanked
     static class Info
     {
         public const string Projekt = "Meccha Ranked";
-        public const string Version = "0.11.0";
+        public const string Version = "0.12.0";
         public const string Entwickler = "Baloou";
 
         /* Wird beim Bauen ersetzt - siehe baue.ps1 und
@@ -600,35 +600,80 @@ namespace MecchaRanked
                 ? (hinweis ?? Sprache.T("Angenommen"))
                 : (fehler ?? ("HTTP " + code));
 
-            /* Zu kleine Lobby: der Server markiert das mit art. Der Client
-               nimmt dann seinen eigenen, uebersetzten Satz samt Zahlen -
-               so muss der Text nicht aus der Server-Antwort uebersetzt
-               werden, und es liest sich als "zaehlt nicht", nicht als
-               Vorwurf. */
-            a.ZuWenige = koerper.IndexOf("\"art\":\"zu-wenige-spieler\"",
-                StringComparison.Ordinal) >= 0;
-            if (a.ZuWenige)
+            /*
+               DER SERVER SAGT WAS PASSIERT IST, DER CLIENT SAGT ES IN
+               DER SPRACHE DES ZUSCHAUERS.
+
+               Der Server antwortet auf Deutsch - er kennt die Sprache
+               des Absenders nicht und soll sie auch nicht kennen
+               muessen. Frueher wurde sein Text einfach angezeigt, und
+               ein Zuschauer mit englischer Oberflaeche las mitten in
+               seiner Liste "Zur Freigabe eingereicht - gewertet wird
+               erst nach Pruefung". Das war die HAEUFIGSTE Meldung
+               ueberhaupt.
+
+               Deshalb "art": eine kurze Kennung, zu der hier ein eigener,
+               uebersetzter Satz gehoert. Der deutsche Text bleibt in der
+               Antwort - er ist die Rueckfallebene fuer eine Kennung, die
+               dieser Client noch nicht kennt.
+            */
+            string art = Feld(koerper, "art") ?? "";
+
+            a.ZuWenige = art == "zu-wenige-spieler";
+            a.Untergrund = art == "untergrund";
+
+            if (art == "zu-wenige-spieler")
             {
                 long min = Zahl(koerper, "minSpieler");
                 long da = Zahl(koerper, "erkannt");
                 a.Hinweis = Sprache.T(
                     "Zählt nicht: nur {0} Verstecker im Scoreboard, nötig sind {1}", da, min);
             }
-
-            /* Untergrund: die eigene Zeile stand da, aber ohne lesbare
-               Zahl. Der Server hat dazu NICHTS gespeichert - deshalb darf
-               hier ein Rat stehen, den man auch befolgen kann. Waere die
-               Runde erfasst, wuerde der zweite Screenshot als dieselbe
-               Partie abgewiesen. */
-            a.Untergrund = koerper.IndexOf("\"art\":\"untergrund\"",
-                StringComparison.Ordinal) >= 0;
-            if (a.Untergrund)
+            else if (art == "untergrund")
             {
                 a.Hinweis = Sprache.T(
                     "Deine Zeile steht da, aber die Punktzahl war nicht zu lesen. " +
                     "Stell dich vor etwas Ruhiges – Himmel oder eine Wand – und " +
                     "drück nochmal. Kein Wartezimmer, du kannst es sofort " +
                     "nochmal versuchen.");
+            }
+            else if (art == "zur-freigabe")
+            {
+                a.Hinweis = Sprache.T("Zur Freigabe eingereicht – gewertet wird erst nach Prüfung");
+            }
+            else if (art == "bild-schon-da")
+            {
+                a.Hinweis = Sprache.T("Dieses Bild wurde schon eingereicht");
+            }
+            else if (art == "partie-schon-da")
+            {
+                string von = Feld(koerper, "von") ?? "";
+                a.Hinweis = von.Length > 0
+                    ? Sprache.T("Diese Partie hat {0} schon eingeschickt – sie zählt nur einmal", von)
+                    : Sprache.T("Diese Partie wurde schon eingeschickt – sie zählt nur einmal");
+            }
+            else if (art == "name-nicht-gefunden")
+            {
+                string wer = Feld(koerper, "ingameName") ?? "";
+                a.Hinweis = Sprache.T(
+                    "Dein Name {0} steht so nicht in dieser Rangliste. Gelesen wurde:", wer);
+            }
+            else if (art == "name-mehrfach")
+            {
+                a.Hinweis = Sprache.T(
+                    "Dein Name steht mehrfach in der Rangliste – bitte im Discord bei einem Admin melden");
+            }
+            else if (art == "kein-ingame-name")
+            {
+                a.Hinweis = Sprache.T(
+                    "Für deinen Zugang ist kein Ingame-Name hinterlegt – bitte im Discord bei einem Admin melden");
+            }
+            else if (art == "kein-konto")
+            {
+                a.Hinweis = Sprache.T(
+                    "Zu deinem Ingame-Namen gibt es kein angemeldetes Konto. Melde dich " +
+                    "auf der Seite mit Steam an und trag den Namen dort ein – erst dann " +
+                    "kann eine Runde dir zugeordnet werden.");
             }
 
             /* Wiederholen lohnt nur bei Serverfehlern. Ein falscher Token

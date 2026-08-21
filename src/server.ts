@@ -658,6 +658,9 @@ async function bearbeite(
       neu: false,
       id: schon.id,
       status: schon.status,
+      /* art statt nur Text: der Client hat den Satz uebersetzt vorliegen
+         und muss die deutsche Meldung nicht anzeigen. Siehe Kern.cs. */
+      art: 'bild-schon-da',
       hinweis: 'Dieses Bild wurde schon eingereicht',
       zeilen: schon.zeilen.map((z) => ({ rohName: z.rohName, rohPunkte: z.rohPunkte }))
     });
@@ -806,6 +809,7 @@ async function bearbeite(
     if (!ingame) {
       return sendeJson(res, 400, {
         ok: false,
+        art: 'kein-ingame-name',
         fehler: 'Fuer diesen Token ist kein Ingame-Name hinterlegt - bitte im Discord bei einem Admin melden'
       });
     }
@@ -854,6 +858,8 @@ async function bearbeite(
       */
       return sendeJson(res, 422, {
         ok: false,
+        art: 'name-nicht-gefunden',
+        ingameName: ingame,
         fehler: 'Dein Name "' + ingame + '" steht so nicht in dieser Rangliste. ' +
           'Gelesen wurde:',
         gelesen: zeilen.map((z) => z.rohName),
@@ -864,6 +870,7 @@ async function bearbeite(
       // Zwei Zeilen auf denselben Namen: eine davon ist falsch gelesen.
       return sendeJson(res, 422, {
         ok: false,
+        art: 'name-mehrfach',
         fehler: 'Dein Name kommt mehrfach in der Rangliste vor - bitte im Discord bei einem Admin melden'
       });
     }
@@ -933,6 +940,8 @@ async function bearbeite(
       neu: false,
       id: ersteRunde.id,
       status: ersteRunde.status,
+      art: 'partie-schon-da',
+      von: ersteRunde.absender,
       hinweis: 'Dieses Ergebnis wurde fuer diese Partie bereits von ' +
         ersteRunde.absender + ' eingeschickt - es zaehlt nur einmal',
       zeilen: zuWerten.map((z) => ({ rohName: z.rohName, rohPunkte: z.rohPunkte }))
@@ -1101,6 +1110,7 @@ async function bearbeite(
     neu: neuAngelegt,
     id: runde.id,
     status: runde.status,
+    art: 'zur-freigabe',
     hinweis: 'Zur Freigabe eingereicht - gewertet wird erst nach Pruefung',
     zeilen: zuWerten.map((z) => ({ rohName: z.rohName, rohPunkte: z.rohPunkte })),
     inhaltsgleich: aehnlich.length,

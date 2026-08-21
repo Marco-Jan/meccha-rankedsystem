@@ -168,7 +168,9 @@ namespace MecchaRanked
                 Padding = new Padding(14, 8, 14, 8),
                 BackColor = Farben.Kante,
                 ForeColor = Farben.Text,
-                TextAlign = ContentAlignment.MiddleLeft
+                /* Oben, nicht mittig: sobald der Text umbricht, sieht
+                   mittig aus wie verrutscht. */
+                TextAlign = ContentAlignment.TopLeft
             };
 
             verlauf = new ListView
@@ -281,6 +283,9 @@ namespace MecchaRanked
 
             Controls.Add(verlauf);
             Controls.Add(infoKasten);
+            /* Beim Ziehen neu rechnen: schmaler heisst mehr Zeilen, und
+               ohne das bliebe die Hoehe von vorhin stehen. */
+            Resize += (a, b) => ZeigeInfoKasten();
             Controls.Add(knopfSenden);
             Controls.Add(fussLeiste);
             Controls.Add(kopfLeiste);
@@ -1098,7 +1103,29 @@ namespace MecchaRanked
                 "oder eine Wand statt buntem Boden."));
 
             infoKasten.Text = string.Join(Environment.NewLine, saetze.ToArray());
-            infoKasten.Height = 16 + saetze.Count * 18;
+
+            /*
+               Hoehe aus dem TEXT rechnen, nicht aus der Zahl der Saetze.
+
+               "16 + Saetze * 18" ging von einer Zeile je Satz aus. Sobald
+               ein Satz laenger ist als das Fenster breit - und der
+               Hinweis zum Rundenende ist das, auf Englisch und Japanisch
+               erst recht -, bricht das Label um und der Rest wird
+               abgeschnitten. Wer schmaler zieht, verliert mehr.
+
+               MeasureText mit der tatsaechlichen Breite fragt genau das:
+               wie hoch wird dieser Text hier drin. Damit passt sich der
+               Kasten dem Fenster an und jeder Uebersetzung.
+            */
+            int platz = infoKasten.ClientSize.Width - infoKasten.Padding.Horizontal;
+            if (platz < 80) platz = 80;      // vor dem ersten Zeichnen ist er 0
+
+            Size noetig = TextRenderer.MeasureText(
+                infoKasten.Text, infoKasten.Font,
+                new Size(platz, int.MaxValue),
+                TextFormatFlags.WordBreak | TextFormatFlags.TextBoxControl);
+
+            infoKasten.Height = noetig.Height + infoKasten.Padding.Vertical;
 
             /* Farbe nach dem Dringlichsten: eine veraltete Fassung wiegt
                schwerer als eine wartende Runde, denn sie bedeutet, dass
