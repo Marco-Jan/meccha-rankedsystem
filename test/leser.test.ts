@@ -6,6 +6,7 @@ import {
   MAX_ZEILEN, MAX_RANG
 } from '../src/leser.js';
 import { bewerteRunde, teileAuf, personVon } from '../src/runde.js';
+import { parsePunkte } from '../src/parse.js';
 import type { Spieler } from '../src/namen.js';
 
 /*
@@ -273,5 +274,41 @@ describe('pruefeAntwort - Schutz gegen entgleiste Antworten', () => {
   test('akzeptiert eine leere Liste als gueltige Antwort', () => {
     // "Keine Rangliste im Bild" ist eine richtige Antwort, kein Fehler.
     assert.deepEqual(pruefeAntwort('{"zeilen": []}'), []);
+  });
+});
+
+describe('Widerspruch zwischen zwei Lesedurchgaengen', () => {
+  /*
+     Der Leser liest die Punktespalte zweimal, mit verschiedener
+     Vergroesserung. Wo beide dasselbe sehen, ist die Zahl belastbar; wo
+     sie sich widersprechen, liefert Python "995?566" statt einer Zahl.
+
+     Der Anlass war ein echter Vorfall am 21.08.2026: aus 995 wurde 566.
+     Nicht wegen des Farbfilters - im gefilterten Bild stand 995 klar
+     lesbar da -, sondern weil OCR die kleine Pixelschrift falsch las.
+
+     Das ist der gefaehrlichste Fehlertyp hier: 566 ist eine voellig
+     plausible Punktzahl. Kein Zeichensalat, keine Verwechslung, nichts,
+     woran eine Pruefung sich haette festhalten koennen. Sie waere still
+     in die Wertung gelaufen.
+  */
+  test('ein Widerspruch ergibt keine Punktzahl', () => {
+    assert.equal(parsePunkte('995?566'), null,
+      'aus zwei Kandidaten darf niemals eine Zahl werden');
+  });
+
+  test('beide Kandidaten bleiben sichtbar', () => {
+    /* Sie stehen in rohPunkte und damit auf der Freigabekarte - wer
+       entscheidet, sieht "995?566" und muss nicht raten, was der Leser
+       gemeint haben koennte. */
+    const zeilen = alsRohZeilen([{ name: 'Baloou', rohPunkte: '995?566' }]);
+    assert.equal(zeilen[0]!.rohPunkte, '995?566');
+    assert.equal(zeilen[0]!.punkte, null, 'ohne Punktzahl also Rueckfrage');
+  });
+
+  test('einigkeit bleibt eine ganz normale Zahl', () => {
+    const zeilen = alsRohZeilen([{ name: 'Baloou', rohPunkte: '995' }]);
+    assert.equal(zeilen[0]!.punkte?.punkte, 995);
+    assert.equal(zeilen[0]!.punkte?.unsicher, false);
   });
 });

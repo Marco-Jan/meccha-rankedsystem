@@ -206,6 +206,44 @@ def paare(namen, punkte, toleranz):
     return zeilen
 
 
+def nur_ziffern(text):
+    """Zum Vergleichen: Trennzeichen weg, alles andere bleibt.
+
+    "2 821" und "2821" sind dieselbe Zahl - dass ein Durchgang das
+    Leerzeichen sieht und der andere nicht, ist kein Widerspruch.
+    """
+    return "".join(c for c in str(text) if c not in TRENNZEICHEN)
+
+
+def markiere_unsichere(zeilen, namen, punkte_zweit, toleranz):
+    """Vergleicht mit einem zweiten Durchgang und markiert Abweichungen.
+
+    Eine Zeile gilt als unsicher, wenn der zweite Durchgang etwas
+    ANDERES gelesen hat. Findet er dort gar nichts, bleibt es beim
+    ersten Wert - eine fehlende zweite Meinung ist kein Widerspruch,
+    sonst waere bei jedem schwachen Bild alles unsicher.
+
+    Die Rohfassungen beider Durchgaenge wandern in "rohPunkte", getrennt
+    durch ein Fragezeichen: "995?566". Damit scheitert das Parsen in
+    parse.ts, die Zeile wird zur Rueckfrage - und wer sie im Dashboard
+    ansieht, hat beide Kandidaten vor sich und muss nicht raten, was der
+    Leser gemeint haben koennte.
+    """
+    zweite = paare(namen, punkte_zweit, toleranz)
+    nach_name = {}
+    for z in zweite:
+        if z.get("rohPunkte"):
+            nach_name[z["name"]] = z["rohPunkte"]
+
+    for z in zeilen:
+        erst = z.get("rohPunkte")
+        zweit = nach_name.get(z["name"])
+        if not erst or not zweit:
+            continue
+        if nur_ziffern(erst) != nur_ziffern(zweit):
+            z["rohPunkte"] = str(erst) + "?" + str(zweit)
+
+
 def main():
     p = argparse.ArgumentParser()
     p.add_argument("bild")
@@ -221,12 +259,45 @@ def main():
 
     ocr = RapidOCR()
     namen = lies_spalte(ocr, bild, *geo["spalten"]["name"], y0, y1, skala)
-    punkte = lies_spalte(ocr, bild, *geo["spalten"]["punkte"], y0, y1, skala)
 
     # Halbe Zeilenhoehe als Toleranz - naeher als das kann keine andere
     # Zeile liegen.
     toleranz = max(8, (y1 - y0) / 20)
-    zeilen = paare(namen, punkte, toleranz)
+
+    """
+       DIE PUNKTE ZWEIMAL LESEN, MIT VERSCHIEDENER VERGROESSERUNG.
+
+       Der Grund ist ein echter Vorfall vom 21.08.2026: aus 995 wurde
+       566. Nicht wegen des Farbfilters - im gefilterten Bild stand 995
+       klar lesbar da -, sondern weil OCR die kleine Pixelschrift falsch
+       las.
+
+       Das ist der gefaehrlichste Fehlertyp im ganzen Projekt. Eine 566
+       ist eine voellig plausible Punktzahl: kein Zeichensalat, keine
+       Verwechslung, nichts, woran eine Pruefung sich festhalten koennte.
+       Sie laeuft still in die Wertung und niemand merkt es.
+
+       Nachgemessen half keine einzelne Einstellung. Bei skala 4 wurde
+       995 zu 566, aber 1 130 stimmte; bei skala 8 stimmte 995, dafuer
+       fiel 1 130 ganz aus. Der Leser tauscht eine Zeile gegen eine
+       andere.
+
+       Zwei Durchgaenge loesen das nicht - sie machen den Fehler
+       SICHTBAR. Wo beide dasselbe lesen, ist die Zahl belastbar; wo sie
+       sich widersprechen, gibt es keine Punktzahl, sondern eine
+       Rueckfrage. Genau so soll dieses Projekt arbeiten: im Zweifel
+       nachfragen, nie raten.
+
+       Kostet einen zweiten OCR-Durchgang ueber einen schmalen Streifen,
+       im selben Prozess und mit bereits geladenen Modellen - rund eine
+       Sekunde. Eine falsche Zahl in der Wertung kostet mehr.
+    """
+    zweite_skala = skala * 2
+    punkte_a = lies_spalte(ocr, bild, *geo["spalten"]["punkte"], y0, y1, skala)
+    punkte_b = lies_spalte(ocr, bild, *geo["spalten"]["punkte"], y0, y1, zweite_skala)
+
+    zeilen = paare(namen, punkte_a, toleranz)
+    markiere_unsichere(zeilen, namen, punkte_b, toleranz)
 
     sys.stdout.reconfigure(encoding="utf-8")
     print(json.dumps({"zeilen": zeilen}, ensure_ascii=False))
