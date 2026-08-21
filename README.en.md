@@ -7,12 +7,11 @@ server reads the scores from the screenshot and records them.
 
 ```mermaid
 flowchart TD
-    Z["Viewer presses F9<br>Meccha-Ranked.exe"] --> P
-    S["Streamer presses F9<br>WACHE.bat, own PC"] --> P
-    P["POST /api/runde · token"] --> L["OCR · name matching · checks"]
+    Z["Viewer presses F9<br>Meccha-Ranked.exe"] --> P["POST /api/runde · token"]
+    P --> L["OCR · name matching · checks"]
     L --> N["unusable<br>nothing stored<br>retry right away"]
     L --> F["review queue<br>you decide"]
-    L --> D["counted directly"]
+    L --> D["counted directly<br>only for approved access"]
     F --> R["leaderboard"]
     D --> R
 ```
@@ -237,7 +236,13 @@ The dashboard is not translated: only admins and mods ever see it.
 
 ---
 
-## Setup
+## Running your own
+
+The server is the real thing: accounts, rounds and leaderboards live there, the reader
+runs there, the website is served from there. Setting it up: [UMZUG.md](UMZUG.md)
+(German). Deploying later: `./deploy.sh`, which runs on the server.
+
+For **development and trying things out**, the same runs locally:
 
 ```
 npm install
@@ -245,25 +250,35 @@ copy EINSTELLUNGEN.bat.beispiel EINSTELLUNGEN.bat
 ```
 
 Then open `EINSTELLUNGEN.bat` and set `MC_ADMIN_KEY`. The reader needs Python with
-RapidOCR — see [python/README.md](python/README.md).
-
-**Start:** double-click `MECCHA-START.bat`. Opens the server and the dashboard.
-
-**During the stream:** `WACHE.bat` (records) or `WACHE-PROBE.bat` (records nothing).
-Start it once, leave it running, press `F9` in the game. This works while the game is
-in the foreground — the hotkey uses `GetAsyncKeyState`, not `RegisterHotKey`: the key
-is only *watched*, not claimed.
-
-**On the server:** see [UMZUG.md](UMZUG.md). Deploy with `./deploy.sh`.
+RapidOCR — see [python/README.md](python/README.md). Start with `MECCHA-START.bat`,
+which opens the server and the dashboard.
 
 **Test data:** `npm run testdaten` creates ten accounts with varying numbers of rounds
 — five ranked, two on the verge, three contenders. `-- --weg` removes them again.
+
+### The watcher — local only
+
+`WACHE.bat` reads your own screen on a keypress and writes **straight into the `daten/`
+folder next to it**. It never talks to the server; what it writes is visible only to
+whoever has that hard drive.
+
+So it is a tool for trying things out, not a way into the live leaderboard — the only
+road there is `POST /api/runde` from the client. It dates from the time when everything
+ran on one machine.
+
+For measuring it is still the best thing available: `WACHE-PROBE.bat` records nothing
+but shows what the reader makes of the image, and drops the PNG into
+`%TEMP%\mc-ranked-bilder\`. That is exactly how this project's misreadings were found.
+
+The hotkey uses `GetAsyncKeyState`, not `RegisterHotKey` — the key is only *watched*,
+not claimed. That is why `F9` works while the game is in the foreground, and the game
+still receives it.
 
 ---
 
 ## The viewer client
 
-A single file, `Meccha-Ranked.exe` from `client-cs/` — around 50 KB, no installation,
+A single file, `Meccha-Ranked.exe` from `client-cs/` — around 66 KB, no installation,
 built against .NET Framework 4.
 
 Two things are deliberately fixed:
@@ -279,6 +294,14 @@ with a confirmation that defaults to "no".
 The client shows **who you are** (`In game: Baloou`), reports **what became of your
 round**, and lets every round be **expanded** — name as read, lobby size, your rank,
 timestamps, rejection reason.
+
+**A fixed place instead of `Meccha-Ranked (3).exe`.** A browser cannot overwrite a
+file, it appends a number — after the third version three programs lie around and
+nobody knows which one is running. On start the client therefore offers to copy itself
+to `%LOCALAPPDATA%\Meccha Ranked\` and run from there; if a version is already there,
+it is replaced. So downloading a new `.exe` is what retires the old one. **Nothing** is
+fetched over the network for this — that would be exactly the behaviour antivirus
+heuristics flag.
 
 **Where the file lives:** on **GitHub**, as a release, next to the source — not on the
 server. The server only points there; `/client` redirects, so old links from Discord
@@ -359,12 +382,14 @@ Tests that grep the source check *that* something is there, not whether it works
 | `src/konten.ts` · `src/steam.ts` | Accounts, sessions, Steam sign-in |
 | `src/konto-seite.ts` | Leaderboard and account page |
 | `src/regeln-seite.ts` · `src/download-seite.ts` | `/regeln` and `/download` |
+| `src/rechtliches-seite.ts` | Legal notice and privacy policy |
 | `src/tokens.ts` | Upload tokens, minimum interval |
-| `src/server.ts` | Upload server |
+| `src/server.ts` | The server: uploads, pages, redirects |
 | `client-cs/` | Viewer client in C# |
 | `python/lies_rangliste.py` | The RapidOCR part |
 | `UMZUG.md` | Server setup (German) |
 | `UMBAU.md` | How an add-on became a standalone system (German) |
+| `bugfest.md` | Reported bugs, what was behind them, what stayed open (German) |
 
 ---
 

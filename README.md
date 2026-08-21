@@ -7,12 +7,11 @@ Eine Rangliste für **MECCHA CHAMELEON**-Streams. Zuschauer drücken nach der Ru
 
 ```mermaid
 flowchart TD
-    Z["Zuschauer drückt F9<br>Meccha-Ranked.exe"] --> P
-    S["Streamer drückt F9<br>WACHE.bat, eigener PC"] --> P
-    P["POST /api/runde · Token"] --> L["OCR · Namensabgleich · Prüfungen"]
+    Z["Zuschauer drückt F9<br>Meccha-Ranked.exe"] --> P["POST /api/runde · Token"]
+    P --> L["OCR · Namensabgleich · Prüfungen"]
     L --> N["nicht verwertbar<br>nichts gespeichert<br>sofort nochmal"]
     L --> F["Freigabeliste<br>du entscheidest"]
-    L --> D["direkt gewertet"]
+    L --> D["direkt gewertet<br>nur mit freigegebenem Zugang"]
     F --> R["Rangliste"]
     D --> R
 ```
@@ -241,7 +240,13 @@ Das Dashboard ist nicht übersetzt: Das sehen nur Admins und Mods.
 
 ---
 
-## Einrichten
+## Selbst betreiben
+
+Der Server ist der Betrieb: dort liegen Konten, Runden und Ranglisten, dort läuft der
+Leser, von dort kommt die Webseite. Aufsetzen: [UMZUG.md](UMZUG.md). Ausrollen später
+mit `./deploy.sh`, das auf dem Server läuft.
+
+Zum **Entwickeln und Ausprobieren** geht dasselbe lokal:
 
 ```
 npm install
@@ -249,26 +254,37 @@ copy EINSTELLUNGEN.bat.beispiel EINSTELLUNGEN.bat
 ```
 
 Dann `EINSTELLUNGEN.bat` aufmachen und `MC_ADMIN_KEY` setzen. Für den Leser braucht es
-Python mit RapidOCR — siehe [python/README.md](python/README.md).
-
-**Starten:** Doppelklick auf `MECCHA-START.bat`. Öffnet Server und Verwaltung.
-
-**Im Stream:** `WACHE.bat` (trägt ein) oder `WACHE-PROBE.bat` (trägt nichts ein).
-Einmal starten, liegen lassen, im Spiel `F9` drücken. Das funktioniert, während das
-Spiel im Vordergrund ist — der Hotkey nutzt `GetAsyncKeyState`, nicht `RegisterHotKey`:
-die Taste wird nur *beobachtet*, nicht belegt.
-
-**Auf dem Server:** siehe [UMZUG.md](UMZUG.md). Ausrollen mit `./deploy.sh`.
+Python mit RapidOCR — siehe [python/README.md](python/README.md). Starten mit
+`MECCHA-START.bat`, das öffnet Server und Verwaltung.
 
 **Testdaten:** `npm run testdaten` legt zehn Konten mit unterschiedlich vielen Runden
 an — fünf in der Wertung, zwei auf dem Sprung, drei Anwärter. `-- --weg` entfernt sie
 wieder.
 
+### Die Wache — nur lokal
+
+`WACHE.bat` liest auf Tastendruck den eigenen Bildschirm und trägt **direkt in den
+Ordner `daten/` daneben** ein. Sie spricht den Server nicht an; was sie schreibt, sieht
+nur, wer dieselbe Festplatte hat.
+
+Damit ist sie ein Werkzeug zum Ausprobieren, kein Weg in die Live-Rangliste — dorthin
+führt ausschließlich `POST /api/runde` aus dem Client. Sie stammt aus der Zeit, als
+alles auf einem Rechner lief.
+
+Zum Messen ist sie trotzdem das Beste, was es gibt: `WACHE-PROBE.bat` trägt nichts ein,
+zeigt aber, was der Leser aus dem Bild macht, und legt das PNG in
+`%TEMP%\mc-ranked-bilder\` ab. Genau so sind die Lesefehler dieses Projekts gefunden
+worden.
+
+Der Hotkey nutzt `GetAsyncKeyState`, nicht `RegisterHotKey` — die Taste wird nur
+*beobachtet*, nicht belegt. Deshalb funktioniert `F9` auch, während das Spiel im
+Vordergrund ist, und das Spiel bekommt sie weiterhin.
+
 ---
 
 ## Der Zuschauer-Client
 
-Eine einzige Datei, `Meccha-Ranked.exe` aus `client-cs/` — rund 50 KB, keine
+Eine einzige Datei, `Meccha-Ranked.exe` aus `client-cs/` — rund 66 KB, keine
 Installation, gebaut gegen das .NET Framework 4.
 
 Zwei Dinge sind bewusst festgezurrt:
@@ -284,6 +300,14 @@ Rückfrage, bei der „Nein" vorbelegt ist.
 Der Client zeigt, **wer man ist** (`Im Spiel: Baloou`), meldet **was aus der Runde
 wurde**, und lässt jede Runde **aufklappen** — gelesener Name, Lobbygröße, eigener
 Rang, Zeitpunkte, Ablehnungsgrund.
+
+**Ein fester Platz statt `Meccha-Ranked (3).exe`.** Ein Browser kann eine Datei nicht
+überschreiben, er hängt eine Zahl an — nach der dritten Fassung liegen drei Programme
+herum und niemand weiß, welches läuft. Beim Start bietet der Client deshalb an, sich
+nach `%LOCALAPPDATA%\Meccha Ranked\` zu kopieren und von dort zu laufen; liegt dort
+schon eine Fassung, wird sie ersetzt. Damit löst das Herunterladen einer neuen `.exe`
+die alte ab. Nachgeladen wird dabei **nichts** — das wäre genau das Verhaltensmuster,
+an dem Virenscanner anschlagen.
 
 **Wo die Datei liegt:** bei **GitHub**, als Release, neben dem Quelltext — nicht auf
 dem Server. Der verweist nur noch dorthin; `/client` leitet weiter, damit alte Links
@@ -367,12 +391,14 @@ Quelltext nach Mustern suchen, prüfen *dass* etwas dasteht, nicht ob es läuft.
 | `src/konten.ts` · `src/steam.ts` | Konten, Sitzungen, Steam-Anmeldung |
 | `src/konto-seite.ts` | Rangliste und Kontoseite |
 | `src/regeln-seite.ts` · `src/download-seite.ts` | `/regeln` und `/download` |
+| `src/rechtliches-seite.ts` | Impressum und Datenschutz |
 | `src/tokens.ts` | Upload-Token, Mindestabstand |
-| `src/server.ts` | Upload-Server |
+| `src/server.ts` | Der Server: Upload, Seiten, Weiterleitungen |
 | `client-cs/` | Zuschauer-Client in C# |
 | `python/lies_rangliste.py` | RapidOCR-Teil |
 | `UMZUG.md` | Einrichtung auf dem Server |
 | `UMBAU.md` | Wie aus einem Anbau ein eigenständiges System wurde |
+| `bugfest.md` | Gemeldete Fehler, was daran war, was offen blieb |
 
 ---
 
