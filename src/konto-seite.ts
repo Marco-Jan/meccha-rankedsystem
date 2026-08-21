@@ -522,6 +522,15 @@ export function kontoSeite(): string {
   .rang .aus { text-align:right; color:var(--leise); font-size:12.5px; white-space:nowrap; }
   .rang tbody.anwaerter td { color:var(--leise); }
   .rang tbody.anwaerter .schnitt { color:var(--leise); font-weight:600; }
+  /* Der Pfeil hinter dem Schnitt. Klein und farbig - er soll beim
+     Ueberfliegen auffallen, aber die Zahl nicht verdraengen. */
+  .tend { font-size:11px; margin-left:6px; vertical-align:1px; }
+  .tend.auf { color:var(--gut); }
+  .tend.ab { color:var(--schlecht); }
+  .tend-erklaerung {
+    margin-top:10px; font-size:12.5px; color:var(--leise);
+    display:flex; gap:16px; flex-wrap:wrap;
+  }
   .rang-titel {
     display:flex; justify-content:space-between; align-items:baseline;
     gap:12px; margin:26px 0 10px;
@@ -753,6 +762,8 @@ export function kontoSeite(): string {
       'Herunterladen und einrichten': 'Download and set up',
       'Alle Regeln': 'All rules →',
       'Regeln': 'Rules',
+      'letzte Runden über dem eigenen Schnitt': 'recent rounds above own average',
+      'letzte Runden darunter': 'recent rounds below it',
       'bei GitHub': 'on GitHub',
       'Die Prüfsumme steht in den Notizen zum Release. Vergleich sie mit Get-FileHash, dann weißt du, dass die Datei unterwegs nicht verändert wurde.':
         'The checksum is in the release notes. Compare it with Get-FileHash and you know the file was not altered on the way.',
@@ -927,6 +938,8 @@ export function kontoSeite(): string {
       'Herunterladen und einrichten': '下载并设置',
       'Alle Regeln': '全部规则 →',
       'Regeln': '规则',
+      'letzte Runden über dem eigenen Schnitt': '最近几局高于自己的平均分',
+      'letzte Runden darunter': '最近几局低于平均分',
       'bei GitHub': '在 GitHub 上',
       'Die Prüfsumme steht in den Notizen zum Release. Vergleich sie mit Get-FileHash, dann weißt du, dass die Datei unterwegs nicht verändert wurde.':
         '校验和写在 Release 说明里。用 Get-FileHash 对比，就能确认文件在传输中没有被改动。',
@@ -1117,6 +1130,10 @@ export function kontoSeite(): string {
         'すべてのルール →',
       'Regeln':
         'ルール',
+      'letzte Runden über dem eigenen Schnitt':
+        '直近のラウンドが自分の平均を上回っています',
+      'letzte Runden darunter':
+        '直近のラウンドが平均を下回っています',
       'bei GitHub':
         'GitHub にて',
       'Die Prüfsumme steht in den Notizen zum Release. Vergleich sie mit Get-FileHash, dann weißt du, dass die Datei unterwegs nicht verändert wurde.':
@@ -2161,6 +2178,23 @@ export function kontoSeite(): string {
       k.appendChild(kasten);
     }
 
+    /* Der Schnitt mit Pfeil.
+
+       Der Pfeil sagt NICHT, wie sich der Platz bewegt hat - den von
+       gestern kennt niemand, es gibt keine Momentaufnahmen der Liste.
+       Er sagt, was gerade hineinlaeuft: liegen die letzten Runden ueber
+       dem eigenen Schnitt, steigt er, und der Platz folgt ihm. */
+    var mitTendenz = false;
+    function schnittZelle(z, klasse) {
+      var td = el('td', klasse, zahl(z.schnitt));
+      if (z.tendenz === 'auf' || z.tendenz === 'ab') {
+        mitTendenz = true;
+        td.appendChild(el('span', 'tend ' + z.tendenz,
+          z.tendenz === 'auf' ? '▲' : '▼'));
+      }
+      return td;
+    }
+
     var tab = document.createElement('table');
     tab.className = 'rang';
 
@@ -2179,7 +2213,7 @@ export function kontoSeite(): string {
       var tr = document.createElement('tr');
       tr.appendChild(el('td', 'platz', String(z.platz)));
       tr.appendChild(el('td', 'wer', z.name));
-      tr.appendChild(el('td', 'schnitt', zahl(z.schnitt)));
+      tr.appendChild(schnittZelle(z, 'schnitt'));
       tr.appendChild(el('td', 'aus', tv('{0} Runden', [z.gesamt])));
       koerper.appendChild(tr);
     });
@@ -2194,7 +2228,7 @@ export function kontoSeite(): string {
         var tr = document.createElement('tr');
         tr.appendChild(el('td', 'platz', '–'));
         tr.appendChild(el('td', 'wer', z.name));
-        tr.appendChild(el('td', 'schnitt', zahl(z.schnitt)));
+        tr.appendChild(schnittZelle(z, 'schnitt'));
         tr.appendChild(el('td', 'aus', tv('{0} von {1}', [z.imFenster, kopfDaten.voll])));
         an.appendChild(tr);
       });
@@ -2202,6 +2236,20 @@ export function kontoSeite(): string {
     }
 
     k.appendChild(tab);
+
+    /* Ohne Erklaerung ist ein Pfeil ein Raetsel. Nur zeigen, wenn auch
+       einer dasteht - eine Legende zu nichts ist nur Text. */
+    if (mitTendenz) {
+      var leg = el('div', 'tend-erklaerung');
+      [['auf', '▲', 'letzte Runden über dem eigenen Schnitt'],
+       ['ab', '▼', 'letzte Runden darunter']].forEach(function (x) {
+        var teil = el('span', null, '');
+        teil.appendChild(el('span', 'tend ' + x[0], x[1]));
+        teil.appendChild(el('span', null, ' ' + t(x[2])));
+        leg.appendChild(teil);
+      });
+      k.appendChild(leg);
+    }
 
     if (d.anwaerter.length) {
       k.appendChild(el('p', 'leise', tv(

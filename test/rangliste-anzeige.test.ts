@@ -29,11 +29,12 @@ const HTML = kontoSeite();
 
 /** Eine Ranglistenzeile, wie der Server sie liefert. */
 function zeile(
-  name: string, schnitt: number, gesamt: number, imFenster: number, platz?: number
+  name: string, schnitt: number, gesamt: number, imFenster: number, platz?: number,
+  tendenz: string = 'gleich'
 ) {
   return {
     listeId: 'l1', kontoId: 'k_' + name, name, schnitt, imFenster, gesamt,
-    letzter: 1, werte: [],
+    letzter: 1, werte: [], tendenz, abweichung: 0,
     ...(platz === undefined ? {} : { platz })
   };
 }
@@ -86,6 +87,67 @@ function textVon(seite: Seite): string {
   assert.ok(ziel, 'das Element rangliste fehlt');
   return ziel.textContent;
 }
+
+describe('Die Tendenz steht in der Zeile', () => {
+  /* Der Pfeil sagt nicht, wie sich der PLATZ bewegt hat - den von
+     gestern kennt niemand. Er sagt, was gerade hineinlaeuft: liegen die
+     letzten Runden ueber dem eigenen Schnitt, steigt er. */
+  const MIT_PFEILEN = ranglisteMit([{
+    id: 'l1', name: 'Meccha 2026', eintraege: 40,
+    gewertet: [
+      zeile('Steigt', 900, 12, 10, 1, 'auf'),
+      zeile('Faellt', 800, 12, 10, 2, 'ab'),
+      zeile('Ruhig', 700, 12, 10, 3, 'gleich'),
+      zeile('Neu', 600, 5, 5, 4, 'unklar')
+    ],
+    anwaerter: [], aufDemSprung: [], letzte: []
+  }]);
+
+  const pfeileIn = async (rangliste: unknown) => {
+    const ziel = (await zeichne(rangliste)).hole('rangliste');
+    assert.ok(ziel);
+    return ziel.textContent;
+  };
+
+  test('aufwaerts bekommt einen Pfeil hinauf', async () => {
+    assert.match(await pfeileIn(MIT_PFEILEN), /▲/);
+  });
+
+  test('abwaerts bekommt einen Pfeil hinunter', async () => {
+    assert.match(await pfeileIn(MIT_PFEILEN), /▼/);
+  });
+
+  test('ohne Bewegung und ohne Grundlage steht kein Pfeil', async () => {
+    /* Zwei Pfeile in der Tabelle, nicht vier: "gleich" und "unklar"
+       bekommen keinen. Ein Pfeil, den es immer gibt, sagt nichts mehr -
+       und "unklar" heisst, wir haben gar nicht nachgesehen.
+
+       Zwei weitere stehen in der Legende, deshalb wird hier nur die
+       Tabelle gezaehlt. */
+    const seite = await zeichne(MIT_PFEILEN);
+    const text = seite.hole('rangliste')!.textContent;
+    const hinauf = (text.match(/▲/g) ?? []).length;
+    const hinunter = (text.match(/▼/g) ?? []).length;
+    assert.equal(hinauf, 2, 'einer in der Zeile, einer in der Legende');
+    assert.equal(hinunter, 2);
+  });
+
+  test('die Legende erklaert die Pfeile', async () => {
+    // Ein nackter Pfeil ist ein Raetsel.
+    assert.match(await pfeileIn(MIT_PFEILEN), /Schnitt|average|平均/);
+  });
+
+  test('ohne Pfeil in der Liste auch keine Legende', async () => {
+    /* Eine Legende zu nichts ist nur Text. */
+    const ohne = ranglisteMit([{
+      id: 'l1', name: 'Meccha 2026', eintraege: 3,
+      gewertet: [zeile('Ruhig', 700, 12, 10, 1, 'gleich')],
+      anwaerter: [], aufDemSprung: [], letzte: []
+    }]);
+    const text = await pfeileIn(ohne);
+    assert.doesNotMatch(text, /▲|▼/);
+  });
+});
 
 describe('Die Rangliste wird gezeichnet', () => {
   test('das Skript laeuft ueberhaupt durch', async () => {

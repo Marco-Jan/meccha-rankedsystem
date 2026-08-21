@@ -71,6 +71,73 @@ export const SPRUNG_AB = 5;
 /** So weit vorne muesste sein Schnitt ihn bringen. */
 export const SPRUNG_PLATZ = 3;
 
+/* ------------------------------------------------------------- Tendenz
+
+   Geht es gerade aufwaerts oder abwaerts?
+
+   Was NICHT geht: den Platz von vorgestern mit dem von heute
+   vergleichen. Den kennt niemand - es gibt keine Momentaufnahmen der
+   Liste, und sie rueckwirkend zu rechnen hiesse, jede Aenderung jedes
+   anderen Spielers nachzuvollziehen.
+
+   Was geht, und was fuer den Spieler dasselbe beantwortet: die letzten
+   drei Runden mit dem eigenen Schnitt vergleichen. Der Platz haengt am
+   Schnitt, und der Schnitt bewegt sich genau dann, wenn das Neue besser
+   oder schlechter ist als das, was bisher drin war. Liegen die letzten
+   drei darueber, steigt er - und der Spieler mit ihm.
+
+   Das ist keine Vorhersage, sondern eine Feststellung ueber das, was
+   gerade hineinlaeuft. Genau deshalb ist es ehrlich.
+*/
+export const TENDENZ_LETZTE = 3;
+
+/**
+ * Ab so vielen Eintraegen wird eine Tendenz gezeigt.
+ *
+ * Bei genau drei waeren "die letzten drei" und "der Schnitt" dasselbe,
+ * das Ergebnis immer null. Erst wenn etwas AUSSERHALB der letzten drei
+ * liegt, gibt es ueberhaupt etwas zu vergleichen - und aus einem
+ * einzigen Vergleichswert liesse sich noch nichts ablesen.
+ */
+export const TENDENZ_AB = 5;
+
+/**
+ * Wie deutlich der Unterschied sein muss, damit ein Pfeil erscheint.
+ *
+ * Anteilig, nicht in Punkten: bei 200 Punkten Schnitt bedeuten 20 Punkte
+ * etwas, bei 3000 sind sie Rauschen. Fuenf Prozent ist die Grenze, unter
+ * der ein Pfeil mehr behaupten wuerde, als dasteht.
+ */
+export const TENDENZ_SCHWELLE = 0.05;
+
+/** Wohin es gerade geht. */
+export type Tendenz = 'auf' | 'ab' | 'gleich' | 'unklar';
+
+/**
+ * Vergleicht die letzten Runden mit dem Schnitt, aus dem der Platz kommt.
+ *
+ * fenster ist, was in den Schnitt eingeht - hoechstens die letzten
+ * FENSTER Eintraege, aeltester zuerst.
+ */
+export function tendenzVon(
+  fenster: readonly { punkte: number }[]
+): { tendenz: Tendenz; abweichung: number } {
+  if (fenster.length < TENDENZ_AB) return { tendenz: 'unklar', abweichung: 0 };
+
+  const schnitt = fenster.reduce((s, e) => s + e.punkte, 0) / fenster.length;
+  const letzte = fenster.slice(-TENDENZ_LETZTE);
+  const schnittLetzte = letzte.reduce((s, e) => s + e.punkte, 0) / letzte.length;
+
+  // Ein Schnitt von null kaeme nur bei lauter Nullrunden vor - dann gibt
+  // es nichts ins Verhaeltnis zu setzen.
+  if (schnitt <= 0) return { tendenz: 'gleich', abweichung: 0 };
+
+  const abweichung = (schnittLetzte - schnitt) / schnitt;
+  if (abweichung > TENDENZ_SCHWELLE) return { tendenz: 'auf', abweichung };
+  if (abweichung < -TENDENZ_SCHWELLE) return { tendenz: 'ab', abweichung };
+  return { tendenz: 'gleich', abweichung };
+}
+
 export interface Ranglisteneintrag {
   readonly id: string;
   /**
@@ -112,6 +179,13 @@ export interface Ranglistenzeile {
   readonly letzter: number;
   /** Woraus der Schnitt entsteht, aeltester zuerst - fuers Aufklappen. */
   readonly werte: ReadonlyArray<{ id: string; punkte: number; ts: number }>;
+  /**
+   * Wohin es gerade geht - die letzten Runden gegen den eigenen Schnitt.
+   * "unklar", solange es zu wenige Eintraege sind. Siehe tendenzVon.
+   */
+  readonly tendenz: Tendenz;
+  /** Um wie viel, anteilig. Negativ heisst abwaerts. */
+  readonly abweichung: number;
   /** Platz in der Wertung. Bei Anwaertern nicht gesetzt. */
   platz?: number;
 }
@@ -351,7 +425,8 @@ export class Rangliste {
         imFenster: fenster.length,
         gesamt: alle.length,
         letzter: alle[alle.length - 1]!.ts,
-        werte: fenster.map((e) => ({ id: e.id, punkte: e.punkte, ts: e.ts }))
+        werte: fenster.map((e) => ({ id: e.id, punkte: e.punkte, ts: e.ts })),
+        ...tendenzVon(fenster)
       });
     }
 

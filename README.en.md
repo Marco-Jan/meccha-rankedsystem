@@ -333,7 +333,7 @@ suspicious than they left.
 ## Tests
 
 ```
-npm test        711 tests
+npm test        725 tests
 npm run build   type check
 ```
 
