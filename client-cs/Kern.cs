@@ -29,7 +29,7 @@ namespace MecchaRanked
     static class Info
     {
         public const string Projekt = "Meccha Ranked";
-        public const string Version = "0.10.0";
+        public const string Version = "0.11.0";
         public const string Entwickler = "Baloou";
 
         /* Wird beim Bauen ersetzt - siehe baue.ps1 und
@@ -648,9 +648,55 @@ namespace MecchaRanked
             if (i < 0) return null;
             i = json.IndexOf('"', i);
             if (i < 0) return null;
-            int ende = i + 1;
-            while (ende < json.Length && json[ende] != '"') ende++;
-            return json.Substring(i + 1, ende - i - 1);
+            return LiesText(json, i);
+        }
+
+        /*
+           Liest eine JSON-Zeichenkette ab dem oeffnenden Anfuehrungs-
+           zeichen - MIT Escapes.
+
+           Hier stand vorher "bis zum naechsten Anfuehrungszeichen". Das
+           ging so lange gut, wie keine Servermeldung selbst eines
+           enthielt. Sie tun es aber: "Dein Name \"Baloou\" steht so
+           nicht in dieser Rangliste" kam beim Zuschauer als
+
+               Abgelehnt: Dein Name \
+
+           an. Ausgerechnet die Meldung, die ihm sagen soll, WIE das
+           Spiel ihn schreibt, brach genau vor dem Namen ab.
+        */
+        static string LiesText(string json, int anfang)
+        {
+            StringBuilder sb = new StringBuilder();
+            int i = anfang + 1;
+            while (i < json.Length)
+            {
+                char c = json[i];
+                if (c == '"') break;
+                if (c != '\\') { sb.Append(c); i++; continue; }
+
+                i++;
+                if (i >= json.Length) break;
+                char z = json[i];
+                if (z == 'n') sb.Append('\n');
+                else if (z == 't') sb.Append('\t');
+                else if (z == 'r') { /* \r\n wuerde sonst doppelt umbrechen */ }
+                else if (z == 'u' && i + 4 < json.Length)
+                {
+                    int wert;
+                    if (int.TryParse(json.Substring(i + 1, 4),
+                            System.Globalization.NumberStyles.HexNumber,
+                            System.Globalization.CultureInfo.InvariantCulture, out wert))
+                    {
+                        sb.Append((char)wert);
+                        i += 4;
+                    }
+                }
+                // Alles andere - " \ / - steht fuer sich selbst.
+                else sb.Append(z);
+                i++;
+            }
+            return sb.ToString();
         }
 
         static List<string> Zeilen(string json)
