@@ -1,10 +1,10 @@
 {
-  "_hinweis": "Diese Datei bestimmt, was in der ausgelieferten .exe voreingestellt ist. Nach jeder Aenderung: npm run exe",
+  "_hinweis": "Diese Datei bestimmt, was in der ausgelieferten .exe voreingestellt ist. Nach jeder Aenderung: client-cs/BAUEN.bat",
 
   "server": "https://meccha-ranked.com",
 
   "_version": "Fassung der ausgelieferten .exe. Wird beim Bauen in den Client geschrieben UND vom Server gemeldet - laeuft bei jemandem eine aeltere, sagt sein Client es ihm.",
-  "clientVersion": "0.6.0",
+  "clientVersion": "0.7.0",
 
   "_discord": "Einladungslink. Steht auf der Kontoseite - dort melden sich Zuschauer bei Admins und Mods, nicht beim Streamer persoenlich.",
   "discord": "https://discord.gg/W7tHtSu4p",

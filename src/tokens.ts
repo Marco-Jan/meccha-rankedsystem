@@ -77,6 +77,20 @@ export interface Token {
   /** Gesperrte Tokens werden abgewiesen, bleiben aber als Spur erhalten. */
   gesperrt?: boolean;
   sperrgrund?: string;
+  /**
+   * Welche Fassung des Clients sich zuletzt gemeldet hat.
+   *
+   * Der Client sagt es bei jeder Anfrage mit. Damit kann die Kontoseite
+   * "du hast 0.6.0, aktuell ist 0.7.0" schreiben, statt nur die neueste
+   * Nummer hinzustellen und den Vergleich dem Nutzer zu ueberlassen.
+   *
+   * Fehlt der Wert, ist der Client aelter als 0.7.0 - vorher wurde die
+   * Fassung nicht mitgeschickt. Das ist selbst eine Auskunft: dann ist
+   * er auf jeden Fall veraltet.
+   */
+  clientVersion?: string;
+  /** Seit wann sich genau diese Fassung meldet. */
+  clientSeit?: number;
 }
 
 interface TokenDatei {
@@ -356,6 +370,26 @@ export class Tokenliste {
     const treffer = this.finde(token);
     if (!treffer) return;
     treffer.sperreBis = jetzt + ABSTAND_ANGENOMMEN_MS;
+    this.speichern();
+  }
+
+  /**
+   * Haelt fest, mit welcher Client-Fassung dieser Token gerade kommt.
+   *
+   * Wird bei jeder Anfrage aufgerufen und schreibt deshalb nur, wenn
+   * sich wirklich etwas geaendert hat - sonst stuende die Datei bei
+   * einem laufenden Client alle paar Sekunden neu auf der Platte.
+   */
+  merkeClient(token: string, version: unknown, jetzt = Date.now()): void {
+    if (typeof version !== 'string') return;
+    const sauber = version.trim().slice(0, 20);
+    if (!/^\d+\.\d+\.\d+$/.test(sauber)) return;
+
+    const treffer = this.finde(token);
+    if (!treffer || treffer.clientVersion === sauber) return;
+
+    treffer.clientVersion = sauber;
+    treffer.clientSeit = jetzt;
     this.speichern();
   }
 }

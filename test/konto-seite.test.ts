@@ -169,14 +169,22 @@ describe('Kontoseite - Inhalt', () => {
     /* Eine Bezugsquelle statt fuenf Anhaengen im Discord - und im KOPF,
        nicht unter der Rangliste. Dort wanderte der Knopf mit jedem neuen
        Spieler weiter nach unten, bis ihn niemand mehr sah. */
-    assert.match(html, /class="holen" href="\/client"/);
-    assert.match(html, /class="holen-warum" href="\/download"/);
+    /* Auf die Attributreihenfolge kommt es nicht an - sie hat diesen
+       Test schon einmal gebrochen, als der Knopf eine id bekam. */
+    assert.match(html, /<a[^>]*class="holen"[^>]*href="\/client"/);
+    assert.match(html, /<a[^>]*class="holen-warum"[^>]*href="\/download"/);
   });
 
-  test('nennt Groesse und Fassung am Knopf', () => {
-    // 21 KB sieht nach dem aus, was es ist. Beides kommt vom Server.
+  test('nennt Groesse, Fassung und Baudatum am Knopf', () => {
+    /* 53 KB sieht nach dem aus, was es ist, und die Nummer samt Datum
+       sagt, ob man die aktuelle hat. Alles kommt vom Server.
+
+       Was hier wirklich passiert, prueft test/download-knopf.test.ts -
+       dort laeuft die Seite. Diese Zeilen halten nur fest, dass die
+       Angaben ueberhaupt aus /api/client stammen. */
     assert.match(skript(), /holen-daten/);
     assert.match(skript(), /c\.groesse/);
+    assert.match(skript(), /c\.gebaut/);
   });
 
   test('der Download steht nur EINMAL auf der Seite', () => {

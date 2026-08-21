@@ -296,6 +296,11 @@ otherwise two different .exe files carry the same name, the notice never appears
 nobody can tell from their file which one they have. Exactly that happened when the
 client gained Japanese and stayed at 0.5.0.
 
+It is said in three places: in the client as a yellow box above the list that opens the
+download page; under the download button as the **version plus build date**; and — once
+someone has submitted at all — as a comparison with **their** version, because from
+0.7.0 on the client sends it with every request.
+
 ---
 
 ## The download warning
@@ -315,7 +320,7 @@ build, and a wrong checksum is worse than none.
 ## Tests
 
 ```
-npm test        675 tests
+npm test        684 tests
 npm run build   type check
 ```
 

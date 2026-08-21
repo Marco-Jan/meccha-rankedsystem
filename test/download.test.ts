@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import http from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { createHash } from 'node:crypto';
-import { mkdtempSync, rmSync, writeFileSync, utimesSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync, utimesSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
@@ -44,6 +44,30 @@ describe('Clientstand', () => {
     assert.equal(s.groesse, INHALT.length);
     assert.equal(s.name, 'Meccha-Ranked.zip');
     assert.equal(s.istZip, true);
+  });
+
+  test('das Baudatum kommt aus dem Stempel und passt zur Fassung', () => {
+    /* Nicht die Aenderungszeit der Datei: die zeigt nach einem scp den
+       Zeitpunkt des Hochladens. Der Stempel sagt, wann die Fassung
+       wirklich entstanden ist - aber nur, wenn seine Nummer zur
+       ausgelieferten passt. Sonst gehoert das Datum zu einem anderen
+       Bau, und ein falsches Datum ist schlimmer als keines. */
+    const stempel = JSON.parse(
+      readFileSync(
+        path.join(import.meta.dirname, '..', 'client-cs', 'fassung.json'),
+        'utf8'
+      )
+    ) as { version: string; gebaut: string };
+
+    const s = clientstand(CLIENT);
+    assert.ok(s);
+
+    if (stempel.version === s.version) {
+      assert.equal(s.gebaut, stempel.gebaut);
+      assert.ok(!Number.isNaN(Date.parse(s.gebaut)), 'kein lesbares Datum');
+    } else {
+      assert.equal(s.gebaut, '', 'Datum eines fremden Baus wird gezeigt');
+    }
   });
 
   test('eine fehlende Datei gibt null, keinen Fehler', () => {

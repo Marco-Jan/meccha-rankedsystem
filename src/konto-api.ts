@@ -122,7 +122,12 @@ function alsAnsicht(konto: Konto, tokens: Tokenliste, konten: Kontenliste) {
     sperrgrund: token?.sperrgrund ?? null,
     /* Wann der Ingame-Name wieder aenderbar ist. 0 heisst sofort - die
        Seite zeigt das an, damit niemand vergeblich klickt. */
-    namensSperreBis: frei
+    namensSperreBis: frei,
+    /* Mit welcher Client-Fassung diese Person zuletzt gesendet hat.
+       null = noch nie gesendet oder ein Client vor 0.7.0, der seine
+       Nummer noch nicht mitschickte. Die Seite unterscheidet beides
+       nicht - sie kann in beiden Faellen nur "unbekannt" sagen. */
+    clientVersion: token?.clientVersion ?? null
   };
 }
 

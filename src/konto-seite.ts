@@ -161,6 +161,18 @@ export function kontoSeite(): string {
   .holen-warum { font-size:13px; color:var(--leise); }
   .holen-warum:hover { color:var(--akzent); }
 
+  /* Veraltete Fassung: Bernstein, derselbe Ton wie im Client, wo der
+     Hinweiskasten gelb ist. Der Knopf wird nicht groesser und springt
+     nicht - er wechselt die Farbe und traegt einen Punkt. Wer das nicht
+     kennt, liest einfach die Zeile darunter. */
+  .holen.neu { background:var(--zahl); }
+  .holen.neu .holen-klein { opacity:.9; font-weight:700; }
+  .holen.neu .holen-zeichen::after {
+    content:"";
+    display:inline-block; width:7px; height:7px; margin-left:-3px;
+    vertical-align:top; border-radius:50%; background:#06121c;
+  }
+
   /* Der Ablauf in drei Feldern - das ist die ganze Bedienung des
      Programms, und sie passt in eine Zeile. */
   .rechts-oben { display:flex; flex-direction:column; align-items:flex-end; gap:14px; }
@@ -620,7 +632,7 @@ export function kontoSeite(): string {
          die erklärt, warum Windows gleich warnen wird: wer das vorher
          gelesen hat, erschrickt nicht. -->
     <div class="holen-reihe">
-      <a class="holen" href="/client">
+      <a class="holen" id="holen-knopf" href="/client">
         <span class="holen-zeichen">⬇</span>
         <span class="holen-worte">
           <span class="holen-gross" data-t="Programm herunterladen">Programm herunterladen</span>
@@ -732,6 +744,9 @@ export function kontoSeite(): string {
       'Programm herunterladen': 'Download the app',
       'Warum warnt mein Browser?': 'Why does my browser warn me?',
       'Fassung {0}': 'version {0}',
+      'vom {0}': 'built {0}',
+      'Neue Fassung {0} – du hast {1}': 'New version {0} – you have {1}',
+      'ohne Installation': 'no installation',
       'Hol dir zuerst das Programm – der Knopf steht oben.': 'First get the app – the button is at the top.',
       'in der Rangliste': 'on the leaderboard',
       'Fragen oder Probleme? Melde dich im Discord bei einem':
@@ -898,6 +913,9 @@ export function kontoSeite(): string {
       'Programm herunterladen': '下载客户端',
       'Warum warnt mein Browser?': '浏览器为什么提醒？',
       'Fassung {0}': '版本 {0}',
+      'vom {0}': '构建于 {0}',
+      'Neue Fassung {0} – du hast {1}': '新版本 {0} – 你的是 {1}',
+      'ohne Installation': '无需安装',
       'Hol dir zuerst das Programm – der Knopf steht oben.': '先下载客户端 – 按钮在顶部。',
       'in der Rangliste': '进入排行榜',
       'Fragen oder Probleme? Melde dich im Discord bei einem':
@@ -1083,6 +1101,9 @@ export function kontoSeite(): string {
         'ブラウザが警告するのはなぜ？',
       'Fassung {0}':
         'バージョン {0}',
+      'vom {0}': '{0} 作成',
+      'Neue Fassung {0} – du hast {1}': '新バージョン {0} – お使いのバージョンは {1}',
+      'ohne Installation': 'インストール不要',
       'Hol dir zuerst das Programm – der Knopf steht oben.':
         'まずクライアントを入手してください。ボタンは上にあります。',
       'in der Rangliste':
@@ -1327,6 +1348,10 @@ export function kontoSeite(): string {
       document.querySelectorAll('#sprachen button'), function (b) {
         b.className = b.getAttribute('data-sprache') === sprache ? 'aktiv' : '';
       });
+    /* Die Zeile unter dem Download-Knopf wird von Hand gesetzt und traegt
+       kein data-t - ohne das bliebe sie beim Sprachwechsel stehen. Der
+       Stand ist gemerkt, das kostet keinen neuen Abruf. */
+    if (typeof zeigeClientKnopf === 'function') zeigeClientKnopf();
   }
 
 
@@ -1348,6 +1373,76 @@ export function kontoSeite(): string {
      Aufklappbar statt dauerhaft offen: wer die Warnung nicht bekommt,
      soll keine halbe Seite Text daruebersehen muessen. Wer sie bekommt,
      findet die Antwort an der Stelle, an der er gerade steht. */
+  /* ------------------------------------------- welche Fassung es gibt
+
+     Was der Server gerade ausliefert: Groesse, Fassungsnummer, Baudatum
+     und Pruefsumme. Zweimal gebraucht - unter dem Knopf im Kopf und im
+     Kasten "Selbst nachsehen" - deshalb einmal geholt und gemerkt.
+
+     Vorher hing der Abruf im Warnkasten, und der wird nur auf der
+     ABGEMELDETEN Seite gebaut. Wer angemeldet war, sah unter dem Knopf
+     also ewig "ohne Installation" und nie eine Nummer. */
+  var clientInfo = null;
+  var clientWartet = [];
+
+  function mitClientinfo(fertig) {
+    if (clientInfo) { fertig(clientInfo); return; }
+    clientWartet.push(fertig);
+    if (clientWartet.length > 1) return; // Abruf laeuft schon
+
+    var loese = function (c) {
+      clientInfo = c;
+      var warten = clientWartet;
+      clientWartet = [];
+      for (var i = 0; i < warten.length; i++) warten[i](c);
+    };
+
+    fetch('/api/client').then(function (r) { return r.json(); }).then(function (c) {
+      loese(c && c.ok ? c : { ok: false });
+    }).catch(function () { loese({ ok: false }); });
+  }
+
+  /** Tag.Monat.Jahr - die Uhrzeit hilft hier niemandem. */
+  function datumKurz(iso) {
+    var d = new Date(iso);
+    if (isNaN(d.getTime())) return '';
+    var zwei = function (n) { return (n < 10 ? '0' : '') + n; };
+    return zwei(d.getDate()) + '.' + zwei(d.getMonth() + 1) + '.' + d.getFullYear();
+  }
+
+  /**
+   * Beschriftet den Download-Knopf im Kopf.
+   *
+   * Zwei Faelle. Wer noch nie gesendet hat, sieht schlicht, was
+   * bereitliegt. Wer schon gesendet hat, dessen Fassung kennt der
+   * Server - dann steht hier nicht nur, was es GIBT, sondern ob es
+   * neuer ist als das, was er HAT. Das ist der Unterschied zwischen
+   * einer Angabe und einer Auskunft.
+   */
+  function zeigeClientKnopf() {
+    mitClientinfo(function (c) {
+      var daten = $('holen-daten');
+      var knopf = $('holen-knopf');
+      if (!daten) return;
+
+      if (!c.ok) { daten.textContent = t('ohne Installation'); return; }
+
+      var meine = stand && stand.clientVersion;
+      var veraltet = !!(meine && c.version && meine !== c.version);
+      if (knopf) knopf.className = veraltet ? 'holen neu' : 'holen';
+
+      if (veraltet) {
+        daten.textContent = tv('Neue Fassung {0} – du hast {1}', [c.version, meine]);
+        return;
+      }
+
+      var teile = [Math.round(c.groesse / 1024) + ' KB'];
+      if (c.version) teile.push(tv('Fassung {0}', [c.version]));
+      if (c.gebaut) teile.push(tv('vom {0}', [datumKurz(c.gebaut)]));
+      daten.textContent = teile.join('  ·  ');
+    });
+  }
+
   function warnungsKasten() {
     var d = document.createElement('details');
     d.className = 'warnkasten';
@@ -1388,16 +1483,8 @@ export function kontoSeite(): string {
     var pruef = el('p', 'leise', t('Fingerabdruck wird geladen …'));
     d.appendChild(pruef);
 
-    fetch('/api/client').then(function (r) { return r.json(); }).then(function (c) {
-      /* Groesse und Fassung unter den Knopf - beides beruhigt: 21 KB
-         sieht nach dem aus, was es ist, und die Fassungsnummer sagt,
-         ob man die aktuelle hat. */
-      var daten = $('holen-daten');
-      if (daten && c && c.ok) {
-        daten.textContent = Math.round(c.groesse / 1024) + ' KB' +
-          (c.version ? '  ·  ' + tv('Fassung {0}', [c.version]) : '');
-      }
-      if (!c || !c.ok) { pruef.remove(); return; }
+    mitClientinfo(function (c) {
+      if (!c.ok) { pruef.remove(); return; }
       pruef.innerHTML = '';
 
       pruef.appendChild(el('span', null, t('SHA-256 der Datei:')));
@@ -1414,10 +1501,6 @@ export function kontoSeite(): string {
       pruef.appendChild(el('span', 'leise', ' ' + t(
         'Findet VirusTotal nichts, hat die Datei noch niemand hochgeladen – ' +
         'das kannst du selbst tun, kostenlos.')));
-    }).catch(function () {
-      /* Ohne Pruefsumme bleibt der Rest des Kastens brauchbar. Eine
-         Fehlermeldung waere hier nur Rauschen. */
-      pruef.remove();
     });
 
     var mehr = document.createElement('p');
@@ -2094,6 +2177,11 @@ export function kontoSeite(): string {
 
     ladeRangliste();
 
+    /* Sofort, ohne auf das Konto zu warten - die Angaben unter dem Knopf
+       gelten auch fuer Abgemeldete. Sobald das Konto da ist, wird neu
+       beschriftet: dann steht die eigene Fassung zum Vergleich bereit. */
+    zeigeClientKnopf();
+
     fetch('/api/konto').then(function (r) { return r.json(); }).then(function (a) {
       if (!a.ok) { $('untertitel').textContent = t('Fehler beim Laden.'); return; }
       if (!a.angemeldet) { baueAnmeldung(); return; }
@@ -2101,6 +2189,7 @@ export function kontoSeite(): string {
       letzteRunden = a.runden || [];
       wertung = a.wertung || { gewertet: 0, voll: 10 };
       baueKonto(stand);
+      zeigeClientKnopf();
     }).catch(function (e) {
       $('untertitel').textContent = t('Server nicht erreichbar.');
     });

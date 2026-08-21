@@ -227,6 +227,15 @@ async function bearbeite(
 ): Promise<void> {
   const pfad = (req.url ?? '').split('?')[0]?.replace(/\/+$/, '') || '/';
 
+  /* Welche Client-Fassung meldet sich hier? Einmal an dieser Stelle statt
+     an jedem Endpunkt - der Client schickt den Kopf bei allen Anfragen.
+     merkeClient schreibt nur, wenn sich die Nummer geaendert hat, und
+     ignoriert alles, was nicht wie eine Fassung aussieht. */
+  const tokenKopf = req.headers['x-mc-token'];
+  if (typeof tokenKopf === 'string') {
+    o.tokens.merkeClient(tokenKopf, req.headers['x-mc-client']);
+  }
+
   // Die geschuetzten Freigabe-Endpunkte zuerst - eigener Zugang.
   const behandelt = await bearbeiteFreigabe(req, res, {
     freigabe: o.freigabe,

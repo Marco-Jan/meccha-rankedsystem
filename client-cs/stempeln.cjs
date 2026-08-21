@@ -72,6 +72,10 @@ if (require.main === module) {
           'Quellen als welche Fassung ausgeliefert wurden. Nicht von Hand ' +
           'aendern - dann faellt eine vergessene Nummer nicht mehr auf.',
         version,
+        /* Das Datum kommt aus dem Bau, nicht aus der Aenderungszeit der
+           .exe: die zeigt nach einem scp den Zeitpunkt des Hochladens.
+           Hier steht, wann die Fassung wirklich entstanden ist. */
+        gebaut: new Date().toISOString(),
         quellen: hash,
       },
       null,

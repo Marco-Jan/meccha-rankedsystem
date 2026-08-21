@@ -1,5 +1,6 @@
 {
   "_hinweis": "Von client-cs/stempeln.cjs geschrieben. Haelt fest, welche Quellen als welche Fassung ausgeliefert wurden. Nicht von Hand aendern - dann faellt eine vergessene Nummer nicht mehr auf.",
-  "version": "0.6.0",
-  "quellen": "3f975fda27fdd535b71a4fd03f427ed0f757ccb57b9f694728bac86f65c7c5cc"
+  "version": "0.7.0",
+  "gebaut": "2026-08-21T08:00:36.626Z",
+  "quellen": "c6035390145352795e98e09dc468e2b3944e2bb516f5eca8fa035998f395b01f"
 }

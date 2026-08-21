@@ -29,7 +29,7 @@ namespace MecchaRanked
     static class Info
     {
         public const string Projekt = "Meccha Ranked";
-        public const string Version = "0.6.0";
+        public const string Version = "0.7.0";
         public const string Entwickler = "Baloou";
 
         /* Wird beim Bauen ersetzt - siehe baue.ps1 und
@@ -352,6 +352,10 @@ namespace MecchaRanked
                     e.Server.TrimEnd('/') + "/api/wer");
                 anfrage.Method = "GET";
                 anfrage.Headers["X-MC-Token"] = e.Token;
+                /* Damit die Kontoseite sagen kann, welche Fassung dieser
+                   Zuschauer hat - im Client sieht er den Hinweis, auf der
+                   Seite soll er ihn auch sehen. */
+                anfrage.Headers["X-MC-Client"] = Info.Version;
                 anfrage.Timeout = 15000;
 
                 string koerper;
@@ -398,6 +402,10 @@ namespace MecchaRanked
                     e.Server.TrimEnd('/') + "/api/meine");
                 anfrage.Method = "GET";
                 anfrage.Headers["X-MC-Token"] = e.Token;
+                /* Damit die Kontoseite sagen kann, welche Fassung dieser
+                   Zuschauer hat - im Client sieht er den Hinweis, auf der
+                   Seite soll er ihn auch sehen. */
+                anfrage.Headers["X-MC-Client"] = Info.Version;
                 anfrage.Timeout = 15000;
 
                 string koerper;
@@ -482,6 +490,10 @@ namespace MecchaRanked
                 anfrage.Method = "POST";
                 anfrage.ContentType = "image/png";
                 anfrage.Headers["X-MC-Token"] = e.Token;
+                /* Damit die Kontoseite sagen kann, welche Fassung dieser
+                   Zuschauer hat - im Client sieht er den Hinweis, auf der
+                   Seite soll er ihn auch sehen. */
+                anfrage.Headers["X-MC-Client"] = Info.Version;
                 anfrage.Timeout = 120000;
                 anfrage.ReadWriteTimeout = 120000;
                 anfrage.ContentLength = bild.Length;

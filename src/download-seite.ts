@@ -31,6 +31,7 @@
 import { createHash } from 'node:crypto';
 import { readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { verteilung } from './config.js';
 
@@ -40,7 +41,39 @@ export interface Clientstand {
   readonly groesse: number;
   readonly sha256: string;
   readonly version: string;
+  /**
+   * Wann diese Fassung gebaut wurde, als ISO-Datum. Leer, wenn es dazu
+   * keine verlaessliche Auskunft gibt.
+   *
+   * Nicht die Aenderungszeit der Datei: die zeigt nach einem scp den
+   * Zeitpunkt des Hochladens, nach einem git clone den des Auscheckens.
+   * Der Wert kommt aus client-cs/fassung.json und wird nur benutzt, wenn
+   * die Nummer dort zur ausgelieferten passt - sonst gehoert das Datum
+   * zu einem anderen Bau, und ein falsches Datum ist schlimmer als
+   * keines.
+   */
+  readonly gebaut: string;
   readonly istZip: boolean;
+}
+
+/** Liest das Baudatum aus dem Stempel, den client-cs/stempeln.cjs setzt. */
+function baudatum(version: string): string {
+  try {
+    const datei = path.join(
+      path.dirname(fileURLToPath(import.meta.url)),
+      '..',
+      'client-cs',
+      'fassung.json'
+    );
+    let roh = readFileSync(datei, 'utf8');
+    if (roh.charCodeAt(0) === 0xfeff) roh = roh.slice(1);
+    const d = JSON.parse(roh) as { version?: string; gebaut?: string };
+
+    if (!d.gebaut || d.version !== version) return '';
+    return Number.isNaN(Date.parse(d.gebaut)) ? '' : d.gebaut;
+  } catch {
+    return '';
+  }
 }
 
 /*
@@ -67,6 +100,7 @@ export function clientstand(datei: string): Clientstand | null {
       groesse: s.size,
       sha256: createHash('sha256').update(inhalt).digest('hex'),
       version: verteilung().clientVersion,
+      gebaut: baudatum(verteilung().clientVersion),
       istZip: datei.toLowerCase().endsWith('.zip')
     };
 
@@ -83,6 +117,16 @@ function kb(bytes: number): string {
   return bytes < 1024 * 1024
     ? Math.round(bytes / 1024) + ' KB'
     : (bytes / 1024 / 1024).toFixed(1) + ' MB';
+}
+
+/** Tag.Monat.Jahr - ohne Uhrzeit, die Stunde hilft hier niemandem. */
+function datum(iso: string): string {
+  const d = new Date(iso);
+  return [
+    String(d.getDate()).padStart(2, '0'),
+    String(d.getMonth() + 1).padStart(2, '0'),
+    d.getFullYear()
+  ].join('.');
 }
 
 /** Die Summe in Vierergruppen - so laesst sie sich von Auge vergleichen. */
@@ -181,7 +225,9 @@ export function downloadSeite(stand: Clientstand | null): string {
 ${stand ? `<div class="karte">
   <a class="holen" href="/client">Herunterladen</a>
   <div class="daten">
-    ${stand.name} · ${kb(stand.groesse)}${stand.version ? ` · Fassung ${stand.version}` : ''}
+    ${stand.name} · ${kb(stand.groesse)}${stand.version ? ` · Fassung ${stand.version}` : ''}${
+      stand.gebaut ? ` · vom ${datum(stand.gebaut)}` : ''
+    }
   </div>
 </div>` : `<div class="karte">
   <p><b>Gerade nicht verfügbar.</b> Das Programm liegt auf dem Server nicht bereit.

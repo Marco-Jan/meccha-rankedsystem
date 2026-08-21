@@ -301,6 +301,11 @@ Deshalb **bricht der Bau ab**, wenn sich die Quellen geändert haben und
 aus, und niemand kann seiner Datei ansehen, welche er hat. Genau das ist passiert, als
 der Client Japanisch bekam und weiter 0.5.0 hieß.
 
+Gesagt wird es an drei Stellen: im Client als gelber Kasten über der Liste, der die
+Download-Seite öffnet; unter dem Download-Knopf als **Fassung samt Baudatum**; und —
+sobald jemand einmal gesendet hat — als Vergleich mit **seiner** Fassung, denn der
+Client schickt sie ab 0.7.0 bei jeder Anfrage mit.
+
 ---
 
 ## Die Download-Warnung
@@ -321,7 +326,7 @@ nächsten Bauen falsch, und eine falsche Prüfsumme ist schlimmer als keine.
 ## Tests
 
 ```
-npm test        675 Tests
+npm test        684 Tests
 npm run build   Typecheck
 ```
 
