@@ -259,21 +259,27 @@ export class Freigabeliste {
       })
       .slice()
       /*
-         Nach der ZULETZT GESCHEHENEN Sache sortieren, nicht nach dem
-         Eingang.
+         Nach dem EINGANG sortieren - wann die Runde eingeschickt wurde.
 
-         Der Client zeigt in der Zeitspalte bearbeitetAm, sobald es das
-         gibt (Fenster.cs), sonst eingegangen. Wurde nach eingegangen
-         sortiert, stimmte die Reihenfolge nicht mit den angezeigten
-         Uhrzeiten ueberein: eine Runde von 20:00, die um 21:00
-         abgelehnt wurde, stand unter einer von 20:30, die noch offen
-         ist - obwohl daneben 21:00 und 20:30 steht. Es sah aus, als
-         wuerden Ablehnungen nach oben sortiert.
+         Hier stand vorher "nach der zuletzt geschehenen Sache", damit
+         der Sortierschluessel dieselbe Zahl ist wie die angezeigte Zeit.
+         Das war formal richtig und im Gebrauch falsch: eine Runde von
+         20:00, die um 21:00 abgelehnt wird, springt damit ueber eine von
+         20:30. Fuer den Absender sah es aus, als wuerden Ablehnungen
+         nach oben sortiert - und genau so hat er es auch gemeldet.
 
-         Der Schluessel muss derselbe sein wie die angezeigte Zeit, sonst
-         wirkt jede Liste unsortiert.
+         Der Eingang ist die einzige Zeit, die sich NIE mehr aendert.
+         Damit ist die Liste ein Verlauf der eigenen Einreichungen: sie
+         ordnet sich nicht neu, nur weil der Streamer etwas entscheidet.
+         Der Status wechselt an Ort und Stelle.
+
+         Der Client zeigt in der Zeitspalte deshalb ebenfalls den Eingang
+         (Fenster.cs); wann entschieden wurde, steht beim Aufklappen.
+         Sortierschluessel und angezeigte Zeit muessen dieselben bleiben,
+         sonst wirkt die Liste unsortiert - dieser Teil der alten
+         Begruendung gilt weiter.
       */
-      .sort((a, b) => (b.bearbeitetAm ?? b.eingegangen) - (a.bearbeitetAm ?? a.eingegangen))
+      .sort((a, b) => b.eingegangen - a.eingegangen)
       .slice(0, grenze);
   }
 

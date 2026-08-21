@@ -1017,7 +1017,11 @@ namespace MecchaRanked
                     offene++;
                 }
 
-                long zeit = m.BearbeitetAm > 0 ? m.BearbeitetAm : m.Eingegangen;
+                /* Der EINGANG, nicht die Entscheidung. Sonst sprang eine
+                   alte Runde nach oben, sobald sie entschieden wurde -
+                   es sah aus, als stuenden Ablehnungen immer zuerst.
+                   Wann entschieden wurde, steht beim Aufklappen. */
+                long zeit = m.Eingegangen;
                 ListViewItem eintrag = new ListViewItem(PfeilZu + Uhrzeit(zeit));
                 eintrag.SubItems.Add(m.Status == "freigegeben" ? (m.Zaehlt ? "OK" : "–")
                     : (m.Status == "abgelehnt" ? "!" : "…"));
@@ -1089,7 +1093,9 @@ namespace MecchaRanked
                zwanzigsten Mal Druecken nicht mehr da. Dieser bleibt. */
             bool nurHinweis = saetze.Count == 0;
             saetze.Add(Sprache.T(
-                "Erst am Ende der Runde drücken – die Punkte laufen bis zuletzt weiter."));
+                "Erst am Ende der Runde drücken – die Punkte laufen bis zuletzt weiter. " +
+                "Dabei auf einen ruhigen, kontrastreichen Hintergrund schauen: Himmel " +
+                "oder eine Wand statt buntem Boden."));
 
             infoKasten.Text = string.Join(Environment.NewLine, saetze.ToArray());
             infoKasten.Height = 16 + saetze.Count * 18;
@@ -1097,7 +1103,9 @@ namespace MecchaRanked
             /* Farbe nach dem Dringlichsten: eine veraltete Fassung wiegt
                schwerer als eine wartende Runde, denn sie bedeutet, dass
                gar nichts mehr ankommt. */
-            infoKasten.ForeColor = nurHinweis ? Farben.Sehrleise
+            /* Gruen, nicht grau: der Hinweis ist ein Rat, kein Fehler -
+               und grau las sich wie ausgegraut, also unwichtig. */
+            infoKasten.ForeColor = nurHinweis ? Farben.Gruen
                 : (kastenNeueFassung.Length > 0 ? Farben.Gelb
                 : (kastenAblehnung.Length > 0 ? Farben.Rot : Farben.Gelb));
 

@@ -269,11 +269,22 @@ describe('Meine Runden - was noch zaehlt', () => {
 });
 
 describe('Reihenfolge der eigenen Runden', () => {
-  test('sortiert nach der ZULETZT geschehenen Sache, nicht nach dem Eingang', () => {
-    /* Der Client zeigt bearbeitetAm, sobald es das gibt. Wurde nach
-       eingegangen sortiert, passte die Reihenfolge nicht zu den
-       angezeigten Uhrzeiten - es sah aus, als stuenden Ablehnungen
-       immer oben. */
+  test('sortiert nach dem EINGANG, nicht nach der Entscheidung', () => {
+    /* Hier stand einmal das Gegenteil, und die Begruendung war: der
+       Client zeigt bearbeitetAm, sobald es das gibt, also muss danach
+       auch sortiert werden - sonst passt die Reihenfolge nicht zu den
+       angezeigten Uhrzeiten.
+
+       Formal richtig, im Gebrauch falsch. Eine Runde von 20:00, die um
+       21:00 abgelehnt wird, springt damit ueber eine von 20:30, die
+       noch offen ist. Fuer den Absender sah es aus, als stuenden
+       Ablehnungen grundsaetzlich oben - genau so hat er es gemeldet.
+
+       Aufgeloest auf der anderen Seite: der Client zeigt jetzt ebenfalls
+       den Eingang, und wann entschieden wurde, steht beim Aufklappen.
+       Der Eingang ist die einzige Zeit, die sich nie mehr aendert - die
+       Liste ordnet sich also nicht neu, nur weil jemand etwas
+       entscheidet. */
     const datei = path.join(ORDNER, 'reihenfolge.json');
     const f = ladeFreigabeliste(datei);
 
@@ -286,11 +297,29 @@ describe('Reihenfolge der eigenen Runden', () => {
       bildPfad: 'x', bildHash: 'h2', zeilen: [], beansprucht: ['jones']
     }).runde;
 
-    // Die AELTERE wird spaeter entschieden - ihre Uhrzeit ist damit die juengste.
+    // Die AELTERE wird spaeter entschieden - frueher sprang sie dadurch nach oben.
     f.entscheiden(alt.id, 'abgelehnt', 'Admin', 'Bild wirkt bearbeitet');
 
     const liste = f.vonPerson('jones', 'A');
-    assert.deepEqual(liste.map((r) => r.id), [alt.id, neu.id],
-      'die zuletzt entschiedene steht oben, obwohl sie frueher ankam');
+    assert.deepEqual(liste.map((r) => r.id), [neu.id, alt.id],
+      'die zuletzt EINGEGANGENE steht oben, egal wann entschieden wurde');
+  });
+
+  test('eine Entscheidung ordnet die Liste nicht um', () => {
+    /* Der eigentliche Punkt. Wer zusieht, waehrend der Streamer eine
+       alte Runde entscheidet, soll nicht erleben, dass seine Liste
+       durcheinanderspringt. */
+    const f = ladeFreigabeliste(path.join(ORDNER, 'reihenfolge-stabil.json'));
+
+    const ids = [1000, 2000, 3000].map((t, i) => f.hinzufuegen({
+      eingegangen: t, quelle: 'zuschauer', absender: 'A',
+      bildPfad: 'x', bildHash: 'hash' + i, zeilen: [], beansprucht: ['jones']
+    }).runde.id);
+
+    const vorher = f.vonPerson('jones', 'A').map((r) => r.id);
+    f.entscheiden(ids[0]!, 'abgelehnt', 'Admin', 'unlesbar');
+    f.entscheiden(ids[1]!, 'freigegeben', 'Admin', '');
+
+    assert.deepEqual(f.vonPerson('jones', 'A').map((r) => r.id), vorher);
   });
 });

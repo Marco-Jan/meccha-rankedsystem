@@ -101,7 +101,7 @@ def skaliere(geo, breite, hoehe):
     }
 
 
-def farbfilter(bild):
+def farbfilter(bild, nur_gruen=False):
     """Behaelt weisse, rote und gruene Pixel, macht daraus Schwarz auf Weiss.
 
     Die Grenzen sind bewusst grosszuegig: die Schrift liegt halbtransparent
@@ -127,7 +127,8 @@ def farbfilter(bild):
             # behielt 289. Der Abstand zu r und b sagt schon alles: Gelb
             # (r und g hoch) faellt dadurch weiterhin heraus.
             gruen = g > 130 and (g - max(r, b)) > 45
-            px[x, y] = (0, 0, 0) if (weiss or rot or gruen) else (255, 255, 255)
+            behalten = gruen if nur_gruen else (weiss or rot or gruen)
+            px[x, y] = (0, 0, 0) if behalten else (255, 255, 255)
     return bild
 
 
@@ -146,7 +147,7 @@ def eine_zeile(a, b):
     return hoehe > 0 and ueberlappung > hoehe * 0.5
 
 
-def lies_spalte(ocr, bild, x0, x1, y0, y1, skala):
+def lies_spalte(ocr, bild, x0, x1, y0, y1, skala, nur_gruen=False):
     """Liest einen senkrechten Streifen und gibt (y_mitte, text) zurueck.
 
     EINE ZEILE ERGIBT EINEN EINTRAG - auch wenn OCR sie in mehrere
@@ -171,7 +172,7 @@ def lies_spalte(ocr, bild, x0, x1, y0, y1, skala):
     parse.ts daraus wieder 1665: Trennzeichen fallen dort ohnehin weg.
     """
     streifen = bild.crop((x0, y0, x1, y1))
-    streifen = farbfilter(streifen)
+    streifen = farbfilter(streifen, nur_gruen)
     streifen = streifen.resize(
         (streifen.width * skala, streifen.height * skala), Image.NEAREST)
 
@@ -298,6 +299,49 @@ def passende_rasterstellen(zeilen, ohne_zahl):
         raus.append((y_name, name))
         belegt.append(y_name)
     return raus
+
+
+#  Mehr gruene Kaesten als das koennen keine Namen sein - dann steht
+#  gruene Spielwelt im Streifen (Wiese, Laub) und der Durchgang wird
+#  ganz verworfen. Zwei statt einem, damit ein zerlegter Name ("#1" und
+#  "Baloou") nicht schon als Weltinhalt gilt.
+HOECHSTENS_GRUEN = 2
+
+
+def korrigiere_gruen(zeilen, gruen, toleranz):
+    """Setzt den gruen gelesenen Namen an seine Zeile.
+
+    Im Scoreboard ist GRUEN immer der Absender - die anderen sind weiss
+    oder rot. Damit ist Gruen die einzige Farbe, die in der Namensspalte
+    genau einmal vorkommt, und ein Durchgang, der alles andere wegwirft,
+    hat die Spielwelt gar nicht erst dabei.
+
+    Das ist keine Feinheit. Gemessen an heseder.JPG: der normale
+    Durchgang liest "B8166u", weil die weissen Wandstreifen hinter der
+    Zeile behalten werden und als schwarze Masse in die Glyphen laufen.
+    "B8166u" liegt vier Zeichen von "Baloou" entfernt, erlaubt ist bei
+    sechs Zeichen genau eines - der Server antwortet "dein Name steht so
+    nicht in dieser Rangliste", obwohl der Spieler auf Platz 1 steht.
+    Der Durchgang nur auf Gruen liest "Baloou" mit 0.94.
+
+    Er gewinnt deshalb gegen den normalen: fuer gruene Schrift hat er
+    schlicht weniger Stoerung. Auch gegen einen Platzhalter - hat der
+    normale Durchgang gar nichts gefunden, ist die Zeile bis hierher ein
+    "Aussteiger", und der gruene Name gehoert trotzdem dorthin.
+    """
+    if not gruen or len(gruen) > HOECHSTENS_GRUEN:
+        return
+
+    for y_gruen, name in gruen:
+        if not name:
+            continue
+        treffer = None
+        for z in zeilen:
+            abstand = abs(z["y"] - y_gruen)
+            if abstand <= toleranz and (treffer is None or abstand < treffer[0]):
+                treffer = (abstand, z)
+        if treffer is not None:
+            treffer[1]["name"] = name
 
 
 def paare(namen, punkte, toleranz):
@@ -512,6 +556,12 @@ def main():
 
     zeilen = paare(namen, punkte_a, toleranz)
     markiere_unsichere(zeilen, namen, punkte_b, toleranz)
+
+    # Der eigene Name ist gruen - dafuer ein eigener Durchgang, der
+    # alles andere wegwirft. Siehe korrigiere_gruen.
+    gruen = lies_spalte(ocr, bild, *geo["spalten"]["name"], y0, y1, skala,
+                        nur_gruen=True)
+    korrigiere_gruen(zeilen, gruen, toleranz)
 
     # y war nur zum Zuordnen und Vergleichen da und gehoert nicht in die
     # Antwort - der Server interessiert sich fuer Namen und Punkte.
