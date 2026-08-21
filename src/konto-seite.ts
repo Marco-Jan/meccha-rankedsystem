@@ -60,11 +60,21 @@ export function kontoSeite(): string {
 <meta property="og:locale" content="en_US">
 <meta property="og:locale:alternate" content="de_DE">
 <meta property="og:locale:alternate" content="zh_CN">
+<meta property="og:locale:alternate" content="ja_JP">
 <!-- Bewusst ohne og:image: Discord und X rendern kein SVG, und ein
      richtiges Vorschaubild waere eine PNG-Datei, die es noch nicht gibt.
      Ein Link auf ein fehlendes Bild sieht in der Vorschau schlechter aus
      als gar keines - dann zeigen sie Titel und Text. -->
-<meta name="twitter:card" content="summary">
+<!-- Ohne Bild ist der Link im Discord eine graue Textzeile, mit Bild
+     ein Kasten, den man sieht - und genau dort kommen die Zuschauer her.
+     1200x630 ist das Mass, das Discord, Twitter und Facebook
+     gleichermassen erwarten. Erzeugt von python/mach_karte.py. -->
+<meta property="og:image" content="https://meccha-ranked.com/karte.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Meccha Ranked – Rangliste für MECCHA CHAMELEON">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://meccha-ranked.com/karte.png">
 
 <!-- Das Zeichen in der Reiterleiste: eine Rangliste als drei Balken, das
      laengste in Akzentfarbe. Als SVG direkt eingebettet - eine eigene
@@ -666,7 +676,12 @@ export function kontoSeite(): string {
 <div class="kopf">
   <div class="worte">
     <div class="augen">Meccha Chameleon · Rangliste</div>
-    <h1 data-t="Deine Runden zählen mit.">Deine Runden zählen mit.</h1>
+    <!-- Die Ueberschrift nennt den Gegenstand, nicht nur die Stimmung.
+         "Deine Runden zaehlen mit." stand hier allein - schoen, aber
+         weder eine Suchmaschine noch ein Vorleser erfaehrt daraus, wovon
+         die Seite handelt. Das Versprechen bleibt, es bekommt nur ein
+         Subjekt. -->
+    <h1 data-t="Rangliste für MECCHA CHAMELEON – deine Runden zählen mit.">Rangliste für MECCHA CHAMELEON – deine Runden zählen mit.</h1>
     <p class="unter" id="untertitel">…</p>
 
     <!-- Der Download gehört hierher und nicht unter die Rangliste.

@@ -1,5 +1,7 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
+import { existsSync } from 'node:fs';
+import path from 'node:path';
 
 import { kontoSeite } from '../src/konto-seite.js';
 
@@ -132,7 +134,7 @@ describe('Kontoseite - Sprachen', () => {
 
   test('uebersetzt auch die festen Texte im Geruest', () => {
     // Ueberschrift und Fusszeile stehen im HTML, nicht im Skript.
-    assert.match(html, /data-t="Deine Runden zählen mit\."/);
+    assert.match(html, /data-t="Rangliste für MECCHA CHAMELEON – deine Runden zählen mit\."/);
     assert.match(skript(), /querySelectorAll\('\[data-t\]'\)/);
   });
 });
@@ -239,10 +241,24 @@ describe('Kontoseite - Inhalt', () => {
     assert.match(html, /<link rel="icon" href="data:image\/svg\+xml,/);
   });
 
-  test('behauptet kein Vorschaubild, das es nicht gibt', () => {
-    // Discord und X rendern kein SVG - ein toter Bildlink sieht in der
-    // Vorschau schlechter aus als gar keiner.
-    assert.doesNotMatch(html, /<meta property="og:image"/);
+  test('das Vorschaubild ist behauptet UND vorhanden', () => {
+    /* Hier stand einmal das Gegenteil: "behauptet kein Vorschaubild,
+       das es nicht gibt". Damals gab es keins, und ein toter Bildlink
+       sieht in der Vorschau schlechter aus als gar keiner.
+
+       Jetzt gibt es eins - und derselbe Gedanke gilt weiter, nur
+       andersherum: es muss auch wirklich dort liegen. */
+    assert.match(html, /<meta property="og:image" content="[^"]+\/karte\.png">/);
+    assert.match(html, /<meta name="twitter:card" content="summary_large_image">/);
+
+    const bild = path.join(import.meta.dirname, '..', 'public', 'karte.png');
+    assert.ok(existsSync(bild), 'public/karte.png fehlt - siehe python/mach_karte.py');
+
+    /* Discord und X rendern kein SVG. Und die Masse muessen stimmen:
+       gibt man sie an und sie passen nicht, schneiden die Plattformen
+       falsch zu. */
+    assert.match(html, /<meta property="og:image:width" content="1200">/);
+    assert.match(html, /<meta property="og:image:height" content="630">/);
   });
 
   test('erklaert die Windows-Warnung', () => {

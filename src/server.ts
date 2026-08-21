@@ -599,6 +599,24 @@ async function bearbeite(
      ohne Rolle nicht zu gebrauchen, aber sie hat in Suchergebnissen
      nichts verloren - und /client als Treffer waere ein Download-Link
      ohne jede Erklaerung drumherum. */
+  /* Das Vorschaubild fuer geteilte Links.
+
+     Liegt als Datei bereit statt erzeugt zu werden: es aendert sich fast
+     nie, und Pillow ist auf dem Server fuers LESEN da, nicht fuers
+     Malen. Siehe python/mach_karte.py. */
+  if (pfad === '/karte.png' && o.oeffentlichDir) {
+    const datei = path.join(o.oeffentlichDir, 'karte.png');
+    if (existsSync(datei)) {
+      res.writeHead(200, {
+        'Content-Type': 'image/png',
+        // Lange zwischenspeichern - die Plattformen holen sie oft.
+        'Cache-Control': 'public, max-age=86400'
+      });
+      res.end(readFileSync(datei));
+      return;
+    }
+  }
+
   if (pfad === '/robots.txt') {
     const zeilen = [
       'User-agent: *',
@@ -609,9 +627,80 @@ async function bearbeite(
       'Disallow: /anmelden',
       'Disallow: /abmelden'
     ];
+    /* Der Verweis auf llms.txt. Kein offizielles Feld, aber es kostet
+       eine Zeile und ist der Ort, an dem gesucht wird. */
+    if (o.oeffentlicheUrl) {
+      zeilen.push('', '# ' + o.oeffentlicheUrl.replace(/\/+$/, '') + '/llms.txt');
+    }
     if (o.oeffentlicheUrl) zeilen.push('', 'Sitemap: ' + o.oeffentlicheUrl.replace(/\/+$/, '') + '/sitemap.xml');
     res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
     res.end(zeilen.join('\n') + '\n');
+    return;
+  }
+
+  /*
+     llms.txt - eine Zusammenfassung fuer Sprachmodelle.
+
+     Ein Vorschlag (llmstxt.org), noch kein Standard, aber billig: fragt
+     jemand ein Modell "was ist meccha-ranked.com", bekommt es sonst die
+     gerenderte Seite - eine Rangliste voller Namen, aus der sich die
+     REGELN nur raten lassen. Hier stehen sie in Klartext.
+
+     Bewusst kurz und ohne Werbung. Wer eine Zusammenfassung schreibt,
+     die schmeichelt statt zu beschreiben, bekommt zu Recht keine.
+
+     Die Zahlen kommen aus dem Code, wie ueberall: eine Auskunft, die
+     etwas anderes sagt als der Server, ist schlimmer als keine.
+  */
+  if (pfad === '/llms.txt') {
+    const basis = (o.oeffentlicheUrl || '').replace(/\/+$/, '');
+    const min = o.minSpieler ?? MIN_SPIELER;
+    res.writeHead(200, {
+      'Content-Type': 'text/plain; charset=utf-8',
+      'Cache-Control': 'public, max-age=3600'
+    });
+    res.end([
+      '# Meccha Ranked',
+      '',
+      '> Eine Rangliste fuer Zuschauer eines Twitch-Streams zum Spiel',
+      '> MECCHA CHAMELEON. Privat betrieben, kostenlos, keine Werbung.',
+      '',
+      'Das Spiel hat keine Schnittstelle und keinen Export. Die Punkte',
+      'stehen nur auf dem Bildschirm. Deshalb: der Zuschauer drueckt am',
+      'Ende der Runde F9, ein kleines Programm nimmt den Bildschirm auf,',
+      'der Server liest die Punkte per Texterkennung und traegt sie ein.',
+      'Vor der Wertung sieht ein Mensch darauf.',
+      '',
+      '## Regeln',
+      '',
+      '- Gewertet wird der Schnitt der letzten 10 Runden.',
+      '- In der Wertung steht, wer 10 Runden hat; davor gilt man als Anwaerter.',
+      '- Gezaehlt werden die Punkte aus dem Spiel, nicht die Platzierung.',
+      '- Eine Runde zaehlt ab ' + min + ' Versteckern im Scoreboard.',
+      '- Gelesen werden die Raenge 1 bis 15.',
+      '- Nach einer angenommenen Runde 3 Minuten Pause, sonst 30 Sekunden.',
+      '',
+      '## Teilnahme',
+      '',
+      'Anmeldung ueber Steam. Das Anmelden legt das Konto zugleich an -',
+      'es gibt keine gesonderte Registrierung, kein Passwort, keine',
+      'Mailadresse. Wer nicht angemeldet ist, wird nicht gewertet.',
+      '',
+      '## Seiten',
+      '',
+      ...(basis ? [
+        '- [Rangliste](' + basis + '/): die Liste und der eigene Zugang',
+        '- [Regeln](' + basis + '/regeln): wann eine Runde zaehlt',
+        '- [Programm](' + basis + '/download): der Client und warum Windows warnt',
+        '- [Impressum](' + basis + '/impressum)',
+        '- [Datenschutz](' + basis + '/datenschutz): was gespeichert wird und wie lange'
+      ] : []),
+      '',
+      '## Quelltext',
+      '',
+      'Offen unter der MIT-Lizenz: ' + (verteilung().quelltext || '(nicht hinterlegt)'),
+      ''
+    ].join('\n'));
     return;
   }
 
@@ -623,10 +712,22 @@ async function bearbeite(
       res.end('Keine oeffentliche Adresse hinterlegt.');
       return;
     }
+    /* Alles, was indexiert werden SOLL - und nur das. /download traegt
+       noindex und gehoert deshalb nicht her; die Verwaltung erst recht
+       nicht. Impressum und Datenschutz dagegen sollen auffindbar sein,
+       das ist ihr Zweck. */
+    const seiten: Array<[string, string, string]> = [
+      ['/', 'hourly', '1.0'],
+      ['/regeln', 'monthly', '0.6'],
+      ['/impressum', 'yearly', '0.2'],
+      ['/datenschutz', 'yearly', '0.2']
+    ];
     res.writeHead(200, { 'Content-Type': 'application/xml; charset=utf-8' });
     res.end('<?xml version="1.0" encoding="UTF-8"?>\n'
       + '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
-      + '  <url><loc>' + basis + '/</loc><changefreq>hourly</changefreq><priority>1.0</priority></url>\n'
+      + seiten.map(([pf, takt, rang]) =>
+          '  <url><loc>' + basis + pf + '</loc><changefreq>' + takt
+          + '</changefreq><priority>' + rang + '</priority></url>\n').join('')
       + '</urlset>\n');
     return;
   }
