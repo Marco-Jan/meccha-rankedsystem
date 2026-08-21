@@ -5,23 +5,16 @@
 Eine Rangliste für **MECCHA CHAMELEON**-Streams. Zuschauer drücken nach der Runde
 `F9`, der Server liest die Punkte aus dem Screenshot und trägt sie ein.
 
-```
-Zuschauer drückt F9                  Streamer drückt F9
-(Meccha-Ranked.exe)                  (WACHE.bat, eigener PC)
-          │                                   │
-          │      POST /api/runde · Token      │
-          └─────────────────┬─────────────────┘
-                            ▼
-          OCR  ·  Namensabgleich  ·  Prüfungen
-                            │
-          ┌─────────────────┼─────────────────┐
-          ▼                 ▼                 ▼
-  nicht verwertbar    Freigabeliste    direkt gewertet
- nichts gespeichert  du entscheidest          │
-   sofort nochmal           │                 │
-                            └────────┬────────┘
-                                     ▼
-                                 Rangliste
+```mermaid
+flowchart TD
+    Z["Zuschauer drückt F9<br>Meccha-Ranked.exe"] --> P
+    S["Streamer drückt F9<br>WACHE.bat, eigener PC"] --> P
+    P["POST /api/runde · Token"] --> L["OCR · Namensabgleich · Prüfungen"]
+    L --> N["nicht verwertbar<br>nichts gespeichert<br>sofort nochmal"]
+    L --> F["Freigabeliste<br>du entscheidest"]
+    L --> D["direkt gewertet"]
+    F --> R["Rangliste"]
+    D --> R
 ```
 
 Das Spiel hat keine Schnittstelle, kein Web-Leaderboard und keinen Export. Die
