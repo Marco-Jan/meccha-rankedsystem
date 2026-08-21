@@ -119,6 +119,20 @@ function kb(bytes: number): string {
     : (bytes / 1024 / 1024).toFixed(1) + ' MB';
 }
 
+/**
+ * Wohin der Misstrauische geschickt wird.
+ *
+ * Die UPLOAD-Seite, nicht die Abfrage nach Pruefsumme. Die Abfrage
+ * (/gui/file/<sha256>) sieht schlau aus, hat aber einen Haken: hat die
+ * Datei noch nie jemand hochgeladen, steht dort "not found" - und das
+ * liest sich misstrauischer als gar kein Link. Bei einer frisch
+ * gebauten .exe ist genau das der Normalfall.
+ *
+ * Hier statt an zwei Stellen im Quelltext: die Kontoseite verlinkt
+ * dasselbe.
+ */
+export const VIRUSTOTAL = 'https://www.virustotal.com/gui/home/upload';
+
 /** Tag.Monat.Jahr - ohne Uhrzeit, die Stunde hilft hier niemandem. */
 function datum(iso: string): string {
   const d = new Date(iso);
@@ -268,13 +282,13 @@ ${stand ? `<div class="karte">
   <code class="summe">${gruppiert(stand.sha256)}</code>
 
   <p class="klein" style="margin-top:14px">
-    <a href="https://www.virustotal.com/gui/file/${stand.sha256}" rel="noopener nofollow"
-       target="_blank">Bei VirusTotal nachschlagen</a>
-    — dort prüfen über 70 Virenscanner gleichzeitig.
+    <a href="${VIRUSTOTAL}" rel="noopener nofollow"
+       target="_blank">Bei VirusTotal prüfen lassen</a>
+    — dort schauen über 70 Virenscanner gleichzeitig darauf, kostenlos.
   </p>
   <p class="klein leise">
-    Findet VirusTotal nichts, hat die Datei einfach noch niemand hochgeladen. Du kannst
-    sie dort selbst hochladen; das Ergebnis sieht dann jeder nach dir.
+    Zieh die heruntergeladene Datei auf die Seite. Das Ergebnis sieht danach jeder,
+    der dieselbe Datei prüft — die Prüfsumme oben sagt dir, ob es dieselbe ist.
   </p>
 </div>
 

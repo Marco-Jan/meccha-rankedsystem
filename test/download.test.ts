@@ -106,8 +106,18 @@ describe('Download-Seite', () => {
     assert.match(seite.replace(/ /g, ''), new RegExp(ECHTE_SUMME));
   });
 
-  test('verlinkt VirusTotal mit genau dieser Summe', () => {
-    assert.match(seite, new RegExp('virustotal\\.com/gui/file/' + ECHTE_SUMME));
+  test('schickt zum HOCHLADEN, nicht zur Abfrage nach Pruefsumme', () => {
+    /* Die Abfrage (/gui/file/<sha256>) sieht schlauer aus, hat aber
+       einen Haken: hat die Datei noch nie jemand hochgeladen, steht dort
+       "not found" - und das liest sich misstrauischer als gar kein Link.
+       Bei einer frisch gebauten .exe ist genau das der Normalfall.
+
+       Die Pruefsumme steht trotzdem auf der Seite: sie sagt dem
+       Misstrauischen, ob das Ergebnis, das er dort findet, zu SEINER
+       Datei gehoert. */
+    assert.match(seite, /virustotal\.com\/gui\/home\/upload/);
+    assert.doesNotMatch(seite, /virustotal\.com\/gui\/file/);
+    assert.match(seite.replace(/ /g, ''), new RegExp(ECHTE_SUMME));
   });
 
   test('erklaert BEIDE Warnungen, nicht nur eine', () => {
@@ -138,7 +148,7 @@ describe('Download-Seite', () => {
   test('kommt auch ohne hinterlegten Client zurecht', () => {
     const ohne = downloadSeite(null);
     assert.match(ohne, /nicht verfügbar/);
-    assert.doesNotMatch(ohne, /virustotal/, 'ohne Datei keine Summe zum Nachschlagen');
+    assert.doesNotMatch(ohne, /virustotal/, 'ohne Datei gibt es nichts zu pruefen');
   });
 });
 

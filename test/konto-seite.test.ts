@@ -341,8 +341,13 @@ describe('Kontoseite - die Pruefsumme', () => {
       'im Quelltext darf keine feste SHA-256 stehen');
   });
 
-  test('verlinkt VirusTotal mit genau dieser Summe', () => {
-    assert.match(quelle, /virustotal\.com\/gui\/file\/' \+ c\.sha256/);
+  test('schickt zum HOCHLADEN, nicht zur Abfrage nach Pruefsumme', () => {
+    /* Siehe download.test.ts: eine Abfrage nach Pruefsumme antwortet bei
+       einer frisch gebauten .exe mit "not found", und das ist schlimmer
+       als kein Link. Die Summe selbst steht weiter daneben. */
+    assert.match(quelle, /virustotal\.com\/gui\/home\/upload/);
+    assert.doesNotMatch(quelle, /virustotal\.com\/gui\/file/);
+    assert.match(quelle, /c\.sha256/);
   });
 
   test('bleibt brauchbar, wenn die Auskunft ausfaellt', () => {

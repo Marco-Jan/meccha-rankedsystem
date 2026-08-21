@@ -1,4 +1,7 @@
 import { verteilung } from './config.js';
+/* Der Link zum Selbstpruefen steht in download-seite.ts - eine Adresse,
+   zwei Seiten. */
+import { VIRUSTOTAL } from './download-seite.js';
 
 /* =========================================================================
    DIE KONTOSEITE
@@ -732,9 +735,9 @@ export function kontoSeite(): string {
       'Selbst nachsehen': 'Check for yourself',
       'Fingerabdruck wird geladen \u2026': 'Loading fingerprint \u2026',
       'SHA-256 der Datei:': 'SHA-256 of the file:',
-      'Bei VirusTotal nachschlagen': 'Look it up on VirusTotal',
-      'Findet VirusTotal nichts, hat die Datei noch niemand hochgeladen \u2013 das kannst du selbst tun, kostenlos.':
-        'If VirusTotal finds nothing, nobody has uploaded the file yet \u2013 you can do that yourself, for free.',
+      'Bei VirusTotal prüfen lassen': 'Have VirusTotal check it',
+      'Zieh die Datei dort auf die Seite \u2013 \u00fcber 70 Virenscanner schauen gleichzeitig darauf, kostenlos.':
+        'Drop the file onto that page \u2013 over 70 antivirus engines look at it at once, for free.',
       'Ausf\u00fchrlich mit Bildern': 'In detail, with screenshots',
       'Zurzeit läuft keine Wertung.': 'No leaderboard is running right now.',
       'Wann eine Runde zählt': 'When a round counts',
@@ -901,9 +904,9 @@ export function kontoSeite(): string {
       'Selbst nachsehen': '\u81ea\u5df1\u9a8c\u8bc1',
       'Fingerabdruck wird geladen \u2026': '\u6b63\u5728\u52a0\u8f7d\u6307\u7eb9 \u2026',
       'SHA-256 der Datei:': '\u6587\u4ef6\u7684 SHA-256\uff1a',
-      'Bei VirusTotal nachschlagen': '\u5728 VirusTotal \u4e0a\u67e5\u770b',
-      'Findet VirusTotal nichts, hat die Datei noch niemand hochgeladen \u2013 das kannst du selbst tun, kostenlos.':
-        '\u5982\u679c VirusTotal \u6ca1\u6709\u7ed3\u679c\uff0c\u8bf4\u660e\u8fd8\u6ca1\u6709\u4eba\u4e0a\u4f20\u8fc7 \u2013 \u4f60\u53ef\u4ee5\u81ea\u5df1\u4e0a\u4f20\uff0c\u514d\u8d39\u3002',
+      'Bei VirusTotal prüfen lassen': '\u8ba9 VirusTotal \u68c0\u6d4b',
+      'Zieh die Datei dort auf die Seite \u2013 \u00fcber 70 Virenscanner schauen gleichzeitig darauf, kostenlos.':
+        '\u5c06\u6587\u4ef6\u62d6\u5230\u90a3\u4e2a\u9875\u9762 \u2013 70 \u591a\u6b3e\u6740\u6bd2\u5f15\u64ce\u4f1a\u540c\u65f6\u68c0\u6d4b\uff0c\u514d\u8d39\u3002',
       'Ausf\u00fchrlich mit Bildern': '\u8be6\u7ec6\u8bf4\u660e\uff08\u5e26\u622a\u56fe\uff09',
       'Zurzeit läuft keine Wertung.': '目前没有进行中的排行榜。',
       'Wann eine Runde zählt': '什么时候计分',
@@ -1079,10 +1082,10 @@ export function kontoSeite(): string {
         'フィンガープリントを読み込み中 …',
       'SHA-256 der Datei:':
         'ファイルの SHA-256:',
-      'Bei VirusTotal nachschlagen':
-        'VirusTotal で確認する',
-      'Findet VirusTotal nichts, hat die Datei noch niemand hochgeladen \u2013 das kannst du selbst tun, kostenlos.':
-        'VirusTotal に結果がなければ、まだ誰もアップロードしていないだけです。自分で無料でアップロードできます。',
+      'Bei VirusTotal prüfen lassen':
+        'VirusTotal で検査する',
+      'Zieh die Datei dort auf die Seite \u2013 \u00fcber 70 Virenscanner schauen gleichzeitig darauf, kostenlos.':
+        'そのページにファイルをドラッグしてください – 70 以上のウイルス対策エンジンが同時に、無料で検査します。',
       'Ausf\u00fchrlich mit Bildern':
         '画像付きの詳しい説明',
       'Zurzeit läuft keine Wertung.':
@@ -1535,15 +1538,19 @@ export function kontoSeite(): string {
       pruef.appendChild(code);
 
       var vt = document.createElement('a');
-      vt.href = 'https://www.virustotal.com/gui/file/' + c.sha256;
+      /* Die UPLOAD-Seite, nicht die Abfrage nach Pruefsumme: hat die
+         Datei noch nie jemand hochgeladen, stuende dort "not found" -
+         misstrauischer als gar kein Link. Bei einer frisch gebauten
+         .exe ist das der Normalfall. */
+      vt.href = '${VIRUSTOTAL}';
       vt.target = '_blank';
       vt.rel = 'noopener nofollow';
-      vt.textContent = t('Bei VirusTotal nachschlagen');
+      vt.textContent = t('Bei VirusTotal prüfen lassen');
       pruef.appendChild(vt);
 
       pruef.appendChild(el('span', 'leise', ' ' + t(
-        'Findet VirusTotal nichts, hat die Datei noch niemand hochgeladen – ' +
-        'das kannst du selbst tun, kostenlos.')));
+        'Zieh die Datei dort auf die Seite – über 70 Virenscanner schauen ' +
+        'gleichzeitig darauf, kostenlos.')));
     });
 
     var mehr = document.createElement('p');
