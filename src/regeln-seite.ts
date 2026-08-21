@@ -147,6 +147,7 @@ export function regelnSeite(zahlen: RegelZahlen): string {
     <button data-sprache="de">Deutsch</button>
     <button data-sprache="en">English</button>
     <button data-sprache="zh">中文</button>
+    <button data-sprache="ja">日本語</button>
   </div>
 </div>
 
@@ -394,15 +395,88 @@ export function regelnSeite(zahlen: RegelZahlen): string {
         '\\u6bcf\\u4e00\\u6b21\\u63d0\\u4ea4\\u8ba1\\u5206\\u524d\\u90fd\\u7531\\u4eba\\u5de5\\u67e5\\u770b\\u3002\\u5982\\u679c\\u88ab\\u62d2\\u7edd\\uff0c\\u539f\\u56e0\\u4f1a\\u663e\\u793a\\u5728\\u5ba2\\u6237\\u7aef\\u548c\\u4f60\\u7684\\u8d26\\u53f7\\u9875\\u9762\\u4e0a \\u2013 \\u5927\\u591a\\u6570\\u60c5\\u51b5\\u53ea\\u662f\\u56fe\\u7247\\u4e0a\\u7684\\u6570\\u5b57\\u65e0\\u6cd5\\u53ef\\u9760\\u8bc6\\u522b\\u3002',
       'Kommt dir eine Entscheidung falsch vor, frag im Discord nach. Dort sieht sich das jemand noch einmal an.':
         '\\u5982\\u679c\\u4f60\\u89c9\\u5f97\\u5224\\u5b9a\\u6709\\u8bef\\uff0c\\u8bf7\\u5728 Discord \\u4e0a\\u63d0\\u51fa\\u3002\\u4f1a\\u6709\\u4eba\\u518d\\u770b\\u4e00\\u904d\\u3002'
+    },
+    ja: {
+      'Zur Rangliste': '\u2190 ランキングに戻る',
+      'Rangliste': 'ランキング',
+      'Dein Zugang': 'アクセス情報',
+      'Programm': 'クライアント',
+      'Regeln': 'ルール',
+
+      'Wann zählt eine Runde?': 'どのような場合にラウンドが記録されますか？',
+      'Verstecker': '人の隠れる側',
+      'So viele müssen mindestens im Scoreboard stehen. In einer winzigen Runde wäre der eigene Platz zu leicht zu steuern.':
+        'スコアボードに最低これだけの人数が必要です。人数の少ないラウンドでは自分の順位を簡単に操作できてしまうためです。',
+      'Rang 1–{0}': '{0} 位まで',
+      'Nur diese Plätze werden gewertet. Wer weiter unten landet, bekommt keinen Eintrag – nicht etwa einen schlechten.':
+        'これらの順位のみが記録されます。それより下だった場合は記録なしとなります \u2013 悪い記録が付くわけではありません。',
+      'Angemeldet': 'ログイン済み',
+      'Mit Steam, und mit eingetragenem Ingame-Namen. Ohne den lässt sich nicht sagen, welche Zeile dir gehört.':
+        'Steam でログインし、ゲーム内の名前を登録してください。それがないと、どの行があなたのものか判断できません。',
+      'Im Scoreboard stehen nur die Verstecker, nie die Jäger. Wer als Jäger spielt, drückt einfach kein F9 – in dieser Runde ist nichts zu holen.':
+        'スコアボードには隠れる側だけが載り、鬼は載りません。鬼のときは F9 を押さないでください \u2013 そのラウンドで得られるものはありません。',
+
+      'F9 richtig drücken': 'F9 の正しい押し方',
+      'Am Ende der Runde, wenn die Rangliste vollständig steht.':
+        'ラウンドの最後、ランキングが完全に表示されてから。',
+      'Dabei auf einen ruhigen Hintergrund schauen – Himmel oder eine Wand statt buntem Boden.':
+        'そのとき落ち着いた背景を見てください \u2013 カラフルな地面ではなく、空や壁を。',
+      'Die Schrift im Spiel ist durchsichtig. Über Wiese und Bonbons verschwindet sie halb, und dann ist die Rangliste nicht mehr lesbar. Es liegt nicht an dir und nicht an deinem Rechner – nur am Bild.':
+        'ゲーム内の文字は半透明です。草地やお菓子の上では half 消えてしまい、ランキングが読み取れなくなります。あなたのせいでも、パソコンのせいでもありません \u2013 画像だけの問題です。',
+
+      'Wie entsteht dein Rang?': '順位はどう決まりますか？',
+      'Schnitt der letzten {0}': '直近 {0} 戦の平均',
+      'Gewertet werden die Punkte aus dem Spiel, nicht die Platzierung.':
+        '記録されるのはゲーム内のスコアであり、順位ではありません。',
+      'Ab {0} Runden': '{0} 戦から',
+      'Erst dann stehst du in der Wertung. Davor bist du Anwärter: sichtbar mit Schnitt, aber ohne Platz. So wird jeder über gleich viele Ergebnisse verglichen.':
+        'そこで初めてランキングに載ります。それまでは候補者です。平均は表示されますが順位は付きません。こうすることで全員が同じ数の結果で比較されます。',
+      'Gleichstand': '同点の場合',
+      'Wer mehr Einträge hat, steht vorne – er hat es öfter gezeigt.':
+        '記録数が多いほうが上位です \u2013 それだけ多く実力を示したからです。',
+      'Ein alter Ausrutscher verschwindet von selbst: sobald {0} neuere Runden da sind, fällt er aus der Wertung.':
+        '昔の失敗は自然に消えます。新しいラウンドが {0} 戦たまれば、集計から外れます。',
+
+      'Auf dem Sprung': 'あと一歩',
+      'Anwärter, deren Schnitt für die ersten {0} reichen würde, stehen zusätzlich ganz oben – ab {1} Runden. Sonst stünde der Beste der Neuen am Ende einer Liste, in der er eigentlich vorne wäre.':
+        '平均が上位 {0} 位に届く候補者は、最上部にも表示されます \u2013 {1} 戦から。そうしないと、本来なら先頭に立つはずの新規プレイヤーが一覧の最後に埋もれてしまいます。',
+
+      'Mehrere Ranglisten': '複数のランキング',
+      'Es kann mehrere Ranglisten gleichzeitig geben, etwa eine fürs Jahr und eine für den Monat. Eine Runde zählt dann für alle – einmal F9 genügt.':
+        '年間ランキングと月間ランキングのように、複数のランキングが同時に存在することがあります。1 ラウンドはそのすべてに記録されます \u2013 F9 は一度で十分です。',
+
+      'Pause zwischen zwei Runden': 'ラウンド間の待ち時間',
+      '{0} Minuten': '{0} 分',
+      'nachdem eine Runde angenommen wurde': 'ラウンドが受理されたあと',
+      '{0} Sekunden': '{0} 秒',
+      'wenn sie nicht verwertbar war – dann darfst du es gleich noch einmal versuchen':
+        '使用できなかった場合 \u2013 すぐにもう一度試せます',
+
+      'Dein Ingame-Name': 'ゲーム内の名前',
+      'Eindeutig über alle Konten. Wer zuerst da ist, dem gehört der Name.':
+        'すべてのアカウントで重複できません。早い者勝ちです。',
+      'Nur alle {0} Tage änderbar.': '{0} 日ごとにしか変更できません。',
+      'Beides hat denselben Grund: Der Name entscheidet, welche Zeile des Scoreboards dir gutgeschrieben wird.':
+        'どちらも理由は同じです。名前によって、スコアボードのどの行があなたのものになるかが決まります。',
+
+      'Wenn eine Runde abgelehnt wird': 'ラウンドが却下されたとき',
+      'Jede Einreichung sieht sich ein Mensch an, bevor sie zählt. Wird sie abgelehnt, steht der Grund im Programm und auf deiner Kontoseite – meistens ist es schlicht ein Bild, auf dem die Zahlen nicht sicher zu lesen sind.':
+        '記録される前に、すべての送信を人が確認します。却下された場合、理由はクライアントとアカウントページに表示されます \u2013 多くは単に、画像の数字が確実に読み取れなかっただけです。',
+      'Kommt dir eine Entscheidung falsch vor, frag im Discord nach. Dort sieht sich das jemand noch einmal an.':
+        '判定が誤っていると思ったら、Discord で聞いてください。誰かがもう一度確認します。'
     }
   };
 
   var sprache = 'de';
   try {
     var g = localStorage.getItem('mc_sprache');
-    if (g === 'de' || g === 'en' || g === 'zh') sprache = g;
-    else if ((navigator.language || '').slice(0, 2) === 'zh') sprache = 'zh';
-    else if ((navigator.language || '').slice(0, 2) !== 'de') sprache = 'en';
+    if (g === 'de' || g === 'en' || g === 'zh' || g === 'ja') sprache = g;
+    else {
+      var kurz = (navigator.language || '').slice(0, 2);
+      if (kurz === 'zh') sprache = 'zh';
+      else if (kurz === 'ja') sprache = 'ja';
+      else if (kurz !== 'de') sprache = 'en';
+    }
   } catch (e) { /* ohne Speicher eben Deutsch */ }
 
   /** Der deutsche Satz IST der Schluessel - fehlt eine Uebersetzung,

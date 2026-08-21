@@ -46,9 +46,34 @@ describe('Client - Kodierung', () => {
 });
 
 describe('Client - Sprachen', () => {
-  test('kennt Englisch, Deutsch und Chinesisch', () => {
-    assert.match(sprache, /Kennungen = \{ "en", "de", "zh" \}/);
-    assert.match(sprache, /"English", "Deutsch", "中文"/);
+  test('kennt Englisch, Deutsch, Chinesisch und Japanisch', () => {
+    assert.match(sprache, /Kennungen = \{ "en", "de", "zh", "ja" \}/);
+    assert.match(sprache, /"English", "Deutsch", "中文", "日本語"/);
+  });
+
+  test('jeder Satz ist auch auf Japanisch da', () => {
+    /* Nicht "es gibt japanische Zeichen", sondern: JEDER Eintrag hat
+       eine dritte Uebersetzung. Ein Feld mit nur zwei Elementen faellt
+       still auf Deutsch zurueck - richtig als Rueckfallebene, aber
+       niemand merkt es. */
+    const tabelle = sprache.slice(sprache.indexOf('Dictionary<string, string[]>'));
+    const eintraege = [...tabelle.matchAll(
+      /\{\s*"((?:[^"\\]|\\.)*)"\s*,\s*\n?\s*new\[\]\s*\{([\s\S]*?)\}\s*\}/g)];
+
+    assert.ok(eintraege.length > 75, 'zu wenige Eintraege gefunden: ' + eintraege.length);
+
+    const luecken = eintraege
+      .map((m) => ({ schluessel: m[1]!, sprachen: (m[2]!.match(/"(?:[^"\\]|\\.)*"/g) ?? []).length }))
+      .filter((e) => e.sprachen < 3);
+
+    assert.deepEqual(luecken.map((l) => l.schluessel), [],
+      'diese Saetze haben kein Japanisch');
+  });
+
+  test('die japanischen Texte sind wirklich japanisch', () => {
+    // Faengt Buchstabensalat ab, falls doch einmal falsch kodiert wird.
+    const kana = sprache.match(/[ぁ-んァ-ン]/g) ?? [];
+    assert.ok(kana.length > 200, 'nur ' + kana.length + ' Kana gefunden');
   });
 
   test('faengt auf Englisch an', () => {

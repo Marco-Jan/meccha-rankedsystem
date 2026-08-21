@@ -137,6 +137,12 @@ def lies_spalte(ocr, bild, x0, x1, y0, y1, skala):
 # Zeichen, die OCR statt einer Ziffer liefern kann. Deckungsgleich mit
 # VERWECHSLUNGEN in src/parse.ts - dort wird tatsaechlich umgewandelt,
 # hier entscheidet es nur darueber, ob es ueberhaupt eine Zahl sein kann.
+# Name fuer eine Punktzahl, deren Zeile keinen lesbaren Namen mehr hat -
+# fast immer jemand, der die Partie verlassen hat. Absichtlich etwas, das
+# kein Ingame-Name sein kann: die Zeile soll MITZAEHLEN, aber niemandem
+# zugeordnet werden.
+AUSGESTIEGEN = "?"
+
 ZIFFERNAEHNLICH = set("oOQDlIi|zZsSbGtTBgq")
 TRENNZEICHEN = set(" .,'  ")
 
@@ -177,12 +183,16 @@ def paare(namen, punkte, toleranz):
     Nicht ueber die Reihenfolge: faellt in einer Spalte eine Zeile aus,
     wuerde sich ab da alles um eins verschieben und JEDER bekaeme die
     Punkte seines Nachbarn. Ueber die Y-Koordinate bleibt so ein Ausfall
-    lokal - die betroffene Zeile hat dann keine Punkte und wird zur
-    Rueckfrage.
+    lokal.
+
+    Jede Zeile traegt ihr "y" mit. Zwei Durchgaenge lassen sich sonst
+    nicht vergleichen, sobald mehrere Zeilen denselben Platzhalter
+    tragen - ueber den Namen waeren sie nicht auseinanderzuhalten.
     """
     zeilen = []
     # Fremdtext gar nicht erst als Kandidat zulassen.
     offen = [(y, t) for (y, t) in punkte if kann_zahl_sein(t)]
+
     for y_name, name in namen:
         beste = None
         for i, (y_punkt, text) in enumerate(offen):
@@ -201,8 +211,39 @@ def paare(namen, punkte, toleranz):
             # Eine echte Zeile hat IMMER beides: Name links, Zahl rechts.
             # Fehlt die Zahl, ist es Weltinhalt und kein Ergebnis.
             continue
-        zeilen.append({"name": name, "rohPunkte": beste[2]})
+        zeilen.append({"name": name, "rohPunkte": beste[2], "y": y_name})
         offen.pop(beste[1])
+
+    # ------------------------------------------------------------------
+    #  PUNKTE OHNE NAMEN: WER MITTENDRIN AUSGESTIEGEN IST
+    #
+    #  Verlaesst jemand die Partie, verschwindet sein NAME aus dem
+    #  Scoreboard - seine Punkte bleiben stehen. Aus sieben Teilnehmern
+    #  werden so drei lesbare Namen und sieben Zahlen.
+    #
+    #  Frueher fielen diese Zeilen hier lautlos weg. Damit sank die
+    #  gezaehlte Spielerzahl unter die Mindestgrenze, und eine voellig
+    #  gueltige Runde wurde abgewiesen - mit der Begruendung, es seien zu
+    #  wenige Verstecker gewesen. Waren es aber nicht.
+    #
+    #  Eine Punktzahl ohne Namen IST ein Teilnehmer. Sie bekommt einen
+    #  Platzhalter und zaehlt damit mit. Zugeordnet werden kann sie
+    #  niemandem - "?" trifft kein Konto -, und das ist genau richtig:
+    #  die RUNDE zaehlt, die Zeile selbst nicht. Wichtig ist ohnehin nur
+    #  die eigene Zeile, und die bleibt stehen, solange man selbst
+    #  mitspielt.
+    #
+    #  Nebeneffekt, der willkommen ist: die Partie-Kennung entsteht aus
+    #  ALLEN Punktzahlen und wird dadurch stabiler. Zwei Leute aus
+    #  derselben Lobby sehen dieselbe Zahlenmenge, auch wenn bei dem
+    #  einen ein Name mehr fehlt als beim anderen.
+    # ------------------------------------------------------------------
+    for y_punkt, text in offen:
+        zeilen.append({"name": AUSGESTIEGEN, "rohPunkte": text, "y": y_punkt})
+
+    # Von oben nach unten, sonst haengen die Aussteiger hinten dran und
+    # die Rangfolge stimmt nicht mehr.
+    zeilen.sort(key=lambda z: z["y"])
     return zeilen
 
 
@@ -218,27 +259,38 @@ def nur_ziffern(text):
 def markiere_unsichere(zeilen, namen, punkte_zweit, toleranz):
     """Vergleicht mit einem zweiten Durchgang und markiert Abweichungen.
 
-    Eine Zeile gilt als unsicher, wenn der zweite Durchgang etwas
-    ANDERES gelesen hat. Findet er dort gar nichts, bleibt es beim
-    ersten Wert - eine fehlende zweite Meinung ist kein Widerspruch,
-    sonst waere bei jedem schwachen Bild alles unsicher.
+    Verglichen wird ueber die Y-KOORDINATE, nicht ueber den Namen. Seit
+    Aussteiger mitzaehlen, koennen mehrere Zeilen denselben Platzhalter
+    tragen - ueber den Namen waeren sie nicht auseinanderzuhalten, und
+    die letzte wuerde alle vorherigen ueberschreiben.
+
+    Eine Zeile gilt als unsicher, wenn der zweite Durchgang an derselben
+    Stelle etwas ANDERES gelesen hat. Findet er dort gar nichts, bleibt
+    es beim ersten Wert - eine fehlende zweite Meinung ist kein
+    Widerspruch, sonst waere bei jedem schwachen Bild alles unsicher.
 
     Die Rohfassungen beider Durchgaenge wandern in "rohPunkte", getrennt
     durch ein Fragezeichen: "995?566". Damit scheitert das Parsen in
     parse.ts, die Zeile wird zur Rueckfrage - und wer sie im Dashboard
-    ansieht, hat beide Kandidaten vor sich und muss nicht raten, was der
-    Leser gemeint haben koennte.
+    ansieht, hat beide Kandidaten vor sich und muss nicht raten.
     """
     zweite = paare(namen, punkte_zweit, toleranz)
-    nach_name = {}
-    for z in zweite:
-        if z.get("rohPunkte"):
-            nach_name[z["name"]] = z["rohPunkte"]
 
     for z in zeilen:
         erst = z.get("rohPunkte")
-        zweit = nach_name.get(z["name"])
-        if not erst or not zweit:
+        if not erst:
+            continue
+
+        # Die naechstgelegene Zeile des zweiten Durchgangs
+        zweit = None
+        naechster = None
+        for w in zweite:
+            abstand = abs(w["y"] - z["y"])
+            if abstand <= toleranz and (naechster is None or abstand < naechster):
+                naechster = abstand
+                zweit = w.get("rohPunkte")
+
+        if not zweit:
             continue
         if nur_ziffern(erst) != nur_ziffern(zweit):
             z["rohPunkte"] = str(erst) + "?" + str(zweit)
@@ -298,6 +350,11 @@ def main():
 
     zeilen = paare(namen, punkte_a, toleranz)
     markiere_unsichere(zeilen, namen, punkte_b, toleranz)
+
+    # y war nur zum Zuordnen und Vergleichen da und gehoert nicht in die
+    # Antwort - der Server interessiert sich fuer Namen und Punkte.
+    for z in zeilen:
+        z.pop("y", None)
 
     sys.stdout.reconfigure(encoding="utf-8")
     print(json.dumps({"zeilen": zeilen}, ensure_ascii=False))

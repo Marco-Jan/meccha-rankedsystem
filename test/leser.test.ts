@@ -7,6 +7,7 @@ import {
 } from '../src/leser.js';
 import { bewerteRunde, teileAuf, personVon } from '../src/runde.js';
 import { parsePunkte } from '../src/parse.js';
+import { ordneZu, istSicher } from '../src/namen.js';
 import type { Spieler } from '../src/namen.js';
 
 /*
@@ -310,5 +311,76 @@ describe('Widerspruch zwischen zwei Lesedurchgaengen', () => {
     const zeilen = alsRohZeilen([{ name: 'Baloou', rohPunkte: '995' }]);
     assert.equal(zeilen[0]!.punkte?.punkte, 995);
     assert.equal(zeilen[0]!.punkte?.unsicher, false);
+  });
+});
+
+describe('Wer mittendrin aussteigt', () => {
+  /*
+     Gemeldet am 21.08.2026: sieben Leute im Scoreboard, drei noch im
+     Spiel. Die anderen hatten verlassen - ihre NAMEN verschwinden dabei
+     aus dem Scoreboard, ihre PUNKTE bleiben stehen.
+
+     Der Leser paarte Namen mit Punkten und warf Punktzahlen ohne Namen
+     weg. Aus sieben Teilnehmern wurden drei Zeilen, die Mindestzahl
+     schlug zu, und eine voellig gueltige Runde wurde abgewiesen - mit
+     der Begruendung, es seien zu wenige Verstecker gewesen. Waren es
+     aber nicht.
+
+     Jetzt bekommt so eine Zeile den Platzhalter "?" und zaehlt mit.
+  */
+  const SPIELER: readonly Spieler[] = [
+    { id: 'k1', name: 'Baloou', aliases: [] },
+    { id: 'k2', name: 'Mingo', aliases: [] }
+  ];
+
+  const MIT_AUSSTEIGERN = alsRohZeilen([
+    { name: 'Mingo', rohPunkte: '2821' },
+    { name: '?', rohPunkte: '1255' },
+    { name: '?', rohPunkte: '1130' },
+    { name: 'Baloou', rohPunkte: '995' },
+    { name: '?', rohPunkte: '60' },
+    { name: '?', rohPunkte: '21' }
+  ]);
+
+  test('die Aussteiger zaehlen fuer die Mindestzahl mit', () => {
+    /* Sechs Zeilen, obwohl nur zwei Namen lesbar sind. Genau darum geht
+       es: die Lobby war voll, auch wenn jetzt niemand mehr drinsteht. */
+    assert.equal(MIT_AUSSTEIGERN.length, 6);
+  });
+
+  test('eine Zeile ohne Namen wird niemandem gutgeschrieben', () => {
+    /* Sonst waere der Platzhalter eine Hintertuer: sechs Punktzahlen
+       ohne Namen, und alle landen bei irgendwem. */
+    assert.equal(istSicher(ordneZu('?', SPIELER)), false);
+  });
+
+  test('die eigene Zeile wird trotzdem gewertet', () => {
+    // Wer selbst noch spielt, steht mit Namen da - darauf kommt es an.
+    const b = teileAuf(bewerteRunde(MIT_AUSSTEIGERN, SPIELER));
+    const namen = b.einzutragen.map((e) => e.zeile.rohName);
+    assert.deepEqual(namen.sort(), ['Baloou', 'Mingo']);
+  });
+
+  test('die Aussteiger landen in der Rueckfrage, nicht in der Wertung', () => {
+    const b = teileAuf(bewerteRunde(MIT_AUSSTEIGERN, SPIELER));
+    assert.equal(b.rueckfragen.length, 4);
+    assert.ok(b.rueckfragen.every((r) => r.zeile.rohName === '?'));
+  });
+
+  test('mehrere Aussteiger loesen die Wiederholungssperre nicht aus', () => {
+    /* MAX_WIEDERHOLUNG faengt ein festgefahrenes Modell ab - dieselbe
+       Zeile dreimal. Vier Aussteiger tragen denselben Platzhalter, aber
+       verschiedene Punktzahlen; das ist kein Festfahren. */
+    const viele = pruefeAntwort(JSON.stringify({
+      zeilen: [
+        { name: 'Baloou', rohPunkte: '995' },
+        { name: '?', rohPunkte: '800' },
+        { name: '?', rohPunkte: '700' },
+        { name: '?', rohPunkte: '600' },
+        { name: '?', rohPunkte: '500' },
+        { name: '?', rohPunkte: '400' }
+      ]
+    }));
+    assert.equal(viele.length, 6);
   });
 });
