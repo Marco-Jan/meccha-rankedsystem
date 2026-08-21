@@ -292,6 +292,11 @@ Der Client zeigt, **wer man ist** (`Im Spiel: Baloou`), meldet **was aus der Run
 wurde**, und lässt jede Runde **aufklappen** — gelesener Name, Lobbygröße, eigener
 Rang, Zeitpunkte, Ablehnungsgrund.
 
+**Wo die Datei liegt:** bei **GitHub**, als Release, neben dem Quelltext — nicht auf
+dem Server. Der verweist nur noch dorthin; `/client` leitet weiter, damit alte Links
+aus dem Discord nicht ins Leere laufen. Der Grund ist nicht technisch: einer
+unbekannten Domain glaubt niemand, einem offenen Repo mit einsehbarem Code eher.
+
 **Bauen:** `client-cs\BAUEN.bat`. Die Fassungsnummer steht in
 `config/verteilung.json` und wird beim Bauen in die .exe geschrieben — der Server
 meldet dieselbe Zahl, und wer eine ältere hat, sieht den Hinweis samt Weg zum
@@ -318,16 +323,23 @@ kein Ruf.
 
 Dagegen hilft nur ein Code-Signing-Zertifikat für mehrere hundert Euro im Jahr — und
 das Projekt soll nichts kosten. Also der ehrliche Weg: `/download` **zeigt** die
-Warnung, erklärt sie, und nennt die **SHA-256 der Datei**, die der Server gerade
-ausliefert. Berechnet, nicht eingetragen: eine hinterlegte Summe wäre nach dem
-nächsten Bauen falsch, und eine falsche Prüfsumme ist schlimmer als keine.
+Warnung und erklärt sie, statt sie zu verschweigen.
+
+Dazu drei Wege zum Selbernachsehen, von denen keiner verlangt, jemandem zu glauben:
+die **Prüfsumme** aus den Release-Notizen mit `Get-FileHash` vergleichen, die Datei
+**bei VirusTotal** prüfen lassen, oder den **Quelltext lesen und selbst bauen**.
+
+Dass dabei ein paar Scanner anschlagen, nimmt die Seite vorweg. Sieben von siebzig
+melden „trojan" — alles Heuristik: das Programm ist neu, unsigniert, macht
+Bildschirmfotos und schickt sie ins Netz. Wer ungewarnt zu VirusTotal geschickt wird,
+ist danach misstrauischer als vorher.
 
 ---
 
 ## Tests
 
 ```
-npm test        684 Tests
+npm test        711 Tests
 npm run build   Typecheck
 ```
 

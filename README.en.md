@@ -287,6 +287,11 @@ The client shows **who you are** (`In game: Baloou`), reports **what became of y
 round**, and lets every round be **expanded** — name as read, lobby size, your rank,
 timestamps, rejection reason.
 
+**Where the file lives:** on **GitHub**, as a release, next to the source — not on the
+server. The server only points there; `/client` redirects, so old links from Discord
+do not dead-end. The reason is not technical: nobody trusts an unknown domain, an open
+repository with readable source rather more.
+
 **Building:** `client-cs\BAUEN.bat`. The version number lives in
 `config/verteilung.json` and is written into the .exe at build time — the server
 reports the same number, and anyone on an older one sees the notice along with the way
@@ -312,16 +317,23 @@ reason: the file is **unknown**. No signature, no reputation.
 
 The only real fix is a code-signing certificate for several hundred euros a year — and
 this project is meant to cost nothing. So, the honest route: `/download` **shows** the
-warning, explains it, and states the **SHA-256 of the file** the server is currently
-serving. Computed, not hard-coded: a stored checksum would be wrong after the next
-build, and a wrong checksum is worse than none.
+warning and explains it, rather than hiding it.
+
+Plus three ways to check for yourself, none of which asks you to trust anybody:
+compare the **checksum** from the release notes with `Get-FileHash`, have the file
+**checked by VirusTotal**, or **read the source and build it yourself**.
+
+That a few scanners will flag it is said up front. Seven out of seventy report
+"trojan" — all heuristics: the program is new, unsigned, takes screenshots and sends
+them over the network. Send someone to VirusTotal unwarned and they come back more
+suspicious than they left.
 
 ---
 
 ## Tests
 
 ```
-npm test        684 tests
+npm test        711 tests
 npm run build   type check
 ```
 
