@@ -16,9 +16,9 @@
 #  Was es NICHT tut:
 #    - npm run build. Der Server laeuft ueber tsx direkt aus src/; ein
 #      dist/ daneben bringt die relativen Pfade durcheinander.
-#    - die Client-.exe verteilen. Die steht in .gitignore, weil eine
-#      Binaerdatei nichts in einem Repo verloren hat. Sie kommt per scp,
-#      siehe --hilfe.
+#    - die Client-.exe verteilen. Die liegt seit dem 21.08.2026 bei
+#      GitHub, neben dem Quelltext; /client leitet nur noch dorthin
+#      weiter. Siehe --hilfe.
 #    - Datenbestaende anfassen. daten/ und uploads/ bleiben unberuehrt.
 # =============================================================================
 
@@ -48,28 +48,18 @@ if [[ "${1:-}" == "--hilfe" || "${1:-}" == "-h" ]]; then
     ./deploy.sh --nur-neustart   nichts holen, nur neu starten
     ./deploy.sh --hilfe          das hier
 
-  Die Client-.exe geht nicht ueber git - sie steht in der .gitignore,
-  eine Binaerdatei hat in einem Repo nichts verloren. Von deinem PC aus:
+  Die Client-.exe geht NICHT mehr ueber diesen Server. Seit dem
+  21.08.2026 liegt sie bei GitHub, neben dem Quelltext:
 
-    scp client-cs/Meccha-Ranked.exe DEIN-BENUTZER@meccha-ranked.com:/tmp/
+    https://github.com/Marco-Jan/meccha-rankedsystem/releases
 
-  Und dann auf dem Server:
+  Der Server verweist nur noch dorthin - /client leitet weiter. Das
+  frueher noetige scp entfaellt damit ersatzlos.
 
-    sudo mv /tmp/Meccha-Ranked.exe /opt/meccha/mc-ranked/client-cs/
-    sudo chown meccha:meccha /opt/meccha/mc-ranked/client-cs/Meccha-Ranked.exe
-
-  NICHT direkt als meccha@ hochladen. Dieses Konto ist mit --system
-  angelegt: kein Passwort, keine Anmeldung. Es existiert nur, damit der
-  Dienst nicht als root laeuft - scp fragt dort nach einem Passwort, das
-  es gar nicht gibt.
-
-  Das chown nicht vergessen. Gehoert die Datei danach root, liest der
-  Dienst sie zwar noch, aber es ist genau die Abweichung, die Wochen
-  spaeter als raetselhafter Rechtefehler wiederkommt.
-
-  Danach bietet /client die neue Fassung an. Ein Neustart ist dafuer
-  nicht noetig - der Server liest die Datei bei jeder Anfrage frisch,
-  und /api/client rechnet die Pruefsumme neu.
+  Nach einem Neubau also: Release auf GitHub anlegen, .exe anhaengen,
+  SHA-256 in die Notizen. Und clientVersion in config/verteilung.json
+  muss zur veroeffentlichten Fassung passen - sonst schickt der Server
+  die Zuschauer zu einem Release, das es noch nicht gibt.
 
 HILFE
   exit 0
@@ -258,43 +248,45 @@ fi
 # -----------------------------------------------------------------------------
 printf '\n%sFertig.%s ' "$gruen" "$klar"
 
-# Die .exe hat Vorrang - genau so waehlt serve.ts auch aus. Hier stand
-# frueher die ZIP zuerst, und damit meldete das Skript eine andere Datei
-# als die, die der Server ausliefert.
-paket=""
-for k in Meccha-Ranked.exe Meccha-Ranked.zip; do
-  [[ -f "$WURZEL/mc-ranked/client-cs/$k" ]] && { paket="$k"; break; }
-done
+# ---------------------------------------------------------------------
+#  Was der LAUFENDE Dienst meldet - nicht, was in der Datei steht.
+#
+#  Am 21.08.2026 lag die neue .exe per scp auf dem Server, das Repo war
+#  aber nie gezogen. Der Dienst nannte weiter 0.5.0, jeder Client mit
+#  0.7.0 bekam "neue Fassung 0.5.0 verfuegbar" - ein Hinweis auf ein
+#  Downgrade. Die lokale Datei zu lesen haette das nie gezeigt: sie war
+#  ja richtig. Nur der Dienst hatte sie nie gesehen.
+# ---------------------------------------------------------------------
+soll="$(node -p "require('$WURZEL/mc-ranked/config/verteilung.json').clientVersion" 2>/dev/null || echo '?')"
+auskunft="$(curl -s -m 10 "http://127.0.0.1:$RANKED_PORT/api/client" 2>/dev/null || echo '')"
+ist="$(printf '%s' "$auskunft" | node -p "try{JSON.parse(require('fs').readFileSync(0,'utf8')).version||'?'}catch(e){'?'}" 2>/dev/null || echo '?')"
+quelle="$(printf '%s' "$auskunft" | node -p "try{JSON.parse(require('fs').readFileSync(0,'utf8')).releases||''}catch(e){''}" 2>/dev/null || echo '')"
 
-if [[ -n "$paket" ]]; then
-  exe_stand="$(date -r "$WURZEL/mc-ranked/client-cs/$paket" '+%d.%m. %H:%M')"
-  soll="$(node -p "require('$WURZEL/mc-ranked/config/verteilung.json').clientVersion" 2>/dev/null || echo '?')"
+if [[ "$ist" != "$soll" ]]; then
+  printf '\n'
+  warn "Der Dienst meldet Fassung '${ist}', in config/verteilung.json steht '${soll}'."
+  warn "Solange das auseinandergeht, bekommen Clients einen falschen"
+  warn "Fassungshinweis. Laeuft der Dienst wirklich auf diesem Stand?"
+  printf '\n'
+elif [[ -z "$quelle" ]]; then
+  printf '\n'
+  warn "Es ist keine Bezugsquelle hinterlegt - /client fuehrt ins Leere."
+  warn "In config/verteilung.json fehlt \"releases\"."
+  printf '\n'
+else
+  # Gibt es das Release wirklich? Ein Verweis auf eine Fassung, die nie
+  # veroeffentlicht wurde, ist schlimmer als gar keiner: der Zuschauer
+  # bekommt gesagt, es gaebe etwas Neues, und findet dann nichts.
+  code="$(curl -s -o /dev/null -w '%{http_code}' -L -m 15 "$quelle" || echo '000')"
+  if [[ "$code" == "200" ]]; then
+    printf 'Client %s, zu holen bei GitHub.
 
-  # ---------------------------------------------------------------------
-  #  Was der LAUFENDE Dienst meldet - nicht, was hier in der Datei steht.
-  #
-  #  Am 21.08.2026 lag die neue .exe per scp auf dem Server, das Repo war
-  #  aber nie gezogen. Der Dienst nannte weiter 0.5.0, jeder Client mit
-  #  0.7.0 bekam "neue Fassung 0.5.0 verfuegbar" - ein Hinweis auf ein
-  #  Downgrade. Die lokale Datei zu lesen haette das nie gezeigt: sie war
-  #  ja richtig. Nur der Dienst hatte sie nie gesehen.
-  # ---------------------------------------------------------------------
-  ist="$(curl -s -m 10 "http://127.0.0.1:$RANKED_PORT/api/client" 2>/dev/null \
-        | node -p "try{JSON.parse(require('fs').readFileSync(0,'utf8')).version||'?'}catch(e){'?'}" \
-        2>/dev/null || echo '?')"
-
-  if [[ "$ist" == "$soll" ]]; then
-    printf 'Client %s liegt bereit (%s).\n\n' "$soll" "$exe_stand"
+' "$soll"
   else
     printf '\n'
-    warn "Der Dienst meldet Fassung '${ist}', in config/verteilung.json steht '${soll}'."
-    warn "Solange das auseinandergeht, bekommen Clients einen falschen"
-    warn "Fassungshinweis. Laeuft der Dienst wirklich auf diesem Stand?"
+    warn "Die Bezugsquelle antwortet mit HTTP ${code}:"
+    warn "  $quelle"
+    warn "Ist das Release fuer ${soll} schon angelegt?"
     printf '\n'
   fi
-else
-  printf '\n'
-  warn "Es liegt kein Client bereit (weder .zip noch .exe) - /client gibt eine 404 zurueck."
-  warn "Hochladen mit:  ./deploy.sh --hilfe"
-  printf '\n'
 fi

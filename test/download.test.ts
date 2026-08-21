@@ -2,8 +2,7 @@ import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import http from 'node:http';
 import type { AddressInfo } from 'node:net';
-import { createHash } from 'node:crypto';
-import { mkdtempSync, rmSync, writeFileSync, utimesSync, readFileSync } from 'node:fs';
+import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
@@ -11,6 +10,7 @@ import { baueServer } from '../src/server.js';
 import { downloadSeite, clientstand } from '../src/download-seite.js';
 import { ladeFreigabeliste } from '../src/freigabe.js';
 import { ladeTokens } from '../src/tokens.js';
+import { verteilung } from '../src/config.js';
 import { standMit } from './hilfe-stand.js';
 
 /* =========================================================================
@@ -20,104 +20,65 @@ import { standMit } from './hilfe-stand.js';
    keine Signatur, kein Ruf. Dagegen hilft nur ein Zertifikat fuer
    mehrere hundert Euro im Jahr - das Projekt soll nichts kosten.
 
-   Der kostenlose Weg ist, die Warnung zu ZEIGEN und dem Misstrauischen
-   die Pruefsumme zu geben. Das steht und faellt damit, dass die Summe
-   STIMMT: eine falsche laesst die echte Datei manipuliert aussehen und
-   zerstoert genau das Vertrauen, das sie herstellen soll. Deshalb liegt
-   das Gewicht dieser Tests dort.
+   Bis zum 21.08.2026 lag die .exe auf diesem Server, und diese Seite
+   nannte die SHA-256, die er aus der ausgelieferten Datei berechnete.
+   Das hatte eine schoene Eigenschaft: die Summe konnte gar nicht falsch
+   sein.
+
+   Jetzt liegt die Datei bei GitHub, neben dem Quelltext. Der Server
+   verweist nur noch. Damit ist das Gewicht dieser Tests ein anderes: es
+   geht nicht mehr um die Summe, sondern darum, dass der Weg zur Datei
+   stimmt und die Seite nichts behauptet, was sie nicht mehr wissen kann.
    ========================================================================= */
 
 const ORDNER = mkdtempSync(path.join(tmpdir(), 'mc-download-'));
 after(() => rmSync(ORDNER, { recursive: true, force: true }));
 
-const CLIENT = path.join(ORDNER, 'Meccha-Ranked.zip');
-const INHALT = Buffer.from('so tut eine ZIP-Datei');
-writeFileSync(CLIENT, INHALT);
-
-const ECHTE_SUMME = createHash('sha256').update(INHALT).digest('hex');
-
 describe('Clientstand', () => {
-  test('berechnet die Summe aus der Datei', () => {
-    const s = clientstand(CLIENT);
-    assert.ok(s);
-    assert.equal(s.sha256, ECHTE_SUMME);
-    assert.equal(s.groesse, INHALT.length);
-    assert.equal(s.name, 'Meccha-Ranked.zip');
-    assert.equal(s.istZip, true);
+  test('nennt Fassung und Bezugsquelle aus der Konfiguration', () => {
+    const s = clientstand();
+    const v = verteilung();
+    assert.equal(s.version, v.clientVersion);
+    assert.equal(s.releases, v.releases);
+    assert.equal(s.quelltext, v.quelltext);
   });
 
   test('das Baudatum kommt aus dem Stempel und passt zur Fassung', () => {
-    /* Nicht die Aenderungszeit der Datei: die zeigt nach einem scp den
-       Zeitpunkt des Hochladens. Der Stempel sagt, wann die Fassung
-       wirklich entstanden ist - aber nur, wenn seine Nummer zur
-       ausgelieferten passt. Sonst gehoert das Datum zu einem anderen
+    /* Nicht die Aenderungszeit irgendeiner Datei: der Stempel sagt, wann
+       die Fassung wirklich entstanden ist - aber nur, wenn seine Nummer
+       zur ausgelieferten passt. Sonst gehoert das Datum zu einem anderen
        Bau, und ein falsches Datum ist schlimmer als keines. */
-    const stempel = JSON.parse(
-      readFileSync(
-        path.join(import.meta.dirname, '..', 'client-cs', 'fassung.json'),
-        'utf8'
-      )
-    ) as { version: string; gebaut: string };
-
-    const s = clientstand(CLIENT);
-    assert.ok(s);
-
-    if (stempel.version === s.version) {
-      assert.equal(s.gebaut, stempel.gebaut);
+    const s = clientstand();
+    if (s.gebaut) {
       assert.ok(!Number.isNaN(Date.parse(s.gebaut)), 'kein lesbares Datum');
-    } else {
-      assert.equal(s.gebaut, '', 'Datum eines fremden Baus wird gezeigt');
     }
   });
 
-  test('eine fehlende Datei gibt null, keinen Fehler', () => {
-    assert.equal(clientstand(path.join(ORDNER, 'gibtsnicht.zip')), null);
-  });
-
-  test('nach einem Neubau stimmt die Summe wieder', () => {
-    /* DER wichtigste Test hier. Die Summe wird gemerkt, damit nicht bei
-       jedem Aufruf gelesen wird - bliebe die alte stehen, zeigte die
-       Seite nach jedem BAUEN.bat eine falsche an, und wer nachrechnet,
-       haelt die echte Datei fuer manipuliert. */
-    const datei = path.join(ORDNER, 'wechselhaft.zip');
-
-    writeFileSync(datei, 'erste Fassung');
-    const vorher = clientstand(datei);
-    assert.ok(vorher);
-
-    writeFileSync(datei, 'zweite Fassung, laenger als die erste');
-    // Aenderungszeit sicher verschieben - manche Dateisysteme sind grob.
-    const spaeter = new Date(Date.now() + 5000);
-    utimesSync(datei, spaeter, spaeter);
-
-    const nachher = clientstand(datei);
-    assert.ok(nachher);
-    assert.notEqual(nachher.sha256, vorher.sha256, 'die Summe muss mitziehen');
-    assert.equal(nachher.sha256,
-      createHash('sha256').update('zweite Fassung, laenger als die erste').digest('hex'));
+  test('kennt weder Groesse noch Pruefsumme - und tut auch nicht so', () => {
+    /* Der Server liefert die Datei nicht mehr aus. Eine Summe hier waere
+       geraten, und eine falsche Pruefsumme ist schlimmer als keine: sie
+       laesst die echte Datei manipuliert aussehen. */
+    const s = clientstand() as unknown as Record<string, unknown>;
+    assert.equal(s.sha256, undefined);
+    assert.equal(s.groesse, undefined);
   });
 });
 
 describe('Download-Seite', () => {
-  const seite = downloadSeite(clientstand(CLIENT));
+  const seite = downloadSeite();
 
-  test('nennt die echte Pruefsumme', () => {
-    // In Achtergruppen, damit man sie von Auge vergleichen kann.
-    assert.match(seite.replace(/ /g, ''), new RegExp(ECHTE_SUMME));
+  test('fuehrt zu GitHub, nicht zu einer Datei auf diesem Server', () => {
+    assert.match(seite, /github\.com/);
+    assert.doesNotMatch(seite, /href="\/client"/,
+      'der Knopf darf nicht mehr auf den eigenen Server zeigen');
   });
 
-  test('schickt zum HOCHLADEN, nicht zur Abfrage nach Pruefsumme', () => {
-    /* Die Abfrage (/gui/file/<sha256>) sieht schlauer aus, hat aber
-       einen Haken: hat die Datei noch nie jemand hochgeladen, steht dort
-       "not found" - und das liest sich misstrauischer als gar kein Link.
-       Bei einer frisch gebauten .exe ist genau das der Normalfall.
-
-       Die Pruefsumme steht trotzdem auf der Seite: sie sagt dem
-       Misstrauischen, ob das Ergebnis, das er dort findet, zu SEINER
-       Datei gehoert. */
-    assert.match(seite, /virustotal\.com\/gui\/home\/upload/);
-    assert.doesNotMatch(seite, /virustotal\.com\/gui\/file/);
-    assert.match(seite.replace(/ /g, ''), new RegExp(ECHTE_SUMME));
+  test('sagt, wo die Pruefsumme steht', () => {
+    /* Sie ist nicht verschwunden - sie steht jetzt in den Release-
+       Notizen. Wer das nicht sagt, laesst den Misstrauischen ohne
+       Werkzeug zurueck. */
+    assert.match(seite, /Release/);
+    assert.match(seite, /Get-FileHash/);
   });
 
   test('erklaert BEIDE Warnungen, nicht nur eine', () => {
@@ -128,6 +89,19 @@ describe('Download-Seite', () => {
     assert.match(seite, /Beim ersten Start/);
     assert.match(seite, /Beibehalten/);
     assert.match(seite, /Trotzdem ausführen/);
+  });
+
+  test('nimmt die Virenscanner-Treffer vorweg', () => {
+    /* Sieben von siebzig melden "trojan", alles Heuristik. Wer den Leser
+       ungewarnt zu VirusTotal schickt, macht es schlimmer als ohne
+       Link. */
+    assert.match(seite, /virustotal/i);
+    assert.match(seite, /Vermutungen|schlagen an/);
+  });
+
+  test('bietet an, selbst zu bauen', () => {
+    // Das Repo ist offen - wer will, laedt gar nichts herunter.
+    assert.match(seite, /Quelltext/);
   });
 
   test('sagt, warum gewarnt wird - ohne es kleinzureden', () => {
@@ -145,10 +119,12 @@ describe('Download-Seite', () => {
     assert.match(seite, /<meta name="robots" content="noindex, nofollow">/);
   });
 
-  test('kommt auch ohne hinterlegten Client zurecht', () => {
-    const ohne = downloadSeite(null);
+  test('kommt zurecht, wenn keine Quelle hinterlegt ist', () => {
+    const ohne = downloadSeite({
+      version: '0.1.0', gebaut: '', releases: '', quelltext: ''
+    });
     assert.match(ohne, /nicht verfügbar/);
-    assert.doesNotMatch(ohne, /virustotal/, 'ohne Datei gibt es nichts zu pruefen');
+    assert.doesNotMatch(ohne, /class="holen"/, 'ohne Quelle kein Knopf ins Leere');
   });
 });
 
@@ -163,8 +139,7 @@ before(async () => {
     tokens: ladeTokens(path.join(ORDNER, 't.json')),
     bilderDir: path.join(ORDNER, 'bilder'),
     holeStand: () => standMit([]),
-    eintragen: () => { /* nichts */ },
-    clientDatei: CLIENT
+    eintragen: () => { /* nichts */ }
   });
   await new Promise<void>((f) => server.listen(0, '127.0.0.1', f));
   basis = 'http://127.0.0.1:' + (server.address() as AddressInfo).port;
@@ -179,20 +154,29 @@ describe('Download - ausgeliefert', () => {
     assert.match(res.headers.get('content-type') ?? '', /text\/html/);
   });
 
-  test('/api/client nennt Summe, Groesse und Namen', async () => {
+  test('/api/client nennt Fassung und Bezugsquelle', async () => {
     const a = (await (await fetch(basis + '/api/client')).json()) as {
-      ok: boolean; sha256: string; groesse: number; name: string;
+      ok: boolean; version: string; releases: string;
     };
     assert.equal(a.ok, true);
-    assert.equal(a.sha256, ECHTE_SUMME);
-    assert.equal(a.groesse, INHALT.length);
+    assert.equal(a.version, verteilung().clientVersion);
+    assert.match(a.releases, /github\.com/);
   });
 
-  test('die ausgelieferte Datei hat wirklich diese Summe', async () => {
-    /* Die Gegenprobe, auf die es ankommt: was /api/client behauptet und
-       was /client herausgibt, muss dasselbe sein. Sonst waere die ganze
-       Seite eine Luege mit gutem Gewissen. */
-    const roh = Buffer.from(await (await fetch(basis + '/client')).arrayBuffer());
-    assert.equal(createHash('sha256').update(roh).digest('hex'), ECHTE_SUMME);
+  test('/client leitet weiter, statt ins Leere zu laufen', async () => {
+    /* In aelteren .exe-Fassungen und in Discord-Nachrichten steht dieser
+       Pfad noch. Er soll dorthin fuehren, wo die Datei jetzt liegt - ein
+       404 waere fuer den Zuschauer nicht von "Projekt tot" zu
+       unterscheiden. */
+    const res = await fetch(basis + '/client', { redirect: 'manual' });
+    assert.equal(res.status, 302);
+    assert.match(res.headers.get('location') ?? '', /github\.com/);
+  });
+
+  test('auch die alten Schreibweisen leiten weiter', async () => {
+    for (const pfad of ['/client.exe', '/client.zip']) {
+      const res = await fetch(basis + pfad, { redirect: 'manual' });
+      assert.equal(res.status, 302, pfad + ' leitet nicht weiter');
+    }
   });
 });

@@ -638,7 +638,7 @@ export function kontoSeite(): string {
          die erklärt, warum Windows gleich warnen wird: wer das vorher
          gelesen hat, erschrickt nicht. -->
     <div class="holen-reihe">
-      <a class="holen" id="holen-knopf" href="/client">
+      <a class="holen" id="holen-knopf" href="/download">
         <span class="holen-zeichen">⬇</span>
         <span class="holen-worte">
           <span class="holen-gross" data-t="Programm herunterladen">Programm herunterladen</span>
@@ -753,6 +753,9 @@ export function kontoSeite(): string {
       'Herunterladen und einrichten': 'Download and set up',
       'Alle Regeln': 'All rules →',
       'Regeln': 'Rules',
+      'bei GitHub': 'on GitHub',
+      'Die Prüfsumme steht in den Notizen zum Release. Vergleich sie mit Get-FileHash, dann weißt du, dass die Datei unterwegs nicht verändert wurde.':
+        'The checksum is in the release notes. Compare it with Get-FileHash and you know the file was not altered on the way.',
       'Impressum': 'Legal notice',
       'Datenschutz': 'Privacy',
       'Programm herunterladen': 'Download the app',
@@ -924,6 +927,9 @@ export function kontoSeite(): string {
       'Herunterladen und einrichten': '下载并设置',
       'Alle Regeln': '全部规则 →',
       'Regeln': '规则',
+      'bei GitHub': '在 GitHub 上',
+      'Die Prüfsumme steht in den Notizen zum Release. Vergleich sie mit Get-FileHash, dann weißt du, dass die Datei unterwegs nicht verändert wurde.':
+        '校验和写在 Release 说明里。用 Get-FileHash 对比，就能确认文件在传输中没有被改动。',
       'Impressum': '法律声明',
       'Datenschutz': '隐私说明',
       'Programm herunterladen': '下载客户端',
@@ -1111,6 +1117,10 @@ export function kontoSeite(): string {
         'すべてのルール →',
       'Regeln':
         'ルール',
+      'bei GitHub':
+        'GitHub にて',
+      'Die Prüfsumme steht in den Notizen zum Release. Vergleich sie mit Get-FileHash, dann weißt du, dass die Datei unterwegs nicht verändert wurde.':
+        'チェックサムはリリースノートに記載されています。Get-FileHash と照合すれば、転送中に改変されていないことが確認できます。',
       'Impressum':
         '運営者情報',
       'Datenschutz':
@@ -1499,10 +1509,23 @@ export function kontoSeite(): string {
         return;
       }
 
-      var teile = [Math.round(c.groesse / 1024) + ' KB'];
+      /* Keine Groesse mehr: die Datei liegt nicht mehr auf diesem
+         Server, er kennt sie also gar nicht. Was er weiss, ist die
+         Fassung und wann sie gebaut wurde. */
+      var teile = [];
       if (c.version) teile.push(tv('Fassung {0}', [c.version]));
       if (c.gebaut) teile.push(tv('vom {0}', [datumKurz(c.gebaut)]));
+      teile.push(t('bei GitHub'));
       daten.textContent = teile.join('  ·  ');
+
+      /* Direkt zu GitHub, sobald der Server die Adresse nennt. Bis
+         dahin bleibt es bei /download - die Seite erklaert dann, dass
+         gerade keine Quelle hinterlegt ist. */
+      if (knopf && c.releases) {
+        knopf.href = c.releases;
+        knopf.target = '_blank';
+        knopf.rel = 'noopener';
+      }
     });
   }
 
@@ -1550,9 +1573,15 @@ export function kontoSeite(): string {
       if (!c.ok) { pruef.remove(); return; }
       pruef.innerHTML = '';
 
-      pruef.appendChild(el('span', null, t('SHA-256 der Datei:')));
-      var code = el('code', 'summe', c.sha256);
-      pruef.appendChild(code);
+      /* Die Pruefsumme steht seit dem Umzug nach GitHub in den
+         Release-Notizen, nicht mehr hier: der Server liefert die Datei
+         ja nicht mehr aus und kann sie darum auch nicht ausrechnen. Sie
+         hier trotzdem hinzuschreiben hiesse raten. */
+      pruef.appendChild(el('span', null, t(
+        'Die Prüfsumme steht in den Notizen zum Release. Vergleich sie mit ' +
+        'Get-FileHash, dann weißt du, dass die Datei unterwegs nicht ' +
+        'verändert wurde.')));
+      pruef.appendChild(document.createElement('br'));
 
       var vt = document.createElement('a');
       /* Die UPLOAD-Seite, nicht die Abfrage nach Pruefsumme: hat die

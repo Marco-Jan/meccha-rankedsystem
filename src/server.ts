@@ -141,15 +141,6 @@ export interface ServerOptionen {
    * Serverumzug keine Codeaenderung braucht.
    */
   readonly oeffentlicheUrl?: string;
-  /**
-   * Die ausgelieferte Client-Datei.
-   *
-   * Sie ueber den Server anzubieten macht die Kontoseite zur einzigen
-   * Bezugsquelle: dort holt der Zuschauer ohnehin seinen Token. Ein Ort,
-   * eine Fassung - statt fuenf Anhaenge im Discord, von denen nach einem
-   * Serverumzug keiner mehr funktioniert.
-   */
-  readonly clientDatei?: string;
 
   /** Mindestzahl Verstecker im Scoreboard. Vorgabe: MIN_SPIELER (6). Als
    *  Option, damit Tests sie setzen koennen, ohne die Umgebung anzufassen. */
@@ -495,61 +486,51 @@ async function bearbeite(
     });
   }
 
-  /* Die Client-Datei zum Herunterladen - verlinkt von der Kontoseite.
-
-     Ausgeliefert wird als ZIP, nicht als nackte .exe: Chrome blockt eine
-     unsignierte .exe von einer noch unbekannten Domain hart ("Verdaechtiger
-     Download blockiert"), ein Archiv laesst es durch. Der Zuschauer entpackt
-     einmal und startet die .exe daraus.
-
-     Typ und Dateiname kommen aus der Endung von clientDatei - so liefert
-     dieselbe Stelle auch eine .exe aus, falls doch mal eine bereitliegt. */
   /*
-     DIE DOWNLOAD-SEITE - die Warnung erklaeren, statt sie zu
-     verschweigen.
+     DIE DOWNLOAD-SEITE - die Warnung erklaeren, statt sie zu verschweigen.
 
      Chrome und SmartScreen warnen beide, weil die Datei unbekannt ist:
      keine Signatur, kein Ruf. Dagegen hilft nur ein Zertifikat fuer
-     mehrere hundert Euro im Jahr. Der kostenlose Weg ist, die Warnung
-     zu ZEIGEN und dem Misstrauischen die Pruefsumme in die Hand zu
-     geben. Siehe download-seite.ts.
+     mehrere hundert Euro im Jahr. Der kostenlose Weg ist, die Warnung zu
+     ZEIGEN und dem Misstrauischen die Mittel zu geben, selbst
+     nachzusehen. Siehe download-seite.ts.
   */
   if (pfad === '/download') {
     res.writeHead(200, {
       'Content-Type': 'text/html; charset=utf-8',
       'Cache-Control': 'no-store'
     });
-    res.end(downloadSeite(o.clientDatei ? clientstand(o.clientDatei) : null));
+    res.end(downloadSeite());
     return;
   }
 
-  /* Die Pruefsumme auch als JSON - die Kontoseite nennt sie neben dem
-     Knopf, damit man sie nicht suchen muss. */
+  /* Fassung und Bezugsquelle als JSON - die Kontoseite beschriftet damit
+     den Knopf im Kopf. */
   if (pfad === '/api/client') {
-    const stand = o.clientDatei ? clientstand(o.clientDatei) : null;
-    return sendeJson(res, 200, stand
-      ? { ok: true, ...stand }
-      : { ok: false, fehler: 'Kein Client hinterlegt' });
+    return sendeJson(res, 200, { ok: true, ...clientstand() });
   }
 
+  /*
+     /client LEITET WEITER, es liefert nicht mehr aus.
+
+     Bis zum 21.08.2026 lag die .exe auf diesem Server und wurde von hier
+     verschickt. Seither liegt sie bei GitHub, neben dem Quelltext - einer
+     unbekannten Domain glaubt niemand, einem oeffentlichen Repo mit
+     einsehbarem Code schon eher.
+
+     Weiterleiten statt abschalten: in aelteren .exe-Fassungen und in
+     Discord-Nachrichten steht dieser Pfad noch. Er soll nicht ins Leere
+     laufen, sondern dorthin, wo die Datei jetzt ist.
+  */
   if (pfad === '/client' || pfad === '/client.exe' || pfad === '/client.zip') {
-    if (!o.clientDatei || !existsSync(o.clientDatei)) {
+    const ziel = verteilung().releases;
+    if (!ziel) {
       res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
-      res.end('Das Programm liegt hier nicht bereit. Frag im Discord einen Admin oder Mod.');
+      res.end('Es ist keine Bezugsquelle hinterlegt. Frag im Discord einen Admin oder Mod.');
       return;
     }
-    const istZip = o.clientDatei.toLowerCase().endsWith('.zip');
-    const inhalt = readFileSync(o.clientDatei);
-    res.writeHead(200, {
-      'Content-Type': istZip
-        ? 'application/zip'
-        : 'application/vnd.microsoft.portable-executable',
-      'Content-Disposition': 'attachment; filename="'
-        + (istZip ? 'Meccha-Ranked.zip' : 'Meccha-Ranked.exe') + '"',
-      'Content-Length': inhalt.length,
-      'Cache-Control': 'no-store'
-    });
-    res.end(inhalt);
+    res.writeHead(302, { Location: ziel, 'Cache-Control': 'no-store' });
+    res.end();
     return;
   }
 

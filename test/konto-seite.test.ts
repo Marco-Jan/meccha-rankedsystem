@@ -170,29 +170,36 @@ describe('Kontoseite - Inhalt', () => {
        nicht unter der Rangliste. Dort wanderte der Knopf mit jedem neuen
        Spieler weiter nach unten, bis ihn niemand mehr sah. */
     /* Auf die Attributreihenfolge kommt es nicht an - sie hat diesen
-       Test schon einmal gebrochen, als der Knopf eine id bekam. */
-    assert.match(html, /<a[^>]*class="holen"[^>]*href="\/client"/);
+       Test schon einmal gebrochen, als der Knopf eine id bekam.
+
+       Das Ziel ist seit dem 21.08.2026 /download und nicht mehr /client:
+       die Datei liegt bei GitHub. Das Skript setzt den Knopf danach auf
+       die Release-Adresse um, sobald der Server sie nennt - bis dahin
+       fuehrt er auf die Seite, die erklaert, was Sache ist. */
+    assert.match(html, /<a[^>]*class="holen"[^>]*href="\/download"/);
     assert.match(html, /<a[^>]*class="holen-warum"[^>]*href="\/download"/);
   });
 
-  test('nennt Groesse, Fassung und Baudatum am Knopf', () => {
-    /* 53 KB sieht nach dem aus, was es ist, und die Nummer samt Datum
-       sagt, ob man die aktuelle hat. Alles kommt vom Server.
+  test('nennt Fassung und Baudatum am Knopf, aber keine Groesse', () => {
+    /* Die Nummer samt Datum sagt, ob man die aktuelle hat. Die GROESSE
+       stand hier auch einmal - sie kam aus der Datei, die dieser Server
+       auslieferte. Seit die bei GitHub liegt, kennt er sie nicht mehr,
+       und was er nicht weiss, soll er nicht behaupten.
 
-       Was hier wirklich passiert, prueft test/download-knopf.test.ts -
-       dort laeuft die Seite. Diese Zeilen halten nur fest, dass die
-       Angaben ueberhaupt aus /api/client stammen. */
+       Was wirklich passiert, prueft test/download-knopf.test.ts - dort
+       laeuft die Seite. Diese Zeilen halten nur fest, woher die Angaben
+       stammen. */
     assert.match(skript(), /holen-daten/);
-    assert.match(skript(), /c\.groesse/);
     assert.match(skript(), /c\.gebaut/);
+    assert.match(skript(), /c\.releases/);
+    assert.doesNotMatch(skript(), /c\.groesse/);
   });
 
   test('der Download steht nur EINMAL auf der Seite', () => {
     /* Zweimal derselbe Knopf ist keine Hilfe, sondern die Frage, welcher
        der richtige ist. */
-    const treffer = (kontoSeite().match(/href="\/client"/g) ?? []).length +
-      (kontoSeite().match(/href = '\/client'/g) ?? []).length;
-    assert.equal(treffer, 1, 'genau ein Weg zur Datei');
+    const treffer = (kontoSeite().match(/class="holen"/g) ?? []).length;
+    assert.equal(treffer, 1, 'genau ein Knopf zur Datei');
   });
 
   test('verspricht kein Entpacken mehr', () => {
@@ -344,10 +351,19 @@ describe('Kontoseite - die Pruefsumme', () => {
   test('schickt zum HOCHLADEN, nicht zur Abfrage nach Pruefsumme', () => {
     /* Siehe download.test.ts: eine Abfrage nach Pruefsumme antwortet bei
        einer frisch gebauten .exe mit "not found", und das ist schlimmer
-       als kein Link. Die Summe selbst steht weiter daneben. */
+       als kein Link. */
     assert.match(quelle, /virustotal\.com\/gui\/home\/upload/);
     assert.doesNotMatch(quelle, /virustotal\.com\/gui\/file/);
-    assert.match(quelle, /c\.sha256/);
+  });
+
+  test('nennt keine Pruefsumme mehr, sondern sagt wo sie steht', () => {
+    /* Sie kam aus der Datei, die dieser Server auslieferte - deshalb
+       konnte sie gar nicht falsch sein. Seit die Datei bei GitHub liegt,
+       kann er sie nicht mehr ausrechnen, und eine geratene Pruefsumme
+       ist schlimmer als keine: sie laesst die echte Datei manipuliert
+       aussehen. */
+    assert.doesNotMatch(quelle, /c\.sha256/);
+    assert.match(quelle, /Get-FileHash/);
   });
 
   test('bleibt brauchbar, wenn die Auskunft ausfaellt', () => {

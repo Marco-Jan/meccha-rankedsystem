@@ -171,13 +171,17 @@ describe('Server - Routing', () => {
       { headers: { 'X-MC-Token': 'erfunden' } })).status, 401);
   });
 
-  test('bietet die Client-Datei zum Herunterladen an', async () => {
-    /* Die Kontoseite verlinkt sie - eine Bezugsquelle statt fuenf
-       Anhaengen im Discord, von denen nach einem Serverumzug keiner mehr
-       funktioniert. Ohne hinterlegte Datei eine verstaendliche Absage. */
-    const res = await fetch(basis + '/client');
-    assert.equal(res.status, 404);
-    assert.match(await res.text(), /Admin oder Mod/);
+  test('/client leitet dorthin, wo die Datei jetzt liegt', async () => {
+    /* Bis zum 21.08.2026 lag die .exe auf diesem Server. Seither liegt
+       sie bei GitHub, neben dem Quelltext - einer unbekannten Domain
+       glaubt niemand, einem offenen Repo eher.
+
+       Weiterleiten statt abschalten: in aelteren .exe-Fassungen und in
+       Discord-Nachrichten steht dieser Pfad noch. Ein 404 waere fuer den
+       Zuschauer nicht von "Projekt tot" zu unterscheiden. */
+    const res = await fetch(basis + '/client', { redirect: 'manual' });
+    assert.equal(res.status, 302);
+    assert.match(res.headers.get('location') ?? '', /github\.com/);
   });
 
   test('gibt die Rangliste ohne Anmeldung heraus', async () => {

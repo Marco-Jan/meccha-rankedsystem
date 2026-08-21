@@ -28,19 +28,25 @@ export const CROP_DATEI = path.join(PROJEKT_DIR, 'config', 'crop.json');
  * Faellt sie weg, ist das kein Fehler: dann gibt es eben keinen
  * Versionshinweis.
  */
-export function verteilung(): { server: string; clientVersion: string; discord: string } {
+export function verteilung(): {
+  server: string; clientVersion: string; discord: string;
+  quelltext: string; releases: string;
+} {
   try {
     const roh = readFileSync(path.join(PROJEKT_DIR, 'config', 'verteilung.json'), 'utf8');
     const d = JSON.parse(roh.charCodeAt(0) === 0xfeff ? roh.slice(1) : roh) as {
       server?: string; clientVersion?: string; discord?: string;
+      quelltext?: string; releases?: string;
     };
     return {
       server: String(d.server ?? ''),
       clientVersion: String(d.clientVersion ?? ''),
-      discord: String(d.discord ?? '')
+      discord: String(d.discord ?? ''),
+      quelltext: String(d.quelltext ?? ''),
+      releases: String(d.releases ?? '')
     };
   } catch {
-    return { server: '', clientVersion: '', discord: '' };
+    return { server: '', clientVersion: '', discord: '', quelltext: '', releases: '' };
   }
 }
 export const WARTESCHLANGE_DIR = path.join(PROJEKT_DIR, 'warteschlange');

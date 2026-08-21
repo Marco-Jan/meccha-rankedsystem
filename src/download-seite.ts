@@ -28,32 +28,27 @@
    Vertrauen, das sie herstellen sollte.
    ========================================================================= */
 
-import { createHash } from 'node:crypto';
-import { readFileSync, statSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { verteilung } from './config.js';
 
 export interface Clientstand {
-  /** Wie die Datei heisst, die ausgeliefert wird. */
-  readonly name: string;
-  readonly groesse: number;
-  readonly sha256: string;
+  /** Die Fassung, die gerade gilt. Aus config/verteilung.json. */
   readonly version: string;
   /**
-   * Wann diese Fassung gebaut wurde, als ISO-Datum. Leer, wenn es dazu
-   * keine verlaessliche Auskunft gibt.
+   * Wann sie gebaut wurde, als ISO-Datum. Leer, wenn es dazu keine
+   * verlaessliche Auskunft gibt.
    *
-   * Nicht die Aenderungszeit der Datei: die zeigt nach einem scp den
-   * Zeitpunkt des Hochladens, nach einem git clone den des Auscheckens.
-   * Der Wert kommt aus client-cs/fassung.json und wird nur benutzt, wenn
-   * die Nummer dort zur ausgelieferten passt - sonst gehoert das Datum
-   * zu einem anderen Bau, und ein falsches Datum ist schlimmer als
-   * keines.
+   * Aus client-cs/fassung.json, und nur, wenn die Nummer dort zur
+   * ausgelieferten passt - sonst gehoert das Datum zu einem anderen Bau,
+   * und ein falsches Datum ist schlimmer als keines.
    */
   readonly gebaut: string;
-  readonly istZip: boolean;
+  /** Wohin zum Herunterladen. Leer heisst: nirgends, dann sagt das die Seite. */
+  readonly releases: string;
+  readonly quelltext: string;
 }
 
 /** Liest das Baudatum aus dem Stempel, den client-cs/stempeln.cjs setzt. */
@@ -77,46 +72,29 @@ function baudatum(version: string): string {
 }
 
 /*
-   Gemerkt nach Pfad, Groesse und Aenderungszeit.
+   WAS GILT GERADE.
 
-   SHA-256 ueber 45 KB kostet nichts, aber die Datei bei jedem Aufruf zu
-   lesen waere trotzdem unnoetig. Die Aenderungszeit im Schluessel sorgt
-   dafuer, dass ein neu gebauter Client sofort die neue Summe zeigt -
-   ohne Neustart, ohne dass jemand daran denken muss.
+   Hier stand bis zum 21.08.2026 etwas anderes: der Server lieferte die
+   .exe selbst aus, und diese Funktion las die Datei, um Groesse und
+   SHA-256 daraus zu berechnen. Das hatte eine schoene Eigenschaft - die
+   Pruefsumme konnte gar nicht falsch sein, sie kam ja aus genau der
+   Datei, die der Besucher bekam.
+
+   Jetzt liegt die Datei auf GitHub, neben dem Quelltext. Das ist die
+   bessere Quelle: einer unbekannten Domain glaubt niemand, einem
+   oeffentlichen Repo mit einsehbarem Code schon eher. Der Preis ist,
+   dass der Server die Pruefsumme nicht mehr selbst ausrechnen kann - sie
+   gehoert ab jetzt in die Release-Notizen, geschrieben beim
+   Veroeffentlichen.
 */
-const gemerkt = new Map<string, Clientstand>();
-
-export function clientstand(datei: string): Clientstand | null {
-  try {
-    const s = statSync(datei);
-    const schluessel = datei + '|' + s.size + '|' + s.mtimeMs;
-
-    const da = gemerkt.get(schluessel);
-    if (da) return da;
-
-    const inhalt = readFileSync(datei);
-    const stand: Clientstand = {
-      name: path.basename(datei),
-      groesse: s.size,
-      sha256: createHash('sha256').update(inhalt).digest('hex'),
-      version: verteilung().clientVersion,
-      gebaut: baudatum(verteilung().clientVersion),
-      istZip: datei.toLowerCase().endsWith('.zip')
-    };
-
-    // Nur den aktuellen Stand behalten - alte Schluessel sind wertlos.
-    gemerkt.clear();
-    gemerkt.set(schluessel, stand);
-    return stand;
-  } catch {
-    return null;
-  }
-}
-
-function kb(bytes: number): string {
-  return bytes < 1024 * 1024
-    ? Math.round(bytes / 1024) + ' KB'
-    : (bytes / 1024 / 1024).toFixed(1) + ' MB';
+export function clientstand(): Clientstand {
+  const v = verteilung();
+  return {
+    version: v.clientVersion,
+    gebaut: baudatum(v.clientVersion),
+    releases: v.releases,
+    quelltext: v.quelltext
+  };
 }
 
 /**
@@ -143,12 +121,7 @@ function datum(iso: string): string {
   ].join('.');
 }
 
-/** Die Summe in Vierergruppen - so laesst sie sich von Auge vergleichen. */
-function gruppiert(hex: string): string {
-  return (hex.match(/.{1,8}/g) ?? []).join(' ');
-}
-
-export function downloadSeite(stand: Clientstand | null): string {
+export function downloadSeite(stand: Clientstand = clientstand()): string {
   const discord = verteilung().discord;
   const url = (verteilung().server || '').replace(/\/+$/, '');
 
@@ -236,15 +209,19 @@ export function downloadSeite(stand: Clientstand | null): string {
 <h1>Das Programm</h1>
 <div class="augen">Eine Datei, keine Installation.</div>
 
-${stand ? `<div class="karte">
-  <a class="holen" href="/client">Herunterladen</a>
+${stand.releases ? `<div class="karte">
+  <a class="holen" href="${stand.releases}" rel="noopener" target="_blank">
+    Auf GitHub herunterladen</a>
   <div class="daten">
-    ${stand.name} · ${kb(stand.groesse)}${stand.version ? ` · Fassung ${stand.version}` : ''}${
-      stand.gebaut ? ` · vom ${datum(stand.gebaut)}` : ''
-    }
+    Fassung ${stand.version}${stand.gebaut ? ` · vom ${datum(stand.gebaut)}` : ''}
+    · <code>Meccha-Ranked.exe</code>
   </div>
+  <p class="klein leise" style="margin-bottom:0">
+    Die Datei liegt bei GitHub, neben dem Quelltext — nicht auf diesem Server.
+    Nimm die <b>.exe</b> unter „Assets".
+  </p>
 </div>` : `<div class="karte">
-  <p><b>Gerade nicht verfügbar.</b> Das Programm liegt auf dem Server nicht bereit.
+  <p><b>Gerade nicht verfügbar.</b> Es ist keine Bezugsquelle hinterlegt.
   Frag im Discord einen Admin oder Mod.</p>
 </div>`}
 
@@ -274,28 +251,39 @@ Windows die Datei.</p>
 
 <h2>Nicht glauben — nachsehen</h2>
 
-<p>Du musst mir nicht vertrauen. Hier ist der Fingerabdruck der Datei, die dieser
-Server gerade ausliefert:</p>
+<p>Du musst mir nicht vertrauen. Es gibt drei Wege, das zu prüfen, und keiner
+verlangt, dass du mir glaubst:</p>
 
-${stand ? `<div class="karte">
-  <div class="klein leise">SHA-256</div>
-  <code class="summe">${gruppiert(stand.sha256)}</code>
-
-  <p class="klein" style="margin-top:14px">
-    <a href="${VIRUSTOTAL}" rel="noopener nofollow"
-       target="_blank">Bei VirusTotal prüfen lassen</a>
-    — dort schauen über 70 Virenscanner gleichzeitig darauf, kostenlos.
-  </p>
-  <p class="klein leise">
-    Zieh die heruntergeladene Datei auf die Seite. Das Ergebnis sieht danach jeder,
-    der dieselbe Datei prüft — die Prüfsumme oben sagt dir, ob es dieselbe ist.
-  </p>
+<div class="karte">
+  <b>1 · Die Prüfsumme vergleichen</b>
+  <p class="klein leise">In den Notizen zum Release steht die SHA-256 der Datei.
+  Nachrechnen in PowerShell:</p>
+  <code class="summe">Get-FileHash .\Meccha-Ranked.exe -Algorithm SHA256</code>
+  <p class="klein leise">Stimmen beide überein, ist die Datei unterwegs nicht
+  verändert worden.</p>
 </div>
 
-<p class="klein leise">Selbst nachrechnen, in PowerShell:<br>
-<code>Get-FileHash .\\${stand.name} -Algorithm SHA256</code><br>
-Stimmt die Zeile mit der oben überein, ist die Datei unterwegs nicht verändert
-worden.</p>` : ''}
+<div class="karte">
+  <b>2 · Von Virenscannern ansehen lassen</b>
+  <p class="klein" style="margin-bottom:6px">
+    <a href="${VIRUSTOTAL}" rel="noopener nofollow" target="_blank">
+      Bei VirusTotal prüfen lassen</a> — über 70 Scanner gleichzeitig, kostenlos.
+  </p>
+  <p class="klein leise">Ein paar davon schlagen an. Das ist zu erwarten: das
+  Programm ist neu, unsigniert, macht Bildschirmfotos und schickt sie ins Netz —
+  für eine Verhaltensheuristik sieht das aus wie ein Spion. Es sind Vermutungen,
+  keine Fundstellen; wer eine konkrete Signatur nennt, nennt sie auch beim Namen.</p>
+</div>
+
+${stand.quelltext ? `<div class="karte">
+  <b>3 · Selbst nachlesen — oder selbst bauen</b>
+  <p class="klein" style="margin-bottom:6px">
+    <a href="${stand.quelltext}" rel="noopener" target="_blank">Quelltext auf GitHub</a>
+  </p>
+  <p class="klein leise">Der Client ist eine einzige C#-Datei-Sammlung unter
+  <code>client-cs/</code>. Wer will, übersetzt sie selbst und lädt gar nichts
+  herunter.</p>
+</div>` : ''}
 
 <h2>Was das Programm tut</h2>
 

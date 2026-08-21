@@ -113,9 +113,6 @@ async function main(): Promise<void> {
 
      Eine Warnung, die man wegklickt, ist besser als eine Warnung PLUS
      ein Arbeitsschritt. Erklaert wird sie auf /download. */
-  const CLIENT_EXE = path.join(PROJEKT, 'client-cs', 'Meccha-Ranked.exe');
-  const CLIENT_ZIP = path.join(PROJEKT, 'client-cs', 'Meccha-Ranked.zip');
-  const clientDatei = existsSync(CLIENT_EXE) ? CLIENT_EXE : CLIENT_ZIP;
 
   const server = baueServer({
     freigabe,
@@ -123,7 +120,6 @@ async function main(): Promise<void> {
     bilderDir: BILDER_DIR,
     adminKey,
     oeffentlichDir: path.join(PROJEKT, 'public'),
-    clientDatei,
     konten,
     listen,
     oeffentlicheUrl: OEFFENTLICHE_URL,

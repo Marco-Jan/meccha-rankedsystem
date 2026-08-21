@@ -27,12 +27,10 @@ const LEERE_RANGLISTE = { ok: true, fenster: 10, voll: 10, listen: [] };
 
 const CLIENT = {
   ok: true,
-  name: 'Meccha-Ranked.exe',
-  groesse: 53760,
-  sha256: 'b'.repeat(64),
   version: '0.7.0',
   gebaut: '2026-08-21T08:00:36.626Z',
-  istZip: false
+  releases: 'https://github.com/Marco-Jan/meccha-rankedsystem/releases/latest',
+  quelltext: 'https://github.com/Marco-Jan/meccha-rankedsystem'
 };
 
 /** Baut die Seite mit einer bestimmten Konto-Antwort. */
@@ -79,13 +77,23 @@ function unterDemKnopf(seite: Seite): string {
 }
 
 describe('Download-Knopf', () => {
-  test('zeigt Groesse, Fassung und Baudatum', async () => {
+  test('zeigt Fassung, Baudatum und die Quelle', async () => {
+    /* Die GROESSE stand hier auch einmal. Sie kam aus der Datei, die
+       dieser Server auslieferte - seit die bei GitHub liegt, kennt er
+       sie nicht mehr. */
     const seite = await zeichne({ ok: true, angemeldet: false });
     const text = unterDemKnopf(seite);
 
-    assert.match(text, /53 KB/);
     assert.match(text, /0\.7\.0/, 'die Fassungsnummer fehlt');
     assert.match(text, /21\.08\.2026/, 'das Baudatum fehlt');
+    assert.doesNotMatch(text, /KB/, 'die Groesse kennt der Server nicht mehr');
+  });
+
+  test('der Knopf zeigt auf die Release-Seite', async () => {
+    const seite = await zeichne({ ok: true, angemeldet: false });
+    const knopf = seite.hole('holen-knopf');
+    assert.ok(knopf);
+    assert.match(String(knopf.href ?? ''), /github\.com/);
   });
 
   test('auch fuer Angemeldete', async () => {
