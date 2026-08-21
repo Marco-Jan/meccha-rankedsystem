@@ -342,3 +342,50 @@ describe('Kontoseite - die Pruefsumme', () => {
     assert.match(quelle, /pruef\.remove\(\)/);
   });
 });
+
+describe('Kontoseite - die Rangliste bleibt frisch', () => {
+  const quelle = kontoSeite();
+
+  test('laedt sich in einem Takt nach', () => {
+    /* Sie ist der Grund, warum jemand die Seite offen HAELT - waehrend
+       des Streams liegt sie auf dem zweiten Bildschirm. Vorher lief
+       ladeRangliste() genau einmal, und wer eine Runde eingeschickt
+       hatte, musste neu laden, um sie zu sehen. */
+    assert.match(quelle, /setInterval\(function \(\) \{\s*if \(document\.hidden\) return;\s*ladeRangliste\(\);/);
+  });
+
+  test('fragt nicht, wenn niemand hinsieht', () => {
+    // Ein vergessener Hintergrundtab soll den Server nicht stundenlang befragen.
+    assert.match(quelle, /document\.hidden/);
+    assert.match(quelle, /visibilitychange/);
+  });
+
+  test('merkt sich die angesehene Liste an ihrer Kennung, nicht an der Position', () => {
+    /* Beim Aktualisieren kommen die Listen neu vom Server, sortiert nach
+       aktiv und Anlagedatum. An der Position festgehalten, saehe man
+       nach fuenfzehn Sekunden ploetzlich eine andere Liste - ohne etwas
+       geklickt zu haben. */
+    assert.match(quelle, /gewaehlteKennung/);
+    assert.match(quelle, /ranglisten\[gi\]\.id === gewaehlteKennung/);
+  });
+});
+
+describe('Kontoseite - kein Zugriff auf Fremdes', () => {
+  /*
+     Anlass: in ladeRangliste() stand einmal kopfDaten.voll - eine
+     Variable, die es nur INNERHALB von baueRangliste() gibt. Zur
+     Laufzeit warf das einen ReferenceError, der catch schluckte ihn,
+     und die oeffentliche Rangliste blieb einfach leer. Kein Test hat
+     angeschlagen, weil syntaktisch alles stimmte.
+  */
+  test('kopfDaten wird nur dort benutzt, wo es auch existiert', () => {
+    const quelle = kontoSeite();
+    const anfang = quelle.indexOf('function baueRangliste(d, kopfDaten)');
+    const ende = quelle.indexOf('function ladeRangliste()');
+    assert.ok(anfang > 0 && ende > anfang, 'beide Funktionen muessen da sein');
+
+    const danach = quelle.slice(ende);
+    assert.doesNotMatch(danach, /kopfDaten/,
+      'kopfDaten ist ein Parameter von baueRangliste und ausserhalb undefiniert');
+  });
+});

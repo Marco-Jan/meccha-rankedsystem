@@ -1657,6 +1657,14 @@ export function kontoSeite(): string {
   var ranglistenKopf = { fenster: 10, voll: 10 };
   var gewaehlteListe = 0;
 
+  /* Welche Liste angesehen wird - als KENNUNG, nicht als Position.
+
+     Beim Aktualisieren kommen die Listen neu vom Server, und ihre
+     Reihenfolge haengt am Anlagedatum und daran, welche aktiv sind.
+     Merkte man sich die Position, saehe man nach fuenfzehn Sekunden
+     ploetzlich eine andere Liste - ohne etwas geklickt zu haben. */
+  var gewaehlteKennung = null;
+
   /* Der Kasten, in dem die gewaehlte Liste steht.
      Als Variable und nicht ueber eine id: er entsteht erst beim Laden,
      und ein Zugriff per id auf ein Element, das im HTML gar nicht steht,
@@ -1672,6 +1680,7 @@ export function kontoSeite(): string {
       b.className = i === gewaehlteListe ? 'aktiv' : '';
       b.addEventListener('click', function () {
         gewaehlteListe = i;
+        gewaehlteKennung = l.id;
         Array.prototype.forEach.call(leiste.children, function (x, j) {
           x.className = j === i ? 'aktiv' : '';
         });
@@ -1684,6 +1693,7 @@ export function kontoSeite(): string {
 
   function zeigeRangliste(i) {
     if (!rangInhalt || !ranglisten[i]) return;
+    gewaehlteKennung = ranglisten[i].id;
     rangInhalt.innerHTML = '';
     rangInhalt.appendChild(baueRangliste(ranglisten[i], ranglistenKopf));
   }
@@ -1794,7 +1804,16 @@ export function kontoSeite(): string {
          alle - aber nur die AKTIVEN. Eine abgeschlossene Saison gehoert
          ins Dashboard, nicht auf die Startseite. */
       ranglisten = d.listen || [];
-      ranglistenKopf = { fenster: d.fenster, voll: kopfDaten.voll };
+      ranglistenKopf = { fenster: d.fenster, voll: d.voll };
+
+      /* Die zuvor angesehene Liste wiederfinden. Gibt es sie nicht mehr -
+         abgeschaltet etwa -, faellt es auf die erste zurueck. */
+      gewaehlteListe = 0;
+      if (gewaehlteKennung) {
+        for (var gi = 0; gi < ranglisten.length; gi++) {
+          if (ranglisten[gi].id === gewaehlteKennung) { gewaehlteListe = gi; break; }
+        }
+      }
 
       if (ranglisten.length === 0) {
         ziel.appendChild(el('p', 'leise', t('Zurzeit läuft keine Wertung.')));
@@ -1849,6 +1868,42 @@ export function kontoSeite(): string {
       $('untertitel').textContent = t('Server nicht erreichbar.');
     });
   }
+
+  /* ------------------------------------------------- von selbst frisch
+
+     Die Rangliste ist der Grund, warum jemand die Seite offen HAELT -
+     waehrend des Streams liegt sie auf dem zweiten Bildschirm. Ohne
+     diesen Takt stand dort der Stand von vor einer Stunde, und wer
+     gerade eine Runde eingeschickt hat, haette neu laden muessen, um
+     sie zu sehen.
+
+     Fuenfzehn Sekunden, wie im Dashboard. Ein WebSocket waere hier mehr
+     Aufwand als Gewinn: die Rangliste aendert sich im Minutentakt, nicht
+     im Sekundentakt, und eine offene Verbindung durch nginx will
+     zusaetzlich eingerichtet sein.
+
+     ZWEI DINGE, DIE DABEI NICHT PASSIEREN DUERFEN:
+
+       Der Umschalter darf nicht zurueckspringen. Deshalb merkt sich die
+       Seite die KENNUNG der angesehenen Liste, nicht ihre Position.
+
+       Bei geschlossenem Reiter wird nicht geladen. Wer die Seite in
+       einem Hintergrundtab vergisst, soll den Server nicht stundenlang
+       befragen.
+  */
+  var TAKT_MS = 15000;
+
+  setInterval(function () {
+    if (document.hidden) return;
+    ladeRangliste();
+  }, TAKT_MS);
+
+  /* Beim Zurueckkehren sofort nachsehen, statt bis zum naechsten Takt zu
+     warten - wer den Tab wieder aufmacht, will den aktuellen Stand und
+     nicht den von vorhin. */
+  document.addEventListener('visibilitychange', function () {
+    if (!document.hidden) ladeRangliste();
+  });
 
   /* Reiter. Die Rangliste ist die Startansicht - wer nur nachsehen
      will, wie er steht, soll nicht erst klicken muessen. */
