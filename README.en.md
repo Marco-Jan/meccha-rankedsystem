@@ -6,21 +6,22 @@ A leaderboard for **MECCHA CHAMELEON** streams. Viewers press `F9` after a round
 server reads the scores from the screenshot and records them.
 
 ```
-Viewer presses F9                Streamer presses F9
-(Meccha-Ranked.exe)              (WACHE.bat, own PC)
-        │                                 │
-        │      POST /api/runde · token    │
-        └────────────────┬────────────────┘
-                         ▼
-          OCR  →  name matching  →  checks
-                         │
-          ┌──────────────┴──────────────┐
-          ▼                             ▼
-    review queue                  counted directly
-   (streamer's dashboard)               │
-          └──────────────┬──────────────┘
-                         ▼
-                    leaderboard
+Viewer presses F9                    Streamer presses F9
+(Meccha-Ranked.exe)                  (WACHE.bat, own PC)
+          │                                   │
+          │      POST /api/runde · token      │
+          └─────────────────┬─────────────────┘
+                            ▼
+            OCR  ·  name matching  ·  checks
+                            │
+          ┌─────────────────┼─────────────────┐
+          ▼                 ▼                 ▼
+      unusable        review queue    counted directly
+   nothing stored      you decide             │
+  retry right away          │                 │
+                            └────────┬────────┘
+                                     ▼
+                                leaderboard
 ```
 
 The game has no API, no web leaderboard and no export. The scores exist only on
