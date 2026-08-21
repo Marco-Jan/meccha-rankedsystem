@@ -229,7 +229,15 @@ describe('Client - Uebersetzungen sind vollstaendig', () => {
        meldet drei Fehlalarme - deshalb wird hier weitergelesen, solange
        ein + folgt.
     */
-    const start = /Sprache\.T\(\s*"/g;
+    /*
+       Nicht nur Sprache.T(). Knopf(), Hilfe() und Ueberschrift() geben
+       ihren ersten Parameter selbst durch Sprache.T - dort steht dann
+       eine VARIABLE, und dieser Wachtest sah davon nichts. So sind drei
+       Beschriftungen ("Ordner öffnen" und die zwei daneben) unbemerkt
+       auf Deutsch geblieben; aufgefallen ist es beim Nachzaehlen, nicht
+       durch den Test, der genau dafuer da ist.
+    */
+    const start = /(?:Sprache\.T|Knopf|Hilfe|Ueberschrift)\(\s*"/g;
     let t: RegExpExecArray | null;
 
     while ((t = start.exec(quelle)) !== null) {

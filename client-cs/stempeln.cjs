@@ -49,9 +49,20 @@ if (require.main === module) {
   const hash = quellenHash(__dirname);
   const alt = stempelLesen();
 
+  /* --nochmal: dieselbe Nummer bewusst neu stempeln.
+     Fuer den Fall, dass ein Bau schiefging und der Code gleich danach
+     korrigiert wurde - die Fassung war nie ausgeliefert, also hat sie
+     auch niemand. Sie dafuer hochzuzaehlen waere nicht nur unnoetig: bei
+     Windows waechst der Ruf einer Datei ueber ihre Verbreitung, und jede
+     neue Nummer faengt bei null an. Weniger Nummern sind besser.
+
+     Bewusst ein eigener Schalter und keine Automatik: die Frage "wurde
+     diese Fassung schon ausgeliefert" kann nur ein Mensch beantworten. */
+  const nochmal = process.argv.includes('--nochmal');
+
   /* Der eine Fall, der wirklich schadet: die Quellen sind andere, die
      Nummer ist dieselbe wie beim letzten ausgelieferten Bau. */
-  if (hash !== alt.quellen && version === alt.version) {
+  if (!nochmal && hash !== alt.quellen && version === alt.version) {
     console.error('');
     console.error('  Die Client-Quellen haben sich geaendert, aber');
     console.error('  clientVersion steht immer noch auf ' + version + '.');

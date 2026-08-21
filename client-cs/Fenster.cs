@@ -619,6 +619,29 @@ namespace MecchaRanked
                 Padding = new Padding(20, 14, 20, 6),
                 AutoScroll = true
             };
+            /* WO LIEGE ICH?
+
+               Nach der dritten heruntergeladenen Fassung liegen drei
+               Programme herum, und niemand weiss, welches gerade laeuft.
+               Der Pfad beantwortet das, der Knopf fuehrt hin. */
+            Label pfad = new Label
+            {
+                Dock = DockStyle.Top,
+                AutoSize = false,
+                Height = 34,
+                ForeColor = Farben.Sehrleise,
+                Text = Application.ExecutablePath,
+                TextAlign = ContentAlignment.MiddleLeft
+            };
+            Button ordnerAuf = Knopf("Ordner öffnen", 28, Farben.Kante, Farben.Leise);
+            ordnerAuf.Dock = DockStyle.Top;
+            ordnerAuf.Click += (a, b) => OeffneEigenenOrdner();
+
+            inhalt.Controls.Add(ordnerAuf);
+            inhalt.Controls.Add(pfad);
+            inhalt.Controls.Add(Hilfe("Diese Datei läuft gerade. Lädst du eine neue herunter, ersetze genau sie."));
+            inhalt.Controls.Add(Ueberschrift("Wo das Programm liegt"));
+            inhalt.Controls.Add(Trenner());
             inhalt.Controls.Add(sprachZeile);
             inhalt.Controls.Add(Ueberschrift("Sprache"));
             inhalt.Controls.Add(Trenner());
@@ -1461,6 +1484,26 @@ namespace MecchaRanked
         /// bekommt "neue Fassung verfuegbar", will sie holen - und nichts
         /// anderes.
         /// </summary>
+        /// <summary>
+        /// Zeigt die laufende Datei im Explorer, ausgewaehlt.
+        ///
+        /// /select markiert sie im Ordner. Ohne das oeffnet sich zwar der
+        /// Ordner, aber bei drei Fassungen nebeneinander weiss man immer
+        /// noch nicht, welche gemeint ist - und genau darum geht es.
+        /// </summary>
+        void OeffneEigenenOrdner()
+        {
+            try
+            {
+                System.Diagnostics.Process.Start("explorer.exe",
+                    "/select,\"" + Application.ExecutablePath + "\"");
+            }
+            catch (Exception ex)
+            {
+                Melde(Sprache.T("Ordner ließ sich nicht öffnen: {0}", ex.Message));
+            }
+        }
+
         void OeffneDownload()
         {
             string adresse = e.Server.TrimEnd('/') + "/download";
@@ -1581,6 +1624,121 @@ namespace MecchaRanked
 
     static class Start
     {
+        /// <summary>Der feste Platz: ein Ordner, eine Datei, immer dieselbe.</summary>
+        public static string Heimat
+        {
+            get
+            {
+                return Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "Meccha Ranked");
+            }
+        }
+
+        /*
+           EIN FESTER PLATZ STATT "Meccha-Ranked (3).exe"
+
+           Ein Browser kann eine Datei nicht ueberschreiben - er haengt
+           eine Zahl an. Nach der dritten Fassung liegen im Downloads-
+           Ordner drei Programme, und niemand weiss, welches gerade
+           laeuft. Genau so gemeldet.
+
+           Also: beim ersten Start anbieten, sich an einen festen Platz
+           zu kopieren und von dort zu laufen. Liegt dort schon eine
+           Fassung, wird sie ersetzt - und damit ist das Herunterladen
+           einer neuen .exe genau der Weg, der die alte ablost.
+
+           Das ist ausdruecklich KEIN Selbstaktualisieren: nichts wird aus
+           dem Netz nachgeladen. Der Zuschauer laedt herunter wie immer,
+           startet die neue Datei einmal, und ab dann ist wieder genau
+           eine da.
+
+           Gibt true zurueck, wenn die Kopie gestartet wurde - dann hat
+           dieser Prozess nichts mehr zu tun.
+        */
+        static bool ZieheUm(string ordner, string datei)
+        {
+            try
+            {
+                string ziel = Heimat;
+                if (string.Equals(ordner.TrimEnd('\\'), ziel.TrimEnd('\\'),
+                        StringComparison.OrdinalIgnoreCase))
+                    return false;                        // laeuft schon dort
+
+                Einstellungen e = Einstellungen.Laden(datei);
+                if (e.BleibHier) return false;           // einmal verneint, nie wieder fragen
+
+                Sprache.Aktuell = e.Sprache;
+
+                string zielExe = Path.Combine(ziel, "Meccha-Ranked.exe");
+                bool schonDa = File.Exists(zielExe);
+
+                string frage = schonDa
+                    ? Sprache.T(
+                        "Unter {0} liegt bereits eine Fassung. Soll sie durch diese ersetzt " +
+                        "werden? Dann gibt es weiterhin genau ein Programm.", ziel)
+                    : Sprache.T(
+                        "Soll ich mich nach {0} kopieren und von dort laufen? Dann gibt es " +
+                        "genau eine Datei, und dein Downloads-Ordner bleibt sauber.", ziel);
+
+                DialogResult antwort = MessageBox.Show(frage,
+                    Sprache.T("Fester Platz"),
+                    MessageBoxButtons.YesNo, MessageBoxIcon.Question,
+                    MessageBoxDefaultButton.Button1);
+
+                if (antwort != DialogResult.Yes)
+                {
+                    e.BleibHier = true;
+                    try { e.Speichern(datei); } catch { /* nur der Merkzettel */ }
+                    return false;
+                }
+
+                Directory.CreateDirectory(ziel);
+                File.Copy(Application.ExecutablePath, zielExe, true);
+
+                /* Einstellungen und Warteschlange mitnehmen - sonst steht
+                   der Zuschauer am neuen Platz ohne Token da, und was
+                   noch nicht gesendet war, bleibt liegen. */
+                if (File.Exists(datei))
+                    File.Copy(datei, Path.Combine(ziel, "client.json"), true);
+                KopiereOrdner(Path.Combine(ordner, "mc-ranked-daten"),
+                              Path.Combine(ziel, "mc-ranked-daten"));
+
+                /* Einmal zeigen, wo es jetzt liegt. Ohne das ist das
+                   Programm nach dem Umzug verschwunden - der Zuschauer
+                   sucht es im Downloads-Ordner und findet die alte. */
+                try { System.Diagnostics.Process.Start("explorer.exe", "\"" + ziel + "\""); }
+                catch { /* kein Explorer, auch gut */ }
+
+                System.Diagnostics.Process.Start(zielExe);
+                return true;
+            }
+            catch (Exception f)
+            {
+                /* Schreibgeschuetzt, Ordner gesperrt, Datei in Benutzung:
+                   dann eben von hier aus weiterlaufen. Der Umzug ist eine
+                   Bequemlichkeit, kein Muss. */
+                MessageBox.Show(
+                    Sprache.T("Der Umzug hat nicht geklappt: {0}", f.Message) +
+                    Environment.NewLine + Environment.NewLine +
+                    Sprache.T("Das Programm läuft weiter von seinem jetzigen Platz."),
+                    Sprache.T("Fester Platz"),
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return false;
+            }
+        }
+
+        static void KopiereOrdner(string von, string nach)
+        {
+            if (!Directory.Exists(von)) return;
+            Directory.CreateDirectory(nach);
+            foreach (string f in Directory.GetFiles(von))
+            {
+                try { File.Copy(f, Path.Combine(nach, Path.GetFileName(f)), true); }
+                catch { /* eine liegengebliebene Runde ist kein Grund abzubrechen */ }
+            }
+        }
+
         [STAThread]
         static void Main()
         {
@@ -1626,6 +1784,10 @@ namespace MecchaRanked
                irgendwohin und erwartet sie daneben. */
             string ordner = Path.GetDirectoryName(Application.ExecutablePath);
             string datei = Path.Combine(ordner, "client.json");
+
+            // Umgezogen? Dann laeuft schon die Kopie, hier ist Schluss.
+            if (ZieheUm(ordner, datei)) return;
+
             Sender sender = new Sender(Path.Combine(ordner, "mc-ranked-daten"));
 
             Application.Run(new Fenster(datei, sender));

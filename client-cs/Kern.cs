@@ -29,7 +29,7 @@ namespace MecchaRanked
     static class Info
     {
         public const string Projekt = "Meccha Ranked";
-        public const string Version = "0.13.0";
+        public const string Version = "0.14.0";
         public const string Entwickler = "Baloou";
 
         /* Wird beim Bauen ersetzt - siehe baue.ps1 und
@@ -111,6 +111,16 @@ namespace MecchaRanked
         /* Vorgabe Englisch: die Zuschauer kommen aus dem Stream, nicht
            aus dem Nachbarort. Wer Deutsch will, stellt es einmal um. */
         public string Sprache = "en";
+        /*
+           true = der Zuschauer will das Programm dort lassen, wo es
+           liegt. Gesetzt, wenn er die Frage nach dem festen Ordner
+           einmal verneint hat.
+
+           Ohne das wuerde er bei JEDEM Start gefragt, und eine Frage,
+           die man schon beantwortet hat, ist keine Frage mehr, sondern
+           Belaestigung.
+        */
+        public bool BleibHier;
 
         public bool Vollstaendig
         {
@@ -135,8 +145,12 @@ namespace MecchaRanked
                 if (ende < 0) return null;
                 return quelle.Substring(i + 1, ende - i - 1);
             }
+            /* Auch Buchstaben: true und false stehen ohne Anfuehrungs-
+               zeichen da. Ohne das kam "bleibHier" als leerer Text an
+               und der Zuschauer wurde bei jedem Start neu gefragt. */
             int stop = i;
-            while (stop < quelle.Length && (char.IsDigit(quelle[stop]) || quelle[stop] == '-')) stop++;
+            while (stop < quelle.Length &&
+                   (char.IsLetterOrDigit(quelle[stop]) || quelle[stop] == '-')) stop++;
             return quelle.Substring(i, stop - i);
         }
 
@@ -152,6 +166,7 @@ namespace MecchaRanked
                 string schirm = LiesFeld(roh, "bildschirm");
                 string taste = LiesFeld(roh, "taste");
                 string sprache = LiesFeld(roh, "sprache");
+                string bleib = LiesFeld(roh, "bleibHier");
 
                 /* Platzhalter aus alten Vorlagen nicht als echte Werte
                    uebernehmen - sonst startet das Programm scheinbar
@@ -174,6 +189,8 @@ namespace MecchaRanked
                 if (System.Array.IndexOf(MecchaRanked.Sprache.Kennungen, sprache) >= 0)
                     e.Sprache = sprache;
 
+                if (bleib == "true") e.BleibHier = true;
+
                 int n;
                 if (int.TryParse(schirm, out n)) e.Bildschirm = n;
             }
@@ -192,7 +209,8 @@ namespace MecchaRanked
             sb.AppendLine("  \"token\": \"" + Fluchten(Token) + "\",");
             sb.AppendLine("  \"bildschirm\": " + Bildschirm + ",");
             sb.AppendLine("  \"taste\": \"" + Fluchten(Taste) + "\",");
-            sb.AppendLine("  \"sprache\": \"" + Fluchten(Sprache) + "\"");
+            sb.AppendLine("  \"sprache\": \"" + Fluchten(Sprache) + "\",");
+            sb.AppendLine("  \"bleibHier\": " + (BleibHier ? "true" : "false"));
             sb.AppendLine("}");
             File.WriteAllText(datei, sb.ToString(), new UTF8Encoding(false));
         }
