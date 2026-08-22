@@ -49,6 +49,20 @@ export interface Clientstand {
   /** Wohin zum Herunterladen. Leer heisst: nirgends, dann sagt das die Seite. */
   readonly releases: string;
   readonly quelltext: string;
+  /**
+   * Wie die Datei heisst - mit Fassung darin.
+   *
+   * Ein Browser haengt "(1)" an, wenn schon eine gleichnamige Datei da
+   * liegt. Nach der dritten Fassung liegen drei Programme herum, denen
+   * man nicht ansieht, welches welches ist. Steht die Nummer im Namen,
+   * ist die Frage beantwortet, bevor sie jemand stellt.
+   */
+  readonly datei: string;
+}
+
+/** Der Dateiname zu einer Fassung. An EINER Stelle, siehe BAUEN.bat. */
+export function clientDateiname(version: string): string {
+  return version ? 'Meccha-Ranked-' + version + '.exe' : 'Meccha-Ranked.exe';
 }
 
 /** Liest das Baudatum aus dem Stempel, den client-cs/stempeln.cjs setzt. */
@@ -93,7 +107,8 @@ export function clientstand(): Clientstand {
     version: v.clientVersion,
     gebaut: baudatum(v.clientVersion),
     releases: v.releases,
-    quelltext: v.quelltext
+    quelltext: v.quelltext,
+    datei: clientDateiname(v.clientVersion)
   };
 }
 
@@ -214,7 +229,7 @@ ${stand.releases ? `<div class="karte">
     Auf GitHub herunterladen</a>
   <div class="daten">
     Fassung ${stand.version}${stand.gebaut ? ` · vom ${datum(stand.gebaut)}` : ''}
-    · <code>Meccha-Ranked.exe</code>
+    · <code>${stand.datei}</code>
   </div>
   <p class="klein leise" style="margin-bottom:0">
     Die Datei liegt bei GitHub, neben dem Quelltext — nicht auf diesem Server.
@@ -258,7 +273,7 @@ verlangt, dass du mir glaubst:</p>
   <b>1 · Die Prüfsumme vergleichen</b>
   <p class="klein leise">In den Notizen zum Release steht die SHA-256 der Datei.
   Nachrechnen in PowerShell:</p>
-  <code class="summe">Get-FileHash .\Meccha-Ranked.exe -Algorithm SHA256</code>
+  <code class="summe">Get-FileHash .\${stand.datei} -Algorithm SHA256</code>
   <p class="klein leise">Stimmen beide überein, ist die Datei unterwegs nicht
   verändert worden.</p>
 </div>

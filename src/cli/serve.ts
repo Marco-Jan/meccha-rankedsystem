@@ -102,18 +102,6 @@ async function main(): Promise<void> {
   const listen = ladeListen(path.join(DATEN_DIR, 'listen.json'));
   const wertung = ladeWertung(rangliste, konten, listen);
 
-  /* Bevorzugt die .exe, faellt auf die ZIP zurueck.
-
-     Umgedreht am 21.08.2026. Die ZIP sollte Chromes Warnung umgehen -
-     sie tut es nicht: ein Archiv mit einer unsignierten .exe darin wird
-     genauso gemeldet. Damit blieb von ihr nur der Nachteil, und der ist
-     nicht klein: entpacken ist ein zusaetzlicher Schritt, den nicht jeder
-     kann, und ein Programm, das man erst auspacken muss, wirkt
-     umstaendlicher als es ist.
-
-     Eine Warnung, die man wegklickt, ist besser als eine Warnung PLUS
-     ein Arbeitsschritt. Erklaert wird sie auf /download. */
-
   const server = baueServer({
     freigabe,
     tokens,

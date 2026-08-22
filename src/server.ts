@@ -581,6 +581,8 @@ async function bearbeite(
      Discord-Nachrichten steht dieser Pfad noch. Er soll nicht ins Leere
      laufen, sondern dorthin, wo die Datei jetzt ist.
   */
+  /* /client.zip steht noch in alten Discord-Nachrichten - es gab die
+     ZIP bis zum 21.08.2026 wirklich. Weiterleiten statt vergessen. */
   if (pfad === '/client' || pfad === '/client.exe' || pfad === '/client.zip') {
     const ziel = verteilung().releases;
     if (!ziel) {

@@ -7,7 +7,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 
 import { baueServer } from '../src/server.js';
-import { downloadSeite, clientstand } from '../src/download-seite.js';
+import { downloadSeite, clientstand, clientDateiname } from '../src/download-seite.js';
 import { ladeFreigabeliste } from '../src/freigabe.js';
 import { ladeTokens } from '../src/tokens.js';
 import { verteilung } from '../src/config.js';
@@ -73,6 +73,18 @@ describe('Download-Seite', () => {
       'der Knopf darf nicht mehr auf den eigenen Server zeigen');
   });
 
+  test('nennt die Datei MIT Fassung im Namen', () => {
+    /* Ein Browser haengt "(1)" an, wenn schon eine gleichnamige Datei
+       liegt. Nach der dritten Fassung liegen drei Programme herum,
+       denen man nicht ansieht, welches welches ist.
+
+       Wichtig ist, dass die Seite denselben Namen nennt, den BAUEN.bat
+       erzeugt - sonst zeigt der Get-FileHash-Befehl auf eine Datei, die
+       es nicht gibt, und der Misstrauische steht mit einem Fehler da. */
+    assert.match(seite, /Meccha-Ranked-\d+\.\d+\.\d+\.exe/);
+    assert.equal(clientDateiname('0.17.0'), 'Meccha-Ranked-0.17.0.exe');
+  });
+
   test('sagt, wo die Pruefsumme steht', () => {
     /* Sie ist nicht verschwunden - sie steht jetzt in den Release-
        Notizen. Wer das nicht sagt, laesst den Misstrauischen ohne
@@ -121,7 +133,8 @@ describe('Download-Seite', () => {
 
   test('kommt zurecht, wenn keine Quelle hinterlegt ist', () => {
     const ohne = downloadSeite({
-      version: '0.1.0', gebaut: '', releases: '', quelltext: ''
+      version: '0.1.0', gebaut: '', releases: '', quelltext: '',
+      datei: 'Meccha-Ranked-0.1.0.exe'
     });
     assert.match(ohne, /nicht verfügbar/);
     assert.doesNotMatch(ohne, /class="holen"/, 'ohne Quelle kein Knopf ins Leere');

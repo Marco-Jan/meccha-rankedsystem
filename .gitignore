@@ -33,7 +33,9 @@ EINSTELLUNGEN.bat
 
 # Gebauter Zuschauer-Client. Wird mit client-csBAUEN.bat neu erzeugt.
 client-cs/Meccha-Ranked.exe
+client-cs/Meccha-Ranked-*.exe
 client-cs/Meccha-Ranked.zip
+# Die ZIP ist am 22.08.2026 entfallen - die Zeile bleibt fuer alte Arbeitsstaende.
 client-cs/client.json
 client-cs/mc-ranked-daten/
 

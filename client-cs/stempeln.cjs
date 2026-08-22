@@ -12,7 +12,7 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 
-const QUELLEN = ['Kern.cs', 'Sprache.cs', 'Fenster.cs'];
+const QUELLEN = ['Kern.cs', 'Sprache.cs', 'Fenster.cs', 'Angaben.cs'];
 const stempelDatei = path.join(__dirname, 'fassung.json');
 
 /** Liest JSON und wirft die BOM weg, die Windows-Editoren gern setzen. */

@@ -45,4 +45,23 @@ if (version) {
 }
 
 fs.writeFileSync(ziel, neu, 'utf8');
+
+/* Dieselbe Nummer auch in die Dateieigenschaften der .exe.
+
+   Windows will vier Stellen; wir zaehlen in drei, also haengt eine 0 an.
+   Von Hand gepflegt waeren es zwei Orte fuer dieselbe Zahl, und der
+   zweite waere nach dem ersten Vergessen falsch - ausgerechnet dort, wo
+   ein misstrauischer Nutzer nachsieht. */
+if (version) {
+  const angaben = path.join(__dirname, 'Angaben.cs');
+  try {
+    let a = fs.readFileSync(angaben, 'utf8');
+    a = a
+      .replace(/AssemblyVersion\("[^"]*"\)/, 'AssemblyVersion("' + version + '.0")')
+      .replace(/AssemblyFileVersion\("[^"]*"\)/, 'AssemblyFileVersion("' + version + '.0")');
+    fs.writeFileSync(angaben, a, 'utf8');
+  } catch (err) {
+    console.error('  Angaben.cs nicht angepasst: ' + err.message);
+  }
+}
 console.log('  Serveradresse: ' + server + (version ? '   Fassung: ' + version : ''));

@@ -1,4 +1,4 @@
-@echo off
+﻿@echo off
 title Meccha Ranked - Client bauen
 cd /d "%~dp0"
 
@@ -40,7 +40,10 @@ if errorlevel 1 (
 )
 
 REM  Haelt fest, welche Quellen unter welcher Nummer gebaut wurden - und
-REM  bricht ab, wenn sich der Code geaendert hat, clientVersion aber nicht.
+REM  Relativ statt ueber %~dp0: dessen Backslashes landen in einem
+REM  JavaScript-String und gelten dort als Escapes. BAUEN.bat wechselt
+REM  oben ohnehin in seinen eigenen Ordner.
+for /f "usebackq delims=" %%v in (`node -p "require('./../config/verteilung.json').clientVersion"`) do set FASSUNG=%%v
 REM  Sonst meldet der Server dieselbe Zahl, die in der alten .exe steht,
 REM  der Hinweis auf die neue Fassung bleibt aus, und zwei verschiedene
 REM  Dateien heissen gleich. Genau das ist beim Japanisch-Umbau passiert.
@@ -50,6 +53,24 @@ if errorlevel 1 (
   exit /b 1
 )
 
+REM  Die Fassung gehoert IN den Dateinamen. Ein Browser haengt sonst
+REM  "(1)" an, und nach der dritten Fassung liegen drei Dateien herum,
+REM  denen man nicht ansieht, welche welche ist. Am festen Platz unter
+REM  %LOCALAPPDATA% heisst sie weiterhin schlicht Meccha-Ranked.exe -
+REM  dort soll ja genau eine liegen, die ersetzt wird.
+for /f "usebackq delims=" %%v in (`node -p "require('%~dp0..\configerteilung.json').clientVersion"`) do set FASSUNG=%%v
+if "%FASSUNG%"=="" (
+  echo   FEHLER: clientVersion nicht gelesen.
+  pause
+  exit /b 1
+)
+set AUSGABE=Meccha-Ranked-%FASSUNG%.exe
+
+REM  Aeltere Faelle wegraeumen, damit nicht drei Fassungen nebeneinander
+REM  liegen und man die falsche hochlaedt.
+del /q "%~dp0Meccha-Ranked-*.exe" 2>nul
+del /q "%~dp0Meccha-Ranked.exe" 2>nul
+
 echo.
 echo   Uebersetze ...
 REM  -codepage:65001 ist Pflicht: ohne ihn liest csc.exe die Quellen in
@@ -57,9 +78,10 @@ REM  der Windows-Codepage. Aus "primaer" wurde so schon einmal Buchstaben-
 REM  salat in der fertigen .exe, und die chinesischen Texte wuerden ganz
 REM  zerfallen. Die Dateien haben zusaetzlich eine BOM - doppelt haelt.
 "%CSC%" -nologo -target:winexe -optimize+ -codepage:65001 ^
-  -out:"Meccha-Ranked.exe" ^
+  -out:"%AUSGABE%" ^
   -r:System.dll -r:System.Drawing.dll -r:System.Windows.Forms.dll -r:System.Core.dll ^
-  Kern.cs Sprache.cs Fenster.cs
+  -win32icon:"meccha.ico" ^
+  Kern.cs Sprache.cs Fenster.cs Angaben.cs
 
 if errorlevel 1 (
   echo.
@@ -70,29 +92,22 @@ if errorlevel 1 (
 )
 
 REM ===================================================================
-REM  Als ZIP verpacken.
+REM  Die ZIP ist am 22.08.2026 entfallen.
 REM
-REM  Chrome blockt eine unsignierte .exe von einer noch unbekannten
-REM  Domain hart weg - "Verdaechtiger Download blockiert", ohne Knopf
-REM  zum Trotzdem-Laden. Ein Archiv laesst es durch. Der Server liefert
-REM  darum die ZIP aus, wenn eine bereitliegt.
-REM
-REM  tar gehoert seit Windows 10 zum System, es muss nichts nachinstal-
-REM  liert werden. -a waehlt das Format anhand der Endung.
+REM  Sie war dafuer da, dass Chrome eine unsignierte .exe von einer
+REM  unbekannten Domain nicht hart wegblockt. Seit die Datei bei GitHub
+REM  liegt, gibt es dieses Problem nicht mehr - und ein Archiv, das man
+REM  erst entpacken muss, ist fuer den Zuschauer ein Schritt mehr.
 REM ===================================================================
-echo.
-echo   Verpacke ...
-if exist "%~dp0Meccha-Ranked.zip" del "%~dp0Meccha-Ranked.zip"
-tar -a -c -f "%~dp0Meccha-Ranked.zip" -C "%~dp0" Meccha-Ranked.exe
-if errorlevel 1 (
-  echo   WARNUNG: ZIP konnte nicht erzeugt werden - der Server liefert dann die .exe aus.
-)
 
 echo.
-echo   Fertig: %~dp0Meccha-Ranked.exe
+echo   Fertig: %~dp0%AUSGABE%
 echo.
-echo   Weitergeben: die .exe. Beim ersten Start legt sie
-echo   client.json daneben an; die Serveradresse ist schon eingetragen,
-echo   der Zuschauer muss nur seinen Token einfuegen.
+echo   Weitergeben ueber ein GitHub-Release. Die Fassung steht im
+echo   Dateinamen - so sieht jeder, welche er hat, und der Browser
+echo   haengt kein "(1)" an.
+echo.
+echo   Pruefsumme fuer die Release-Notizen:
+powershell -NoProfile -Command "(Get-FileHash '%~dp0%AUSGABE%' -Algorithm SHA256).Hash.ToLower()"
 echo.
 pause

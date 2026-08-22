@@ -1797,13 +1797,29 @@ namespace MecchaRanked
                 KopiereOrdner(Path.Combine(ordner, "mc-ranked-daten"),
                               Path.Combine(ziel, "mc-ranked-daten"));
 
-                /* Einmal zeigen, wo es jetzt liegt. Ohne das ist das
-                   Programm nach dem Umzug verschwunden - der Zuschauer
-                   sucht es im Downloads-Ordner und findet die alte. */
-                try { System.Diagnostics.Process.Start("explorer.exe", "\"" + ziel + "\""); }
+                /*
+                   HIER STAND EINMAL Process.Start(zielExe).
+
+                   Sich selbst nach AppData kopieren UND die Kopie
+                   ausfuehren - das ist woertlich das Muster, an dem eine
+                   Heuristik einen Dropper erkennt. Am 22.08.2026 hat
+                   Windows Defender die Datei genau deswegen als
+                   Schaedling eingestuft.
+
+                   Einzeln ist beides unauffaellig. Kopiert wird also
+                   weiter, gestartet wird die Kopie nicht mehr - das
+                   uebernimmt der Zuschauer mit einem Doppelklick. Ein
+                   Klick gegen einen Virenfund ist ein guter Tausch.
+                */
+                try { System.Diagnostics.Process.Start("explorer.exe", "/select,\"" + zielExe + "\""); }
                 catch { /* kein Explorer, auch gut */ }
 
-                System.Diagnostics.Process.Start(zielExe);
+                MessageBox.Show(
+                    Sprache.T("Kopiert nach {0}", ziel) + Environment.NewLine + Environment.NewLine +
+                    Sprache.T("Starte künftig die Datei dort – der Ordner ist offen. " +
+                              "Diese hier kannst du löschen."),
+                    Sprache.T("Fester Platz"),
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return true;
             }
             catch (Exception f)
