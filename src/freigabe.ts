@@ -213,6 +213,13 @@ export class Freigabeliste {
     return treffer;
   }
 
+  /** Alle Runden derselben Partie, ohne die abgelehnten. */
+  mitKennung(kennung: string): OffeneRunde[] {
+    if (!kennung) return [];
+    return this.runden.filter(
+      (r) => r.kennung === kennung && r.status !== 'abgelehnt');
+  }
+
   /**
    * Legt eine Runde zur Freigabe ab.
    *

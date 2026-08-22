@@ -28,7 +28,7 @@ import { waehleLeser } from './leser-wahl.js';
 import { bewerteRunde, teileAuf, personVon } from './runde.js';
 import { ordneZu, istSicher, nameKey } from './namen.js';
 import { pruefeBild, type Bildbefund } from './bildpruefung.js';
-import { pruefeVerdacht } from './verdacht.js';
+import { pruefeVerdacht, pruefeLobbyWiderspruch } from './verdacht.js';
 import { verteilung } from './config.js';
 import { bearbeiteFreigabe } from './freigabe-api.js';
 import { bearbeiteKonto } from './konto-api.js';
@@ -1160,6 +1160,36 @@ async function bearbeite(
     auffaellig.push(ruecknahmen + ' Ruecknahmen in den letzten 24 Stunden');
   }
 
+  /*
+     DIESELBE PARTIE, GESEHEN VON JEMAND ANDEREM.
+
+     Der eine Fall, den keine Dateipruefung fangen kann: wer seinen Namen
+     VOR der Aufnahme ueber eine fremde Zeile legt, liefert ein tadelloses
+     PNG ab, und im Bild selbst ist nichts widersprüchlich.
+
+     Verraten kann ihn nur, wer dasselbe Scoreboard gesehen hat. Siehe
+     pruefeLobbyWiderspruch in verdacht.ts.
+  */
+  /* Zuordnung ueber dieselbe Stelle wie sonst auch. Ein verlesener Name
+     ("B8166u" statt "Baloou") darf keinen Widerspruch erfinden - nur wer
+     SICHER auf ein Konto zeigt, zaehlt. */
+  const kontoVon = (rohName: string): string | null => {
+    const z = ordneZu(rohName, stand.spieler);
+    return 'person' in z && istSicher(z) ? z.person.id : null;
+  };
+
+  const widersprueche: string[] = [];
+  for (const z of zuWerten) {
+    if (z.punkte === null) continue;
+    const meins = kontoVon(z.rohName);
+    if (!meins) continue;
+
+    widersprueche.push(...pruefeLobbyWiderspruch(
+      o.freigabe.mitKennung(kennung), meins, z.punkte.punkte, kontoVon
+    ));
+  }
+  auffaellig.push(...widersprueche);
+
   /* --------------------------------------- ohne Freigabe: direkt in die Liste
      Frueher hing das an token.vertraut - damit konnte ein Zuschauer
      entweder gar nicht ohne Freigabe laufen, oder er haette gleich die
@@ -1265,8 +1295,14 @@ async function bearbeite(
        Gruende drin - er soll ja sehen, warum die Runde bei ihm liegt.
        Wer ohnehin zur Freigabe geht, bekommt nur den Verdacht rot
        angestrichen; das Bild steht schon als gelber Hinweis da. */
+    /* Ein WIDERSPRUCH steht immer drin, egal auf welchem Weg die Runde
+       kommt. Hier fiel er anfangs unter den Tisch: fuer gewoehnliche
+       Zuschauer wurden nur verdacht.gruende gespeichert - also
+       ausgerechnet fuer die Gruppe, um die es geht, ging der Grund
+       verloren. Die Runde stand rot da, ohne zu sagen warum. */
     ...(brauchtFreigabe(token)
-      ? (verdacht.geflaggt ? { verdacht: verdacht.gruende } : {})
+      ? ((verdacht.geflaggt || widersprueche.length > 0)
+          ? { verdacht: [...verdacht.gruende, ...widersprueche] } : {})
       : (auffaellig.length > 0 ? { verdacht: auffaellig } : {}))
   });
 

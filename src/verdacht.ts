@@ -222,3 +222,80 @@ export function verlaufVon(
   // Neueste zuerst - beim Pruefen interessiert das Letzte am meisten.
   return raus.sort((a, b) => b.eingegangen - a.eingegangen).slice(0, grenze);
 }
+
+/* =========================================================================
+   DIESELBE PARTIE, ZWEI VERSCHIEDENE NAMEN AUF DERSELBEN ZEILE
+
+   Das Verfahren hat eine Grenze, die es nicht ueberwinden kann: ein Bild
+   vom Bildschirm ist immer echt. Wer seinen Namen VOR der Aufnahme ueber
+   eine fremde Zeile legt, liefert eine tadellose PNG-Datei ab - jede
+   Pruefung an der Datei geht daran vorbei, und innerhalb des Bildes ist
+   nichts widersprüchlich. Genau das ist am 21.08.2026 vorgefuehrt worden.
+
+   Was es doch verraet: die anderen. Zwei Leute aus derselben Lobby sehen
+   DASSELBE Scoreboard. Die Partie-Kennung entsteht aus den Punktzahlen
+   und ist deshalb bei beiden gleich - aber auf dem einen Bild traegt die
+   Zeile mit 1 643 einen anderen Namen als auf dem anderen. Einer der
+   beiden hat gefaelscht, und welcher, sieht man daran, dass die uebrigen
+   zehn Zeilen uebereinstimmen.
+
+   Das ist kein Verdacht, sondern ein Widerspruch. Trotzdem wird nur
+   geflaggt, nicht abgewiesen: welche der beiden Einsendungen die echte
+   ist, entscheidet ein Mensch am Bild.
+
+   WARUM UEBER DIE KONTEN UND NICHT UEBER DIE ROHNAMEN
+
+   Die Erkennung verliest Namen staendig - "Hupferli" statt "Hüpferli",
+   "B8166u" statt "Baloou". Wer rohe Zeichenketten vergleicht, findet
+   Widersprueche, wo nur die Schrift schwer lesbar war. Ein Widerspruch
+   zaehlt deshalb nur, wenn beide Namen SICHER auf je ein Konto zeigen -
+   und auf zwei verschiedene.
+   ========================================================================= */
+
+/**
+ * Eine Zeile, wie sie fuer den Vergleich gebraucht wird.
+ *
+ * punkte ist ein OBJEKT, keine Zahl - RohZeile traegt dort das Ergebnis
+ * des Parsens mitsamt "unsicher". Wer das uebersieht, vergleicht eine
+ * Zahl mit einem Objekt, und der Test greift nie. Genau so ist es beim
+ * ersten Lauf passiert.
+ */
+interface Vergleichszeile {
+  readonly rohName: string;
+  readonly punkte: { readonly punkte: number } | null;
+}
+
+/**
+ * Widerspricht die neue Einsendung einer frueheren derselben Partie?
+ *
+ * meinePunkte ist die Punktzahl, die der Absender fuer sich beansprucht.
+ * Nur um die geht es: was die Mitspieler auf ihren Zeilen haben, ist
+ * nicht seine Sache und faellt in beiden Bildern gleich aus.
+ */
+export function pruefeLobbyWiderspruch(
+  frueher: readonly OffeneRunde[],
+  meinKontoId: string,
+  meinePunkte: number,
+  wemGehoert: (rohName: string) => string | null
+): string[] {
+  const gruende: string[] = [];
+
+  for (const r of frueher) {
+    for (const z of (r.zeilen ?? []) as readonly Vergleichszeile[]) {
+      if (z.punkte?.punkte !== meinePunkte) continue;
+
+      const anderer = wemGehoert(z.rohName);
+      // Nicht zuzuordnen - dann sagt die Zeile nichts. Ein Aussteiger
+      // ("?") landet ebenfalls hier, und das ist richtig so.
+      if (!anderer || anderer === meinKontoId) continue;
+
+      gruende.push(
+        'Widerspruch: dieselbe Partie wurde von ' + r.absender +
+        ' eingeschickt, dort gehoert die Zeile mit ' + meinePunkte +
+        ' Punkten einem anderen Konto'
+      );
+      return gruende;      // Einer genuegt - ein Mensch sieht ohnehin hin.
+    }
+  }
+  return gruende;
+}
